@@ -1,0 +1,201 @@
+import { integer, sqliteTable, text, index } from 'drizzle-orm/sqlite-core';
+import { sql } from 'drizzle-orm';
+
+// Links table - Main content storage
+export const links = sqliteTable('links', {
+  // Primary key and basic info
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  url: text('url').notNull(), // No unique constraint - allows duplicate collections
+  domain: text('domain').notNull(),
+  
+  // Content information
+  title: text('title'),
+  originalDescription: text('original_description'),
+  originalContent: text('original_content'), // For AI analysis
+  
+  // AI processing results
+  aiSummary: text('ai_summary'),
+  aiCategory: text('ai_category'),
+  aiTags: text('ai_tags'), // JSON array
+  
+  // User confirmed content
+  userDescription: text('user_description'),
+  userCategory: text('user_category'),
+  userTags: text('user_tags'), // JSON array
+  
+  // Final display content (optimized for queries)
+  finalDescription: text('final_description'),
+  finalCategory: text('final_category'),
+  finalTags: text('final_tags'), // JSON array
+  
+  // Metadata
+  status: text('status').default('pending').notNull(), // pending|published|deleted
+  clickCount: integer('click_count').default(0).notNull(),
+  
+  // Timestamps (Unix timestamps)
+  createdAt: integer('created_at').notNull(),
+  updatedAt: integer('updated_at'),
+  publishedAt: integer('published_at'),
+  
+  // Search optimization
+  searchText: text('search_text'),
+}, (table) => ({
+  // Indexes for common queries
+  statusIdx: index('idx_links_status').on(table.status),
+  domainIdx: index('idx_links_domain').on(table.domain),
+  categoryIdx: index('idx_links_category').on(table.finalCategory),
+  publishedAtIdx: index('idx_links_published_at').on(table.publishedAt),
+  createdAtIdx: index('idx_links_created_at').on(table.createdAt),
+  statusPublishedAtIdx: index('idx_links_status_published_at').on(table.status, table.publishedAt),
+  statusCategoryPublishedIdx: index('idx_links_status_category_published').on(table.status, table.finalCategory, table.publishedAt),
+}));
+
+// Settings table - System configuration
+export const settings = sqliteTable('settings', {
+  key: text('key').primaryKey(),
+  value: text('value'),
+  type: text('type').default('string').notNull(), // string|number|boolean|json
+  description: text('description'),
+  
+  createdAt: integer('created_at').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+});
+
+// API tokens table - Access control
+export const apiTokens = sqliteTable('api_tokens', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  
+  // Token information
+  token: text('token').unique().notNull(),
+  name: text('name'),
+  prefix: text('prefix'),
+  
+  // Status
+  status: text('status').default('active').notNull(), // active|revoked
+  
+  // Usage statistics
+  usageCount: integer('usage_count').default(0).notNull(),
+  lastUsedAt: integer('last_used_at'),
+  lastUsedIp: text('last_used_ip'),
+  
+  // Time management
+  createdAt: integer('created_at').notNull(),
+  revokedAt: integer('revoked_at'),
+}, (table) => ({
+  statusIdx: index('idx_tokens_status').on(table.status),
+  lastUsedIdx: index('idx_tokens_last_used').on(table.lastUsedAt),
+}));
+
+// Users table - Admin accounts
+export const users = sqliteTable('users', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  
+  // Account information
+  username: text('username').unique().notNull(),
+  passwordHash: text('password_hash').notNull(),
+  salt: text('salt').notNull(),
+  
+  // User information
+  email: text('email'),
+  displayName: text('display_name'),
+  
+  // Permissions and status
+  role: text('role').default('admin').notNull(), // admin
+  status: text('status').default('active').notNull(), // active|suspended|deleted
+  
+  // Login related
+  lastLoginAt: integer('last_login_at'),
+  lastLoginIp: text('last_login_ip'),
+  loginAttempts: integer('login_attempts').default(0).notNull(),
+  lockedUntil: integer('locked_until'),
+  
+  // Session management
+  sessionToken: text('session_token'),
+  sessionExpiresAt: integer('session_expires_at'),
+  
+  // Timestamps
+  createdAt: integer('created_at').notNull(),
+  updatedAt: integer('updated_at'),
+}, (table) => ({
+  usernameIdx: index('idx_users_username').on(table.username),
+  sessionTokenIdx: index('idx_users_session_token').on(table.sessionToken),
+  statusIdx: index('idx_users_status').on(table.status),
+  lastLoginIdx: index('idx_users_last_login').on(table.lastLoginAt),
+}));
+
+// Operation logs table - Audit trail
+export const operationLogs = sqliteTable('operation_logs', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  
+  // Operation information
+  action: text('action').notNull(), // link_add|link_publish|link_delete|token_create etc
+  resource: text('resource'), // links|settings|tokens
+  resourceId: integer('resource_id'),
+  
+  // Operation details
+  details: text('details'), // JSON format
+  status: text('status').default('success').notNull(), // success|failed|pending
+  errorMessage: text('error_message'),
+  
+  // Request information
+  userAgent: text('user_agent'),
+  ip: text('ip'),
+  tokenId: integer('token_id'),
+  userId: integer('user_id'),
+  
+  // Performance information
+  duration: integer('duration'), // milliseconds
+  
+  // Timestamp
+  createdAt: integer('created_at').notNull(),
+}, (table) => ({
+  createdAtIdx: index('idx_logs_created_at').on(table.createdAt),
+  actionIdx: index('idx_logs_action').on(table.action),
+  resourceIdx: index('idx_logs_resource').on(table.resource, table.resourceId),
+  userIdIdx: index('idx_logs_user_id').on(table.userId),
+  tokenIdIdx: index('idx_logs_token_id').on(table.tokenId),
+}));
+
+// Search logs table - Search analytics
+export const searchLogs = sqliteTable('search_logs', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  
+  // Search information
+  query: text('query').notNull(),
+  normalizedQuery: text('normalized_query'),
+  resultsCount: integer('results_count'),
+  responseTime: integer('response_time'), // milliseconds
+  
+  // Filter conditions
+  filters: text('filters'), // JSON format
+  sortBy: text('sort_by'),
+  
+  // User behavior
+  clickedResults: text('clicked_results'), // JSON array
+  noResultsFound: integer('no_results_found', { mode: 'boolean' }).default(false),
+  
+  // Request information
+  ip: text('ip'),
+  userAgent: text('user_agent'),
+  
+  // Timestamp
+  createdAt: integer('created_at').notNull(),
+}, (table) => ({
+  queryIdx: index('idx_search_query').on(table.query),
+  createdAtIdx: index('idx_search_created_at').on(table.createdAt),
+  noResultsIdx: index('idx_search_no_results').on(table.noResultsFound),
+}));
+
+// Type exports for TypeScript
+export type Link = typeof links.$inferSelect;
+export type NewLink = typeof links.$inferInsert;
+export type Setting = typeof settings.$inferSelect;
+export type NewSetting = typeof settings.$inferInsert;
+export type ApiToken = typeof apiTokens.$inferSelect;
+export type NewApiToken = typeof apiTokens.$inferInsert;
+export type User = typeof users.$inferSelect;
+export type NewUser = typeof users.$inferInsert;
+export type OperationLog = typeof operationLogs.$inferSelect;
+export type NewOperationLog = typeof operationLogs.$inferInsert;
+export type SearchLog = typeof searchLogs.$inferSelect;
+export type NewSearchLog = typeof searchLogs.$inferInsert;

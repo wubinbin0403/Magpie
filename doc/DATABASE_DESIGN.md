@@ -5,7 +5,7 @@
 ### 数据库类型
 - **SQLite**：轻量级、自包含、零配置
 - **版本**：SQLite 3.35+ (支持 FTS5 全文搜索)
-- **文件位置**：`/app/data/magpie.db`
+- **文件位置**：`/data/magpie.db`
 
 ### 设计原则
 - **简洁性**：最小化表数量，避免过度设计
@@ -44,7 +44,7 @@
 CREATE TABLE links (
   -- 主键和基本信息
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  url TEXT NOT NULL,              -- 链接URL，唯一约束
+  url TEXT NOT NULL,                     -- 链接URL，允许重复收藏
   domain TEXT NOT NULL,                  -- 域名，从URL提取
   
   -- 内容信息

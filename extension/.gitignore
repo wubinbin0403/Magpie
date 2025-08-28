@@ -1,0 +1,28 @@
+# Build output
+dist/
+build/
+*.crx
+*.pem
+
+# Development
+.env
+.env.local
+
+# Logs
+*.log
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+tmp/
+temp/
+
+# Extension packaging
+*.zip
+web-ext-artifacts/
