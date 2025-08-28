@@ -4,6 +4,8 @@ import { db } from './index.js';
 import { settings, apiTokens } from './schema.js';
 import { eq } from 'drizzle-orm';
 import crypto from 'crypto';
+import type { DrizzleD1Database } from 'drizzle-orm/d1';
+import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 
 const DEFAULT_SETTINGS = [
   // Site basic information
@@ -44,7 +46,7 @@ const DEFAULT_SETTINGS = [
   { key: 'db_version', value: '1.0.0', type: 'string', description: '数据库版本' },
 ] as const;
 
-async function seedDatabase() {
+async function seedDatabase(database = db) {
   console.log('Starting database seeding...');
   
   const now = Math.floor(Date.now() / 1000);
@@ -55,10 +57,10 @@ async function seedDatabase() {
     
     for (const setting of DEFAULT_SETTINGS) {
       // Check if setting already exists
-      const existing = await db.select().from(settings).where(eq(settings.key, setting.key)).limit(1);
+      const existing = await database.select().from(settings).where(eq(settings.key, setting.key)).limit(1);
       
       if (existing.length === 0) {
-        await db.insert(settings).values({
+        await database.insert(settings).values({
           key: setting.key,
           value: setting.value,
           type: setting.type as 'string' | 'number' | 'boolean' | 'json',
@@ -75,12 +77,12 @@ async function seedDatabase() {
     // Create initial admin API token if none exists
     console.log('Checking for admin API tokens...');
     
-    const existingTokens = await db.select().from(apiTokens).limit(1);
+    const existingTokens = await database.select().from(apiTokens).limit(1);
     
     if (existingTokens.length === 0) {
       const tokenValue = 'mgp_' + crypto.randomBytes(32).toString('hex');
       
-      await db.insert(apiTokens).values({
+      await database.insert(apiTokens).values({
         token: tokenValue,
         name: 'Initial Admin Token',
         prefix: 'mgp_',
@@ -90,8 +92,10 @@ async function seedDatabase() {
       
       console.log(`✓ Created initial admin token: ${tokenValue}`);
       console.log('  ⚠️  Please save this token - it will not be shown again!');
+      return { tokenValue };
     } else {
       console.log('- Admin tokens already exist');
+      return { tokenValue: null };
     }
     
     console.log('Database seeding completed successfully!');

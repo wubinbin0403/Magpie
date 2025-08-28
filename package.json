@@ -11,6 +11,7 @@
     "dev": "pnpm -r --parallel dev",
     "build": "pnpm -r build",
     "test": "pnpm -r test",
+    "test:watch": "pnpm -r test:watch",
     "test:coverage": "pnpm -r test:coverage",
     "lint": "pnpm -r lint",
     "lint:fix": "pnpm -r lint:fix",
