@@ -44,7 +44,7 @@
 CREATE TABLE links (
   -- 主键和基本信息
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  url TEXT UNIQUE NOT NULL,              -- 链接URL，唯一约束
+  url TEXT NOT NULL,              -- 链接URL，唯一约束
   domain TEXT NOT NULL,                  -- 域名，从URL提取
   
   -- 内容信息
