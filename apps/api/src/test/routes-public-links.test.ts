@@ -3,7 +3,6 @@ import { clearTestData } from './helpers.js'
 import { testDrizzle } from './setup.js'
 import { links } from '../db/schema.js'
 import { createLinksRouter } from '../routes/public/links.js'
-import type { LinksResponse, Link } from '../types/api.js'
 
 describe('Public Links API', () => {
   let app: any
