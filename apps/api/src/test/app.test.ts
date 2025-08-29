@@ -1,13 +1,11 @@
 import { describe, it, expect } from 'vitest'
 import app from '../index.js'
-import { testClient } from 'hono/testing'
 
 describe('Magpie API - Basic Endpoints', () => {
-  const client = testClient(app)
   describe('Health Check', () => {
     it('should return healthy status', async () => {
-      const response = await client.api.health.$get()
-      const data = await response.json()
+      const response = await app.request('/api/health')
+      const data = await response.json() as any
 
       expect(response.status).toBe(200)
       expect(data).toMatchObject({
@@ -25,9 +23,8 @@ describe('Magpie API - Basic Endpoints', () => {
 
   describe('Root API Endpoint', () => {
     it('should return API information', async () => {
-
-      const response = await client.api.$get()
-      const data = await response.json()
+      const response = await app.request('/api')
+      const data = await response.json() as any
 
       expect(response.status).toBe(200)
       expect(data).toEqual({
@@ -49,8 +46,8 @@ describe('Magpie API - Basic Endpoints', () => {
 
   describe('Error Handling', () => {
     it('should return 404 for non-existent routes', async () => {
-      const response = await client.api['non-existent'].$get()
-      const data = await response.json()
+      const response = await app.request('/api/non-existent')
+      const data = await response.json() as any
 
       expect(response.status).toBe(404)
       expect(data).toMatchObject({
@@ -65,8 +62,8 @@ describe('Magpie API - Basic Endpoints', () => {
     })
 
     it('should handle different HTTP methods for 404', async () => {
-      const response = await client.api['invalid-endpoint'].$post()
-      const data = await response.json()
+      const response = await app.request('/api/invalid-endpoint', { method: 'POST' })
+      const data = await response.json() as any
 
       expect(response.status).toBe(404)
       expect(data).toMatchObject({
@@ -81,7 +78,7 @@ describe('Magpie API - Basic Endpoints', () => {
 
   describe('CORS Headers', () => {
     it('should include CORS headers in responses', async () => {
-      const response = await client.api.health.$get()
+      const response = await app.request('/api/health')
 
       expect(response.status).toBe(200)
       // Check that CORS headers are present
@@ -89,7 +86,7 @@ describe('Magpie API - Basic Endpoints', () => {
     })
 
     it('should handle OPTIONS preflight requests', async () => {
-      const response = await client.api.health.$options()
+      const response = await app.request('/api/health', { method: 'OPTIONS' })
 
       expect(response.status).toBe(204) // OPTIONS requests typically return 204 No Content
       const allowMethods = response.headers.get('access-control-allow-methods')
@@ -102,15 +99,15 @@ describe('Magpie API - Basic Endpoints', () => {
 
   describe('Response Format', () => {
     it('should return JSON content type', async () => {
-      const response = await client.api.$get()
+      const response = await app.request('/api')
 
       expect(response.status).toBe(200)
       expect(response.headers.get('content-type')).toContain('application/json')
     })
 
     it('should have consistent error response format', async () => {
-      const response = await client.api['not-found'].$get()
-      const data = await response.json()
+      const response = await app.request('/api/not-found')
+      const data = await response.json() as any
 
       expect(response.status).toBe(404)
       expect(data).toHaveProperty('success', false)
