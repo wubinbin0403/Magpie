@@ -101,6 +101,24 @@ API调用 /api/links/add?url=xxx&skipConfirm=true
 
 管理页面详细设计参考 `doc/PAGE_ADMIN.md`。
 
+## 🎯 SEO 和渲染策略
+
+为了平衡 SEO 需求和用户体验，Magpie 采用**混合渲染策略**：
+
+### 页面渲染类型
+- **主页 (`/`)**：SSR + Hydration - 服务端渲染首屏（SEO友好），然后React接管交互
+- **搜索页 (`/search`)**：React SPA - 实时搜索和筛选功能
+- **管理页面 (`/admin/*`)**：React SPA - 复杂的管理界面
+- **确认页面 (`/confirm/*`)**：React SPA - 编辑功能
+
+### 关键特性
+- **爬虫友好**：主页返回完整HTML内容，包含Meta标签和结构化数据
+- **用户体验**：支持"加载更多"、实时搜索等现代交互功能
+- **性能优化**：首屏快速显示，后续内容按需加载
+- **SEO优化**：自动生成Sitemap、RSS Feed、robots.txt
+
+详细的SEO实现方案请参考 `doc/SEO.md`。
+
 ## 🔌 API 设计
 
 后端设计详情参考 `doc/API_DESIGN.md`
