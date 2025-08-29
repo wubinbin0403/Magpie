@@ -1,0 +1,183 @@
+import { Hono } from 'hono'
+import { zValidator } from '@hono/zod-validator'
+import { db } from '../../db/index.js'
+import { links } from '../../db/schema.js'
+import { eq, inArray, and, ne } from 'drizzle-orm'
+import { sendSuccess, sendError } from '../../utils/response.js'
+import { batchOperationSchema } from '../../utils/validation.js'
+import { requireAdmin } from '../../middleware/admin.js'
+import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
+
+// Create admin batch operations router with optional database dependency injection
+function createAdminBatchRouter(database = db) {
+  const app = new Hono()
+
+  // Error handling middleware
+  app.onError((err, c) => {
+    console.error('Admin Batch Operations API Error:', err)
+    
+    if (err.message.includes('ZodError') || err.name === 'ZodError') {
+      return sendError(c, 'VALIDATION_ERROR', 'Invalid request parameters', undefined, 400)
+    }
+    
+    return sendError(c, 'INTERNAL_SERVER_ERROR', 'An internal server error occurred', undefined, 500)
+  })
+
+  // POST /api/admin/batch - Perform batch operations on links
+  app.post('/', requireAdmin(database), zValidator('json', batchOperationSchema), async (c) => {
+    try {
+      const { ids, action, params } = c.req.valid('json')
+      
+      const now = Math.floor(Date.now() / 1000)
+      const results: Array<{ id: number; success: boolean; error?: string }> = []
+      let processed = 0
+      let failed = 0
+      let skipped = 0
+
+      // Get all links to process
+      const existingLinks = await database
+        .select()
+        .from(links)
+        .where(inArray(links.id, ids))
+
+      // Create a map for quick lookup
+      const linksMap = new Map(existingLinks.map(link => [link.id, link]))
+
+      for (const id of ids) {
+        const link = linksMap.get(id)
+        
+        if (!link) {
+          results.push({ id, success: false, error: 'Link not found' })
+          failed++
+          continue
+        }
+
+        try {
+          switch (action) {
+            case 'confirm': {
+              // Skip already deleted links
+              if (link.status === 'deleted') {
+                results.push({ id, success: true, error: 'Already deleted, skipped' })
+                skipped++
+                continue
+              }
+
+              // Prepare final values for publishing
+              const finalDescription = params?.category ? 
+                (link.userDescription || link.aiSummary || link.originalDescription || '') :
+                (link.userDescription || link.aiSummary || link.originalDescription || '')
+              
+              const finalCategory = params?.category || 
+                link.userCategory || 
+                link.aiCategory || 
+                ''
+                
+              const finalTags = JSON.stringify(params?.tags || 
+                (link.userTags ? JSON.parse(link.userTags) : []) ||
+                (link.aiTags ? JSON.parse(link.aiTags) : []) ||
+                [])
+
+              // Update to published status
+              await database
+                .update(links)
+                .set({
+                  status: 'published',
+                  publishedAt: now,
+                  finalDescription,
+                  finalCategory,
+                  finalTags,
+                  updatedAt: now,
+                })
+                .where(eq(links.id, id))
+
+              results.push({ id, success: true })
+              processed++
+              break
+            }
+
+            case 'delete': {
+              // Skip already deleted links
+              if (link.status === 'deleted') {
+                results.push({ id, success: true, error: 'Already deleted, skipped' })
+                skipped++
+                continue
+              }
+
+              // Soft delete
+              await database
+                .update(links)
+                .set({
+                  status: 'deleted',
+                  updatedAt: now,
+                })
+                .where(eq(links.id, id))
+
+              results.push({ id, success: true })
+              processed++
+              break
+            }
+
+            case 'reanalyze': {
+              // Skip deleted links
+              if (link.status === 'deleted') {
+                results.push({ id, success: true, error: 'Deleted link, skipped' })
+                skipped++
+                continue
+              }
+
+              // For now, just mark as pending and reset user overrides
+              // In a real implementation, this would trigger AI reanalysis
+              await database
+                .update(links)
+                .set({
+                  status: 'pending',
+                  userDescription: null,
+                  userCategory: null,
+                  userTags: null,
+                  updatedAt: now,
+                })
+                .where(eq(links.id, id))
+
+              results.push({ id, success: true })
+              processed++
+              break
+            }
+
+            default:
+              results.push({ id, success: false, error: 'Unknown action' })
+              failed++
+          }
+        } catch (error) {
+          console.error(`Batch operation failed for link ${id}:`, error)
+          results.push({ id, success: false, error: String(error) })
+          failed++
+        }
+      }
+
+      let message = `Batch ${action} operation completed.`
+      if (action === 'reanalyze') {
+        message = `Batch reanalysis queued for ${processed} links.`
+      }
+
+      const responseData = {
+        processed,
+        failed,
+        skipped,
+        total: ids.length,
+        results,
+      }
+
+      return sendSuccess(c, responseData, message)
+
+    } catch (error) {
+      console.error('Error performing batch operation:', error)
+      return sendError(c, 'INTERNAL_SERVER_ERROR', 'Failed to perform batch operation', undefined, 500)
+    }
+  })
+
+  return app
+}
+
+// Export both the router factory and a default instance
+export { createAdminBatchRouter }
+export default createAdminBatchRouter()

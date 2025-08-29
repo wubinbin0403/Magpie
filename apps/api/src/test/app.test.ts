@@ -37,6 +37,7 @@ describe('Magpie API - Basic Endpoints', () => {
             health: '/api/health',
             links: '/api/links',
             search: '/api/search',
+            stats: '/api/stats',
             admin: '/api/admin',
           }
         }

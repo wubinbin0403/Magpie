@@ -67,6 +67,9 @@ export function getTestDbStats() {
 export function clearTestData() {
   const tables = ['operation_logs', 'search_logs', 'links', 'api_tokens', 'users', 'settings'];
   
+  // 先禁用外键约束
+  testDb.exec('PRAGMA foreign_keys = OFF');
+  
   for (const table of tables) {
     try {
       testDb.exec(`DELETE FROM ${table}`);
@@ -74,4 +77,7 @@ export function clearTestData() {
       console.warn(`Failed to clear table ${table}:`, error);
     }
   }
+  
+  // 重新启用外键约束
+  testDb.exec('PRAGMA foreign_keys = ON');
 }

@@ -179,7 +179,7 @@ export async function revokeSessionToken(userId: number): Promise<void> {
 /**
  * Hono middleware for API token authentication
  */
-export function requireApiToken() {
+export function requireApiToken(database: BetterSQLite3Database<any> = db) {
   return async (c: Context, next: Next) => {
     const authHeader = c.req.header('authorization');
     
@@ -194,7 +194,7 @@ export function requireApiToken() {
     const token = authHeader.slice(7); // Remove 'Bearer '
     const clientIp = c.req.header('x-forwarded-for') || c.req.header('x-real-ip') || 'unknown';
     
-    const verification = await verifyApiToken(token, clientIp);
+    const verification = await verifyApiToken(token, clientIp, database);
     
     if (!verification.valid) {
       const errorMessages = {
