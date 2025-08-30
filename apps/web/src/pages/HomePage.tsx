@@ -1,122 +1,310 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import NavBar from '../components/NavBar'
+import Sidebar from '../components/Sidebar'
+import LinkCard from '../components/LinkCard'
+import MonthSection from '../components/MonthSection'
+import LoadMoreButton from '../components/LoadMoreButton'
+import LoadingSpinner from '../components/LoadingSpinner'
+import EmptyState from '../components/EmptyState'
+
+interface Link {
+  id: number
+  url: string
+  title: string
+  description: string
+  category: string
+  tags: string[]
+  domain: string
+  publishedAt: string
+  createdAt: string
+}
+
+interface LinksResponse {
+  success: boolean
+  data: {
+    links: Link[]
+    pagination: {
+      page: number
+      limit: number
+      total: number
+      pages: number
+      hasNext: boolean
+      hasPrev: boolean
+    }
+    filters: {
+      categories: { name: string; count: number }[]
+      tags: { name: string; count: number }[]
+      domains: { name: string; count: number }[]
+      yearMonths: { year: number; month: number; count: number }[]
+    }
+  }
+}
 
 export default function HomePage() {
+  const [page, setPage] = useState(1)
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [searchQuery, setSearchQuery] = useState('')
+  const [allLinks, setAllLinks] = useState<Link[]>([])
+  const [previousLinks, setPreviousLinks] = useState<Link[]>([])
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
+
+  // Fetch links data
+  const { data, isLoading, error, refetch } = useQuery<LinksResponse>({
+    queryKey: ['links', page, selectedCategory, selectedTags, searchQuery],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: '20'
+      })
+      
+      if (selectedCategory) params.set('category', selectedCategory)
+      if (selectedTags.length > 0) params.set('tags', selectedTags.join(','))
+      if (searchQuery) params.set('search', searchQuery)
+      
+      const response = await fetch(`/api/links?${params}`)
+      if (!response.ok) {
+        throw new Error('Failed to fetch links')
+      }
+      return response.json()
+    }
+  })
+
+  // Show previous links during loading to prevent flash
+  const displayLinks = (isLoading && page === 1 && previousLinks.length > 0) 
+    ? previousLinks 
+    : allLinks
+  
+  // Group links by month
+  const groupedLinks = displayLinks.reduce((groups, link) => {
+    const date = new Date(link.publishedAt)
+    const key = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`
+    
+    if (!groups[key]) {
+      groups[key] = {
+        year: date.getFullYear(),
+        month: date.getMonth() + 1,
+        links: []
+      }
+    }
+    
+    groups[key].links.push(link)
+    return groups
+  }, {} as Record<string, { year: number; month: number; links: Link[] }>)
+
+
+  // Update links when data changes
+  useEffect(() => {
+    if (data?.success) {
+      if (page === 1) {
+        setAllLinks(data.data.links)
+      } else {
+        // Append for pagination
+        setAllLinks(prev => [...prev, ...data.data.links])
+      }
+    }
+  }, [data, page])
+
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(1)
+    // Don't clear links immediately to avoid flash
+    // setAllLinks([])
+  }, [selectedCategory, selectedTags, searchQuery])
+
+  const handleLoadMore = () => {
+    if (data?.data.pagination.hasNext) {
+      setPage(prev => prev + 1)
+    }
+  }
+
+  // Helper to preserve links before filtering
+  const preserveLinksAndFilter = (action: () => void) => {
+    if (allLinks.length > 0) {
+      setPreviousLinks(allLinks)
+    }
+    action()
+  }
+
+  const handleCategoryFilter = (category: string | null) => {
+    preserveLinksAndFilter(() => setSelectedCategory(category))
+  }
+
+  const handleTagFilter = (tag: string) => {
+    preserveLinksAndFilter(() => 
+      setSelectedTags(prev => 
+        prev.includes(tag) 
+          ? prev.filter(t => t !== tag)
+          : [...prev, tag]
+      )
+    )
+  }
+
+  const handleSearch = (query: string) => {
+    preserveLinksAndFilter(() => setSearchQuery(query))
+  }
+
+  // Only show full page loading on initial load (not when filtering)
+  if (isLoading && page === 1 && allLinks.length === 0) {
+    return (
+      <div className="min-h-screen bg-base-100">
+        <NavBar onSearch={handleSearch} />
+        <div className="container mx-auto px-4">
+          <LoadingSpinner />
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-base-100">
+        <NavBar onSearch={handleSearch} />
+        <div className="container mx-auto px-4">
+          <div className="alert alert-error">
+            <svg className="stroke-current shrink-0 w-6 h-6" fill="none" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>Failed to load links. Please try again.</span>
+            <button className="btn btn-sm" onClick={() => refetch()}>Retry</button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      {/* Header */}
-      <header className="text-center mb-12">
-        <h1 className="text-4xl font-bold text-base-content mb-4">
-          🐦 Magpie
-        </h1>
-        <p className="text-lg text-base-content/70 mb-8">
-          收集和分享有趣的链接和内容
-        </p>
-        
-        {/* Search Bar */}
-        <div className="max-w-md mx-auto">
-          <div className="form-control">
-            <div className="input-group">
-              <input
-                type="text"
-                placeholder="搜索链接..."
-                className="input input-bordered w-full"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              <button className="btn btn-primary">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-              </button>
-            </div>
-          </div>
+    <div className="min-h-screen bg-base-100">
+      <NavBar onSearch={handleSearch} />
+      
+      {/* Fixed Sidebar - completely fixed to screen */}
+      <aside className="hidden lg:block fixed left-0 top-16 bottom-0 w-80 bg-slate-50 border-r border-slate-200 overflow-y-auto z-40">
+        <div className="p-6">
+          <Sidebar
+            categories={data?.data.filters?.categories || []}
+            tags={data?.data.filters?.tags || []}
+            selectedCategory={selectedCategory}
+            selectedTags={selectedTags}
+            onCategoryFilter={handleCategoryFilter}
+            onTagFilter={handleTagFilter}
+          />
         </div>
-      </header>
+      </aside>
+      
+      <div className="lg:ml-80">
+        {/* Content area with left margin to account for fixed sidebar */}
 
-      {/* Welcome Message */}
-      <div className="max-w-2xl mx-auto">
-        <div className="alert alert-info mb-8">
-          <div>
-            <svg className="stroke-current shrink-0 w-6 h-6" fill="none" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <div>
-              <h3 className="font-bold">Hello World! 🎉</h3>
-              <div className="text-xs">Magpie 前端应用已成功启动！这是一个基于 React + Vite + DaisyUI 的现代化 Web 应用。</div>
+        {/* Mobile Sidebar Drawer */}
+        {mobileSidebarOpen && (
+          <div className="lg:hidden fixed inset-0 z-50 flex">
+            <div className="fixed inset-0 bg-black/20" onClick={() => setMobileSidebarOpen(false)} />
+            <aside className="relative w-80 bg-slate-50 shadow-xl overflow-y-auto">
+              <div className="flex items-center justify-between p-4 border-b border-slate-200">
+                <h2 className="text-lg font-semibold text-slate-800">Filters</h2>
+                <button
+                  onClick={() => setMobileSidebarOpen(false)}
+                  className="btn btn-ghost btn-sm btn-square"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div className="p-4">
+                <Sidebar
+                  categories={data?.data.filters?.categories || []}
+                  tags={data?.data.filters?.tags || []}
+                  selectedCategory={selectedCategory}
+                  selectedTags={selectedTags}
+                  onCategoryFilter={handleCategoryFilter}
+                  onTagFilter={handleTagFilter}
+                />
+              </div>
+            </aside>
+          </div>
+        )}
+
+        {/* Main Content - scrollable, positioned to right of fixed sidebar */}
+        <main className="min-h-screen">
+          <div className="container mx-auto px-4 lg:px-6 py-6">
+            {/* Mobile Filter Button - only show when not loading initial data */}
+            {!(isLoading && page === 1 && allLinks.length === 0) && (
+              <div className="lg:hidden mb-4">
+                <button
+                  onClick={() => setMobileSidebarOpen(true)}
+                  className="btn btn-outline btn-sm"
+                >
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                  </svg>
+                  Filters
+                  {(selectedCategory || selectedTags.length > 0) && (
+                    <span className="badge badge-primary badge-sm ml-1">
+                      {(selectedCategory ? 1 : 0) + selectedTags.length}
+                    </span>
+                  )}
+                </button>
+              </div>
+            )}
+            
+            {/* Show loading overlay when filtering */}
+            <div className="relative">
+              {/* Show loading overlay only for initial loads, not when filtering */}
+              {isLoading && page === 1 && allLinks.length > 0 && previousLinks.length === 0 && (
+                <div className="absolute inset-0 bg-white/50 backdrop-blur-sm z-10 flex items-center justify-center">
+                  <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-lg shadow-sm border">
+                    <span className="loading loading-spinner loading-sm"></span>
+                    <span className="text-sm text-slate-600">Updating...</span>
+                  </div>
+                </div>
+              )}
+              
+              {displayLinks.length === 0 && !isLoading && !data ? (
+                <EmptyState />
+              ) : (
+                <div className="space-y-8">
+                  {displayLinks.length > 0 && Object.entries(groupedLinks)
+                    .sort(([a], [b]) => b.localeCompare(a))
+                    .map(([key, group]) => (
+                      <MonthSection
+                        key={key}
+                        year={group.year}
+                        month={group.month}
+                        count={group.links.length}
+                      >
+                        <div className="space-y-4">
+                          {group.links.map(link => (
+                            <LinkCard key={link.id} link={link} />
+                          ))}
+                        </div>
+                      </MonthSection>
+                    ))}
+
+                  {/* Show "No results" message only when filter returns empty and not loading */}
+                  {data?.success && allLinks.length === 0 && !isLoading && (selectedCategory || selectedTags.length > 0 || searchQuery) && (
+                    <div className="text-center py-12">
+                      <div className="text-slate-500">
+                        <svg className="w-16 h-16 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                        <h3 className="text-lg font-medium mb-2">No results found</h3>
+                        <p className="text-sm">Try adjusting your filters or search terms</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {data?.data.pagination.hasNext && !isLoading && (
+                    <LoadMoreButton
+                      onLoadMore={handleLoadMore}
+                      loading={isLoading && page > 1}
+                    />
+                  )}
+                </div>
+              )}
             </div>
           </div>
-        </div>
-
-        {/* Feature Cards */}
-        <div className="grid md:grid-cols-2 gap-6">
-          <div className="card bg-base-100 shadow-xl border border-base-300">
-            <div className="card-body">
-              <h2 className="card-title">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.1a3 3 0 105.656-5.656l-1.1-1.102zM9 12h6" />
-                </svg>
-                链接收藏
-              </h2>
-              <p className="text-base-content/70">收集和整理你喜欢的网页链接，支持 AI 智能分类和标签。</p>
-            </div>
-          </div>
-
-          <div className="card bg-base-100 shadow-xl border border-base-300">
-            <div className="card-body">
-              <h2 className="card-title">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-                全文搜索
-              </h2>
-              <p className="text-base-content/70">基于 FTS5 的高性能全文搜索，快速找到你需要的内容。</p>
-            </div>
-          </div>
-
-          <div className="card bg-base-100 shadow-xl border border-base-300">
-            <div className="card-body">
-              <h2 className="card-title">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                </svg>
-                AI 分析
-              </h2>
-              <p className="text-base-content/70">智能提取网页内容摘要，自动分类和标签建议。</p>
-            </div>
-          </div>
-
-          <div className="card bg-base-100 shadow-xl border border-base-300">
-            <div className="card-body">
-              <h2 className="card-title">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
-                </svg>
-                管理后台
-              </h2>
-              <p className="text-base-content/70">完整的管理界面，配置系统设置，管理链接和用户。</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Quick Links */}
-        <div className="mt-12 text-center">
-          <div className="flex flex-wrap justify-center gap-4">
-            <a href="/admin" className="btn btn-primary btn-outline">
-              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
-              </svg>
-              管理后台
-            </a>
-            <button className="btn btn-secondary btn-outline">
-              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.1a3 3 0 105.656-5.656l-1.1-1.102zM9 12h6" />
-              </svg>
-              浏览器扩展
-            </button>
-          </div>
-        </div>
+        </main>
       </div>
     </div>
   )
