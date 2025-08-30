@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { clearTestData } from './helpers.js'
 import { testDrizzle } from './setup.js'
 import { settings, users } from '../db/schema.js'
@@ -6,27 +6,38 @@ import { eq } from 'drizzle-orm'
 import { hashPassword, createAdminJWT } from '../utils/auth.js'
 import { createAdminSettingsRouter } from '../routes/admin/settings.js'
 
+// Mock AI analyzer
+vi.mock('../services/ai-analyzer.js', () => ({
+  createAIAnalyzer: vi.fn()
+}))
+
 describe('Admin Settings API', () => {
   let app: any
   let jwtToken: string
   let adminUserId: number
+  let mockCreateAIAnalyzer: any
 
   beforeEach(async () => {
     clearTestData()
 
     // Use real router with test database injection
     app = createAdminSettingsRouter(testDrizzle)
+    
+    // Get mock functions
+    const { createAIAnalyzer } = await import('../services/ai-analyzer.js')
+    mockCreateAIAnalyzer = createAIAnalyzer as any
+    mockCreateAIAnalyzer.mockReset()
 
     // Initialize default settings
     const now = Math.floor(Date.now() / 1000)
     const defaultSettings = [
       { key: 'site_title', value: 'Test Site', type: 'string', description: 'Site title' },
       { key: 'site_description', value: 'Test description', type: 'string', description: 'Site description' },
-      { key: 'ai_api_key', value: 'sk-test123', type: 'string', description: 'API key' },
-      { key: 'ai_base_url', value: 'https://api.openai.com/v1', type: 'string', description: 'Base URL' },
+      { key: 'openai_api_key', value: 'sk-test123', type: 'string', description: 'API key' },
+      { key: 'openai_base_url', value: 'https://api.openai.com/v1', type: 'string', description: 'Base URL' },
       { key: 'ai_model', value: 'gpt-3.5-turbo', type: 'string', description: 'Model' },
       { key: 'ai_temperature', value: '0.7', type: 'number', description: 'Temperature' },
-      { key: 'categories', value: '["Tech", "Design"]', type: 'json', description: 'Categories' },
+      { key: 'categories', value: '["技术", "设计"]', type: 'json', description: 'Categories' },
       { key: 'items_per_page', value: '20', type: 'number', description: 'Items per page' },
     ]
 
@@ -81,7 +92,7 @@ describe('Admin Settings API', () => {
       expect(body.data.ai.baseUrl).toBe('https://api.openai.com/v1')
       expect(body.data.ai.model).toBe('gpt-3.5-turbo')
       expect(body.data.ai.temperature).toBe(0.7)
-      expect(body.data.content.categories).toEqual(['Tech', 'Design'])
+      expect(body.data.content.categories).toEqual(['技术', '设计'])
       expect(body.data.content.itemsPerPage).toBe(20)
     })
   })
@@ -144,7 +155,7 @@ describe('Admin Settings API', () => {
       expect(res.status).toBe(200)
       
       // Verify the updates
-      const apiKey = await testDrizzle.select().from(settings).where(eq(settings.key, 'ai_api_key'))
+      const apiKey = await testDrizzle.select().from(settings).where(eq(settings.key, 'openai_api_key'))
       expect(apiKey[0].value).toBe('sk-new-key')
       
       const model = await testDrizzle.select().from(settings).where(eq(settings.key, 'ai_model'))
@@ -189,6 +200,21 @@ describe('Admin Settings API', () => {
     })
 
     it('should test AI connection', async () => {
+      // Mock AI analyzer and its methods
+      const mockAnalyzer = {
+        testConnection: vi.fn().mockResolvedValue(true),
+        analyze: vi.fn().mockResolvedValue({
+          summary: 'This is a test summary of the article content.',
+          category: 'tech',
+          tags: ['test', 'ai', 'technology'],
+          language: 'en',
+          sentiment: 'neutral',
+          readingTime: 2
+        })
+      }
+      
+      mockCreateAIAnalyzer.mockResolvedValue(mockAnalyzer)
+      
       const res = await app.request('/ai/test', {
         method: 'POST',
         headers: {
@@ -202,6 +228,7 @@ describe('Admin Settings API', () => {
       expect(body.data).toHaveProperty('connected')
       expect(body.data).toHaveProperty('model')
       expect(body.data).toHaveProperty('responseTime')
+      expect(body.data).toHaveProperty('testAnalysis')
     })
   })
 })

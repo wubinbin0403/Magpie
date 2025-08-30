@@ -152,7 +152,7 @@ describe('Database Initialization', () => {
     const requiredSettings = [
       'site_title',
       'site_description', 
-      'ai_base_url',
+      'openai_base_url',
       'ai_model',
       'categories',
       'db_version'
