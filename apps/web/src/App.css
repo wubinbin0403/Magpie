@@ -1,0 +1,32 @@
+/* App-specific styles */
+.app-container {
+  @apply min-h-screen bg-base-100;
+}
+
+/* Loading states */
+.loading-skeleton {
+  @apply animate-pulse bg-base-200 rounded;
+}
+
+/* Custom button variants */
+.btn-ghost-primary {
+  @apply btn btn-ghost text-primary hover:bg-primary hover:text-primary-content;
+}
+
+/* Link card styles */
+.link-card {
+  @apply card bg-base-100 shadow-sm hover:shadow-md transition-shadow duration-200 border border-base-300;
+}
+
+.link-card:hover {
+  @apply border-primary/20;
+}
+
+/* Admin specific styles */
+.admin-sidebar {
+  @apply bg-base-200 border-r border-base-300;
+}
+
+.admin-content {
+  @apply bg-base-100 min-h-screen;
+}
