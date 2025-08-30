@@ -7,6 +7,9 @@ import { eq } from 'drizzle-orm'
 import { sendSuccess, sendError } from '../../utils/response.js'
 import { addLinkBodySchema, addLinkQuerySchema, extractDomain } from '../../utils/validation.js'
 import { requireApiToken, logOperation } from '../../middleware/auth.js'
+import { webScraper } from '../../services/web-scraper.js'
+import { createAIAnalyzer, type AIAnalysisResult } from '../../services/ai-analyzer.js'
+import { getSettings } from '../../utils/settings.js'
 import type { AddLinkResponse } from '../../types/api.js'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 
@@ -29,66 +32,43 @@ app.onError((err, c) => {
   return sendError(c, 'INTERNAL_SERVER_ERROR', 'An internal server error occurred', undefined, 500)
 })
 
-// Placeholder for content fetching service
-async function fetchPageContent(url: string): Promise<{
-  title: string;
-  description: string;
-  content: string;
+// Content processing service
+async function processUrlContent(url: string, database: BetterSQLite3Database<any>): Promise<{
+  content: any;
+  aiAnalysis: AIAnalysisResult;
 }> {
-  // TODO: Implement actual web scraping with cheerio
-  // For now, return mock data based on URL
+  // Step 1: Scrape web content
+  const scrapedContent = await webScraper.scrape(url)
+  
+  // Step 2: Get AI settings and analyze content
+  let aiAnalysis: AIAnalysisResult
   try {
-    const domain = new URL(url).hostname
+    const settings = await getSettings(database)
     
-    // This would be replaced with actual web scraping
-    return {
-      title: `Article from ${domain}`,
-      description: `Content description from ${url}`,
-      content: `Mock content from ${url} - this would be the actual scraped content`
+    // Check if AI is configured
+    if (!settings.openai_api_key) {
+      throw new Error('AI service not configured')
     }
+    
+    const aiAnalyzer = await createAIAnalyzer(settings)
+    aiAnalysis = await aiAnalyzer.analyze(scrapedContent)
   } catch (error) {
-    throw new Error('Failed to fetch page content')
+    console.warn('AI analysis failed, using basic analysis:', error)
+    
+    // Fallback to basic analysis
+    aiAnalysis = {
+      summary: scrapedContent.description || scrapedContent.title.substring(0, 200),
+      category: 'other',
+      tags: ['article'],
+      language: scrapedContent.language,
+      sentiment: 'neutral',
+      readingTime: Math.max(1, Math.ceil(scrapedContent.wordCount / 225))
+    }
   }
-}
-
-// Placeholder for AI analysis service  
-async function analyzeContent(title: string, content: string, url: string): Promise<{
-  summary: string;
-  category: string;
-  tags: string[];
-}> {
-  // TODO: Implement actual AI API call
-  // For now, return mock analysis
-  try {
-    const domain = new URL(url).hostname
-    
-    // Mock AI analysis based on URL patterns
-    let category = 'general'
-    let tags = ['article']
-    
-    if (url.includes('tech') || url.includes('programming') || url.includes('code')) {
-      category = 'technology'
-      tags = ['tech', 'programming']
-    } else if (url.includes('design') || url.includes('ui')) {
-      category = 'design'
-      tags = ['design', 'ui']
-    } else if (url.includes('news')) {
-      category = 'news'
-      tags = ['news', 'current-events']
-    }
-    
-    return {
-      summary: `AI-generated summary: ${title.substring(0, 100)}...`,
-      category,
-      tags
-    }
-  } catch (error) {
-    // Fallback analysis
-    return {
-      summary: title.substring(0, 100) + (title.length > 100 ? '...' : ''),
-      category: 'general',
-      tags: ['article']
-    }
+  
+  return {
+    content: scrapedContent,
+    aiAnalysis
   }
 }
 
@@ -193,47 +173,28 @@ app.get('/add', requireApiToken(database), zValidator('query', addLinkQuerySchem
       }, 409)
     }
 
-    // Fetch content from URL
-    let pageContent
+    // Process URL content (scrape + AI analysis)
+    let processedContent
     try {
-      pageContent = await fetchPageContent(url)
+      processedContent = await processUrlContent(url, database)
     } catch (error) {
       await logOperation(
         'link_add',
         'links',
         undefined,
-        { url, reason: 'fetch_failed', error: String(error) },
+        { url, reason: 'processing_failed', error: String(error) },
         tokenData?.id,
         undefined,
         clientIp,
         c.req.header('user-agent'),
         'failed',
-        'Failed to fetch page content'
+        'Failed to process content'
       )
       
-      return sendError(c, 'NETWORK_ERROR', 'Failed to fetch page content', undefined, 500)
+      return sendError(c, 'PROCESSING_ERROR', 'Failed to process URL content', undefined, 500)
     }
 
-    // Analyze content with AI
-    let aiAnalysis
-    try {
-      aiAnalysis = await analyzeContent(pageContent.title, pageContent.content, url)
-    } catch (error) {
-      await logOperation(
-        'link_add',
-        'links',
-        undefined,
-        { url, reason: 'ai_failed', error: String(error) },
-        tokenData?.id,
-        undefined,
-        clientIp,
-        c.req.header('user-agent'),
-        'failed',
-        'AI analysis failed'
-      )
-      
-      return sendError(c, 'AI_SERVICE_ERROR', 'AI analysis failed', undefined, 500)
-    }
+    const { content: scrapedContent, aiAnalysis } = processedContent
 
     // Create final data
     const finalCategory = category || aiAnalysis.category
@@ -242,14 +203,14 @@ app.get('/add', requireApiToken(database), zValidator('query', addLinkQuerySchem
 
     // Create link record
     const now = Math.floor(Date.now() / 1000)
-    const searchText = `${pageContent.title} ${finalDescription} ${finalCategory} ${finalTags.join(' ')}`.toLowerCase()
+    const searchText = `${scrapedContent.title} ${finalDescription} ${finalCategory} ${finalTags.join(' ')}`.toLowerCase()
     
     const linkData = {
       url,
       domain,
-      title: pageContent.title,
-      originalDescription: pageContent.description,
-      originalContent: pageContent.content,
+      title: scrapedContent.title,
+      originalDescription: scrapedContent.description,
+      originalContent: scrapedContent.content,
       aiSummary: aiAnalysis.summary,
       aiCategory: aiAnalysis.category,
       aiTags: JSON.stringify(aiAnalysis.tags),
@@ -287,7 +248,7 @@ app.get('/add', requireApiToken(database), zValidator('query', addLinkQuerySchem
         data: {
           id: linkId,
           url,
-          title: pageContent.title,
+          title: scrapedContent.title,
           description: finalDescription,
           category: finalCategory,
           tags: finalTags,
@@ -343,40 +304,28 @@ app.post('/', requireApiToken(database), zValidator('json', addLinkBodySchema), 
       }, 409)
     }
 
-    // Fetch content from URL
-    let pageContent
+    // Process URL content (scrape + AI analysis)
+    let processedContent
     try {
-      pageContent = await fetchPageContent(url)
+      processedContent = await processUrlContent(url, database)
     } catch (error) {
       await logOperation(
         'link_add',
         'links',
         undefined,
-        { url, reason: 'fetch_failed', error: String(error) },
+        { url, reason: 'processing_failed', error: String(error) },
         tokenData?.id,
         undefined,
         clientIp,
         c.req.header('user-agent'),
         'failed',
-        'Failed to fetch content'
+        'Failed to process content'
       )
       
-      return sendError(c, 'FETCH_ERROR', 'Failed to fetch content from URL', undefined, 400)
+      return sendError(c, 'PROCESSING_ERROR', 'Failed to process URL content', undefined, 500)
     }
 
-    // Get AI analysis
-    let aiAnalysis
-    try {
-      aiAnalysis = await analyzeContent(pageContent.title, pageContent.content, url)
-    } catch (error) {
-      console.warn('AI analysis failed, using fallback:', error)
-      // Use fallback analysis
-      aiAnalysis = {
-        summary: pageContent.description || pageContent.title.substring(0, 100),
-        category: 'general',
-        tags: ['article']
-      }
-    }
+    const { content: scrapedContent, aiAnalysis } = processedContent
 
     const now = Math.floor(Date.now() / 1000)
 
@@ -387,9 +336,9 @@ app.post('/', requireApiToken(database), zValidator('json', addLinkBodySchema), 
     const linkData = {
       url,
       domain,
-      title: pageContent.title || '',
-      originalDescription: pageContent.description || '',
-      originalContent: pageContent.content || '',
+      title: scrapedContent.title || '',
+      originalDescription: scrapedContent.description || '',
+      originalContent: scrapedContent.content || '',
       aiSummary: aiAnalysis.summary,
       aiCategory: aiAnalysis.category,
       aiTags: JSON.stringify(aiAnalysis.tags),
@@ -448,7 +397,7 @@ app.post('/', requireApiToken(database), zValidator('json', addLinkBodySchema), 
       const responseData: AddLinkResponse = {
         id: linkId,
         url,
-        title: pageContent.title || '',
+        title: scrapedContent.title || '',
         description: linkData.finalDescription!,
         category: linkData.finalCategory!,
         tags: JSON.parse(linkData.finalTags!),

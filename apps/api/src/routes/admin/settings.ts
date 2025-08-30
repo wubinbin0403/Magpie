@@ -6,6 +6,8 @@ import { settings } from '../../db/schema.js'
 import { eq } from 'drizzle-orm'
 import { sendSuccess, sendError } from '../../utils/response.js'
 import { requireAdmin } from '../../middleware/admin.js'
+import { getSettings, setSetting } from '../../utils/settings.js'
+import { createAIAnalyzer } from '../../services/ai-analyzer.js'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 
 // Schema definitions
@@ -120,8 +122,8 @@ function createAdminSettingsRouter(database = db) {
           aboutUrl: settingsMap.get('about_url') || '',
         },
         ai: {
-          apiKey: maskApiKey(settingsMap.get('ai_api_key') || ''),
-          baseUrl: settingsMap.get('ai_base_url') || 'https://api.openai.com/v1',
+          apiKey: maskApiKey(settingsMap.get('openai_api_key') || ''),
+          baseUrl: settingsMap.get('openai_base_url') || 'https://api.openai.com/v1',
           model: settingsMap.get('ai_model') || 'gpt-3.5-turbo',
           temperature: parseFloat(settingsMap.get('ai_temperature') || '0.7'),
           summaryPrompt: settingsMap.get('ai_summary_prompt') || '',
@@ -162,10 +164,10 @@ function createAdminSettingsRouter(database = db) {
       // Update AI settings
       if (updates.ai) {
         if (updates.ai.apiKey !== undefined) {
-          await setSetting('ai_api_key', updates.ai.apiKey)
+          await setSetting('openai_api_key', updates.ai.apiKey)
         }
         if (updates.ai.baseUrl !== undefined) {
-          await setSetting('ai_base_url', updates.ai.baseUrl)
+          await setSetting('openai_base_url', updates.ai.baseUrl)
         }
         if (updates.ai.model !== undefined) {
           await setSetting('ai_model', updates.ai.model)
@@ -207,30 +209,63 @@ function createAdminSettingsRouter(database = db) {
       const startTime = Date.now()
       
       // Get AI settings
-      const apiKey = await getSetting('ai_api_key')
-      const baseUrl = await getSetting('ai_base_url')
-      const model = await getSetting('ai_model')
+      const allSettings = await getSettings(database)
 
-      if (!apiKey) {
+      if (!allSettings.openai_api_key) {
         return sendError(c, 'AI_SERVICE_ERROR', 'AI API key not configured', undefined, 400)
       }
 
-      // For now, just return mock test result
-      // TODO: Implement actual OpenAI API test when we add the OpenAI integration
-      const responseTime = Date.now() - startTime
-
-      const testResult = {
-        connected: true,
-        model: model || 'gpt-3.5-turbo',
-        responseTime,
-        testResult: {
-          summary: '测试摘要生成成功',
-          category: '技术',
-          tags: ['测试', 'AI']
+      // Test AI connection and analysis
+      try {
+        const aiAnalyzer = await createAIAnalyzer(allSettings)
+        
+        // Test connection
+        const connected = await aiAnalyzer.testConnection()
+        
+        if (!connected) {
+          return sendError(c, 'AI_SERVICE_ERROR', 'AI service connection failed', undefined, 500)
         }
-      }
 
-      return sendSuccess(c, testResult, 'AI connection test completed')
+        // Test analysis with sample content
+        const sampleContent = {
+          url: 'https://example.com/test-article',
+          contentType: 'article' as const,
+          title: 'Test AI Analysis',
+          description: 'This is a test article for AI analysis capabilities.',
+          content: 'This article tests the AI analysis service. It covers various topics including technology, programming, and artificial intelligence to demonstrate the categorization and tagging features.',
+          wordCount: 27,
+          language: 'en'
+        }
+
+        const analysisResult = await aiAnalyzer.analyze(sampleContent)
+        const responseTime = Date.now() - startTime
+
+        const testResult = {
+          connected: true,
+          model: allSettings.ai_model || 'gpt-3.5-turbo',
+          baseUrl: allSettings.openai_base_url || 'https://api.openai.com/v1',
+          responseTime,
+          testAnalysis: {
+            summary: analysisResult.summary,
+            category: analysisResult.category,
+            tags: analysisResult.tags,
+            language: analysisResult.language,
+            sentiment: analysisResult.sentiment,
+            readingTime: analysisResult.readingTime
+          }
+        }
+
+        return sendSuccess(c, testResult, 'AI connection and analysis test completed successfully')
+      } catch (aiError) {
+        console.error('AI service test failed:', aiError)
+        const responseTime = Date.now() - startTime
+        
+        return sendError(c, 'AI_SERVICE_ERROR', `AI service test failed: ${String(aiError)}`, {
+          responseTime,
+          model: allSettings.ai_model || 'gpt-3.5-turbo',
+          baseUrl: allSettings.openai_base_url || 'https://api.openai.com/v1'
+        }, 500)
+      }
     } catch (error) {
       console.error('AI connection test failed:', error)
       return sendError(c, 'AI_SERVICE_ERROR', 'AI connection test failed', undefined, 500)
