@@ -6,6 +6,7 @@ import { eq } from 'drizzle-orm'
 import { sendSuccess, sendError, notFound } from '../../utils/response.js'
 import { idParamSchema, confirmLinkSchema } from '../../utils/validation.js'
 import { requireApiToken, logOperation } from '../../middleware/auth.js'
+import { triggerStaticGeneration } from '../../services/static-generator.js'
 import type { ConfirmLinkResponse } from '../../types/api.js'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 
@@ -156,6 +157,11 @@ function createConfirmLinkRouter(database = db) {
 
       if (publish) {
         responseData.publishedAt = new Date(now * 1000).toISOString()
+      }
+
+      // Trigger static file generation in background if published
+      if (publish) {
+        triggerStaticGeneration(database)
       }
 
       const message = publish ? 'Link confirmed and published successfully' : 'Link saved as draft successfully'

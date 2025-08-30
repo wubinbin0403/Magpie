@@ -4,6 +4,7 @@ import { cors } from 'hono/cors'
 import { logger } from 'hono/logger'
 import { prettyJSON } from 'hono/pretty-json'
 import { HTTPException } from 'hono/http-exception'
+import { serveStatic } from '@hono/node-server/serve-static'
 import * as dotenv from 'dotenv'
 
 // Import route handlers
@@ -18,6 +19,9 @@ import editLinkRouter from './routes/auth/edit-link.js'
 import adminAuthRouter from './routes/admin/auth.js'
 import adminPendingRouter from './routes/admin/pending.js'
 import adminBatchRouter from './routes/admin/batch.js'
+import adminSettingsRouter from './routes/admin/settings.js'
+import adminTokensRouter from './routes/admin/tokens.js'
+import adminCategoriesRouter from './routes/admin/categories.js'
 
 // Load environment variables
 dotenv.config()
@@ -64,6 +68,25 @@ app.route('/api/links', editLinkRouter)     // PUT /api/links/:id
 app.route('/api/admin', adminAuthRouter)    // POST /api/admin/login, /api/admin/init
 app.route('/api/admin/pending', adminPendingRouter) // GET /api/admin/pending
 app.route('/api/admin/batch', adminBatchRouter)     // POST /api/admin/batch
+app.route('/api/admin/settings', adminSettingsRouter) // GET/PUT /api/admin/settings, POST /api/admin/settings/ai/test
+app.route('/api/admin/tokens', adminTokensRouter)   // GET/POST /api/admin/tokens, DELETE /api/admin/tokens/:id
+app.route('/api/admin/categories', adminCategoriesRouter) // GET/POST /api/admin/categories, PUT/DELETE /api/admin/categories/:id
+
+// Static files (sitemap, RSS feeds) - only in non-test environment
+if (process.env.NODE_ENV !== 'test') {
+  app.get('/sitemap.xml', serveStatic({ 
+    root: './static', 
+    rewriteRequestPath: (path) => path.replace('/sitemap.xml', '/sitemap.xml')
+  }))
+  app.get('/feed.xml', serveStatic({ 
+    root: './static',
+    rewriteRequestPath: (path) => path.replace('/feed.xml', '/feed.xml')
+  }))
+  app.get('/feed.json', serveStatic({ 
+    root: './static',
+    rewriteRequestPath: (path) => path.replace('/feed.json', '/feed.json')
+  }))
+}
 
 // Root endpoint
 app.get('/api', (c) => {

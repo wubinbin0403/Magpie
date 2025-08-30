@@ -235,6 +235,41 @@ const createSearchApp = () => {
         })
       }
       
+      if (!type || type === 'tag') {
+        // 从标签中查找建议
+        const tagData = await testDrizzle
+          .select({ tags: links.finalTags })
+          .from(links)
+          .where(eq(links.status, 'published'))
+
+        const tagCounts: { [key: string]: number } = {}
+        tagData.forEach(item => {
+          if (item.tags) {
+            try {
+              const tags = JSON.parse(item.tags) as string[]
+              tags.forEach((tag: string) => {
+                if (tag.toLowerCase().includes(q.toLowerCase())) {
+                  tagCounts[tag] = (tagCounts[tag] || 0) + 1
+                }
+              })
+            } catch (error) {
+              // 忽略无效的JSON
+            }
+          }
+        })
+
+        Object.entries(tagCounts)
+          .sort(([, a], [, b]) => b - a)
+          .slice(0, limit)
+          .forEach(([tag, count]) => {
+            suggestions.push({
+              text: tag,
+              type: 'tag',
+              count
+            })
+          })
+      }
+
       if (!type || type === 'domain') {
         // 从域名中查找建议
         const domainSuggestions = await testDrizzle
@@ -442,6 +477,19 @@ describe('Public Search API', () => {
       if (data.data.suggestions.length > 0) {
         expect(data.data.suggestions[0].type).toBe('category')
         expect(data.data.suggestions[0].text).toContain('prog')
+      }
+    })
+
+    it('should return tag suggestions', async () => {
+      const response = await app.request('/suggestions?q=javascript&type=tag&limit=5')
+      const data = await response.json() as any
+
+      expect(response.status).toBe(200)
+      expect(data.data.suggestions).toBeInstanceOf(Array)
+      if (data.data.suggestions.length > 0) {
+        expect(data.data.suggestions[0].type).toBe('tag')
+        expect(data.data.suggestions[0].text).toBe('javascript')
+        expect(data.data.suggestions[0].count).toBeGreaterThan(0)
       }
     })
 

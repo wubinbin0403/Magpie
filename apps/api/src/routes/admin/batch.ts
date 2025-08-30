@@ -6,6 +6,7 @@ import { eq, inArray, and, ne } from 'drizzle-orm'
 import { sendSuccess, sendError } from '../../utils/response.js'
 import { batchOperationSchema } from '../../utils/validation.js'
 import { requireAdmin } from '../../middleware/admin.js'
+import { triggerStaticGeneration } from '../../services/static-generator.js'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 
 // Create admin batch operations router with optional database dependency injection
@@ -157,6 +158,11 @@ function createAdminBatchRouter(database = db) {
       let message = `Batch ${action} operation completed.`
       if (action === 'reanalyze') {
         message = `Batch reanalysis queued for ${processed} links.`
+      }
+
+      // Trigger static file regeneration if any links were published or deleted
+      if ((action === 'confirm' || action === 'delete') && processed > 0) {
+        triggerStaticGeneration(database)
       }
 
       const responseData = {

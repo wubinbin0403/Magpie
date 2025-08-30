@@ -6,6 +6,7 @@ import { eq } from 'drizzle-orm'
 import { sendSuccess, sendError, notFound } from '../../utils/response.js'
 import { idParamSchema } from '../../utils/validation.js'
 import { requireApiToken, logOperation } from '../../middleware/auth.js'
+import { triggerStaticGeneration } from '../../services/static-generator.js'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 
 // Create delete link router with optional database dependency injection
@@ -112,6 +113,11 @@ function createDeleteLinkRouter(database = db) {
         undefined,
         duration
       )
+
+      // Trigger static file generation in background (for published links that were deleted)
+      if (link.status === 'published') {
+        triggerStaticGeneration(database)
+      }
 
       return sendSuccess(c, {}, 'Link deleted successfully')
 

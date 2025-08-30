@@ -411,4 +411,163 @@ describe('Public Links API', () => {
       expect(data.success).toBe(false)
     })
   })
+
+  describe('filters statistics', () => {
+    it('should return correct filter statistics', async () => {
+      const now = Math.floor(Date.now() / 1000)
+      const jan2024 = Math.floor(new Date('2024-01-15').getTime() / 1000)
+      const feb2024 = Math.floor(new Date('2024-02-15').getTime() / 1000)
+      
+      await testDrizzle
+        .insert(links)
+        .values([
+          {
+            url: 'https://example.com/react',
+            domain: 'example.com',
+            title: 'React Tutorial',
+            finalDescription: 'Learn React hooks',
+            finalCategory: 'Tech',
+            finalTags: JSON.stringify(['react', 'frontend', 'javascript']),
+            status: 'published',
+            publishedAt: jan2024,
+            createdAt: jan2024,
+          },
+          {
+            url: 'https://github.com/vue',
+            domain: 'github.com',
+            title: 'Vue Guide',
+            finalDescription: 'Vue composition API',
+            finalCategory: 'Tech',
+            finalTags: JSON.stringify(['vue', 'frontend', 'javascript']),
+            status: 'published',
+            publishedAt: feb2024,
+            createdAt: feb2024,
+          },
+          {
+            url: 'https://design.com/art',
+            domain: 'design.com',
+            title: 'Design Principles',
+            finalDescription: 'UI/UX design guide',
+            finalCategory: 'Design',
+            finalTags: JSON.stringify(['design', 'ui', 'ux']),
+            status: 'published',
+            publishedAt: now,
+            createdAt: now,
+          },
+          {
+            url: 'https://example.com/pending',
+            domain: 'example.com', 
+            title: 'Pending Link',
+            finalDescription: 'Should not appear in filters',
+            finalCategory: 'Other',
+            finalTags: JSON.stringify(['pending']),
+            status: 'pending',
+            createdAt: now,
+          }
+        ])
+
+      const response = await app.request('/')
+      const data = await response.json() as any
+
+      expect(response.status).toBe(200)
+      expect(data.success).toBe(true)
+
+      const { filters } = data.data
+
+      // 检查分类统计 (只包含published链接)
+      expect(filters.categories).toHaveLength(2)
+      expect(filters.categories.find((c: any) => c.name === 'Tech')).toEqual({ name: 'Tech', count: 2 })
+      expect(filters.categories.find((c: any) => c.name === 'Design')).toEqual({ name: 'Design', count: 1 })
+      expect(filters.categories.find((c: any) => c.name === 'Other')).toBeUndefined() // pending链接不应包含
+
+      // 检查域名统计
+      expect(filters.domains).toHaveLength(3)
+      expect(filters.domains.find((d: any) => d.name === 'example.com')).toEqual({ name: 'example.com', count: 1 })
+      expect(filters.domains.find((d: any) => d.name === 'github.com')).toEqual({ name: 'github.com', count: 1 })
+      expect(filters.domains.find((d: any) => d.name === 'design.com')).toEqual({ name: 'design.com', count: 1 })
+
+      // 检查标签统计
+      expect(filters.tags.length).toBeGreaterThan(0)
+      const frontendTag = filters.tags.find((t: any) => t.name === 'frontend')
+      const javascriptTag = filters.tags.find((t: any) => t.name === 'javascript') 
+      const designTag = filters.tags.find((t: any) => t.name === 'design')
+      
+      expect(frontendTag).toEqual({ name: 'frontend', count: 2 })
+      expect(javascriptTag).toEqual({ name: 'javascript', count: 2 })
+      expect(designTag).toEqual({ name: 'design', count: 1 })
+      expect(filters.tags.find((t: any) => t.name === 'pending')).toBeUndefined() // pending标签不应包含
+
+      // 检查年月统计 
+      expect(filters.yearMonths.length).toBeGreaterThan(0)
+      expect(filters.yearMonths.some((ym: any) => ym.year === 2024 && ym.month === 1 && ym.count === 1)).toBe(true)
+      expect(filters.yearMonths.some((ym: any) => ym.year === 2024 && ym.month === 2 && ym.count === 1)).toBe(true)
+    })
+
+    it('should return empty filters when no published links exist', async () => {
+      // 只添加pending状态的链接
+      const now = Math.floor(Date.now() / 1000)
+      await testDrizzle
+        .insert(links)
+        .values({
+          url: 'https://example.com/pending',
+          domain: 'example.com',
+          title: 'Pending Link',
+          status: 'pending',
+          createdAt: now,
+        })
+
+      const response = await app.request('/')
+      const data = await response.json() as any
+
+      expect(response.status).toBe(200)
+      expect(data.success).toBe(true)
+      expect(data.data.links).toHaveLength(0)
+      expect(data.data.filters.categories).toHaveLength(0)
+      expect(data.data.filters.tags).toHaveLength(0)
+      expect(data.data.filters.domains).toHaveLength(0)
+      expect(data.data.filters.yearMonths).toHaveLength(0)
+    })
+
+    it('should handle links with empty or null category/tags', async () => {
+      const now = Math.floor(Date.now() / 1000)
+      await testDrizzle
+        .insert(links)
+        .values([
+          {
+            url: 'https://example.com/no-category',
+            domain: 'example.com',
+            title: 'Link without category',
+            finalDescription: 'No category set',
+            finalCategory: null,
+            finalTags: '[]',
+            status: 'published',
+            publishedAt: now,
+            createdAt: now,
+          },
+          {
+            url: 'https://example.com/empty-category',
+            domain: 'example.com',
+            title: 'Link with empty category',
+            finalDescription: 'Empty category',
+            finalCategory: '',
+            finalTags: null,
+            status: 'published',
+            publishedAt: now,
+            createdAt: now,
+          }
+        ])
+
+      const response = await app.request('/')
+      const data = await response.json() as any
+
+      expect(response.status).toBe(200)
+      expect(data.success).toBe(true)
+      
+      // 空值/null分类不应出现在统计中
+      expect(data.data.filters.categories).toHaveLength(0)
+      expect(data.data.filters.tags).toHaveLength(0)
+      expect(data.data.filters.domains).toHaveLength(1)
+      expect(data.data.filters.domains[0]).toEqual({ name: 'example.com', count: 2 })
+    })
+  })
 })
