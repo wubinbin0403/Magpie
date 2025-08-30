@@ -224,19 +224,19 @@ export default function Sidebar({
       </div>
 
       {/* Popular Tags - moved to bottom */}
-      <div className="mt-4">
-        <div className="card bg-white shadow-sm border border-slate-200">
-          <div className="card-body p-4">
-            <h3 className="font-semibold text-slate-800 mb-3 flex items-center">
-              <svg className="w-4 h-4 mr-2 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="mt-6">
+        <div className="bg-slate-50/50 rounded-lg border border-slate-100">
+          <div className="p-3">
+            <h3 className="text-sm font-medium text-slate-500 mb-3 flex items-center">
+              <svg className="w-3 h-3 mr-2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
               </svg>
-              Popular Tags
+              热门标签
             </h3>
             
             <div className={`flex flex-wrap gap-1 transition-all duration-300 ${
               showAllTags 
-                ? 'max-h-64 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent' 
+                ? 'max-h-64 overflow-y-auto scrollbar-none' 
                 : ''
             }`}>
               {displayTags.map((tag) => (
@@ -245,8 +245,8 @@ export default function Sidebar({
                   onClick={() => onTagFilter(tag.name)}
                   className={`inline-flex items-center px-2 py-1 rounded text-xs border transition-colors ${
                     selectedTags.includes(tag.name)
-                      ? 'bg-primary/20 text-primary border-primary/50 font-semibold'
-                      : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                      ? 'bg-primary/15 text-primary border-primary/30 font-medium'
+                      : 'bg-white/80 text-slate-500 border-slate-200/80 hover:bg-white hover:text-slate-600'
                   }`}
                 >
                   #{tag.name}
@@ -266,7 +266,7 @@ export default function Sidebar({
               <div className="flex justify-center mt-2">
                 <button 
                   onClick={() => setShowAllTags(!showAllTags)}
-                  className="text-xs text-primary hover:text-primary/80 flex items-center gap-1"
+                  className="text-xs text-slate-400 hover:text-slate-600 flex items-center gap-1"
                 >
                   <span className="text-base leading-none">{showAllTags ? '−' : '+'}</span>
                   <span>{showAllTags ? '收起标签' : '显示所有'}</span>
@@ -276,7 +276,7 @@ export default function Sidebar({
             
             {/* Recent stats as one line */}
             <div className="mt-4 pt-3 border-t border-slate-200 text-xs text-slate-500 text-center">
-              Today: <span style={{ color: '#127176' }}>{recentStats.find(s => s.label === 'Today')?.count || 0}</span>, This Week: <span style={{ color: '#127176' }}>{recentStats.find(s => s.label === 'Last Week')?.count || 0}</span>, Month: <span style={{ color: '#127176' }}>{recentStats.find(s => s.label === 'This Month')?.count || 0}</span>
+              新增条目 - 今天: <span style={{ color: '#127176' }}>{recentStats.find(s => s.label === 'Today')?.count || 0}</span> | 本周: <span style={{ color: '#127176' }}>{recentStats.find(s => s.label === 'Last Week')?.count || 0}</span> | 本月: <span style={{ color: '#127176' }}>{recentStats.find(s => s.label === 'This Month')?.count || 0}</span>
             </div>
           </div>
         </div>

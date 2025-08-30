@@ -28,20 +28,12 @@ body {
   max-width: none;
 }
 
-/* Scrollbar styles for webkit browsers */
+/* Hide all scrollbars */
 ::-webkit-scrollbar {
-  width: 6px;
+  display: none;
 }
 
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: hsl(var(--bc) / 0.2);
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--bc) / 0.3);
+/* For Firefox */
+html {
+  scrollbar-width: none;
 }
