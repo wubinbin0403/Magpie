@@ -6,7 +6,7 @@ import { eq } from 'drizzle-orm'
 import { createAdminBatchRouter } from '../routes/admin/batch.js'
 import { hashPassword, createAdminJWT } from '../utils/auth.js'
 
-describe('Admin Batch Operations API', () => {
+describe('Admin Batch Operations API (/api/admin/pending/batch)', () => {
   let app: any
   let adminToken: string
 
@@ -40,9 +40,9 @@ describe('Admin Batch Operations API', () => {
     })
   })
 
-  describe('POST /', () => {
+  describe('POST /batch', () => {
     it('should require admin authentication', async () => {
-      const response = await app.request('/', {
+      const response = await app.request('/batch', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -91,7 +91,7 @@ describe('Admin Batch Operations API', () => {
 
       const linkIds = linkResults.map(r => r.id)
 
-      const response = await app.request('/', {
+      const response = await app.request('/batch', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${adminToken}`,
@@ -154,7 +154,7 @@ describe('Admin Batch Operations API', () => {
 
       const linkIds = linkResults.map(r => r.id)
 
-      const response = await app.request('/', {
+      const response = await app.request('/batch', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${adminToken}`,
@@ -205,7 +205,7 @@ describe('Admin Batch Operations API', () => {
 
       const linkIds = linkResults.map(r => r.id)
 
-      const response = await app.request('/', {
+      const response = await app.request('/batch', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${adminToken}`,
@@ -241,7 +241,7 @@ describe('Admin Batch Operations API', () => {
       const validId = linkResult[0].id
       const invalidId = 99999
 
-      const response = await app.request('/', {
+      const response = await app.request('/batch', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${adminToken}`,
@@ -268,7 +268,7 @@ describe('Admin Batch Operations API', () => {
 
     it('should validate request data', async () => {
       // Test invalid action
-      const response1 = await app.request('/', {
+      const response1 = await app.request('/batch', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${adminToken}`,
@@ -285,7 +285,7 @@ describe('Admin Batch Operations API', () => {
       expect(data1.success).toBe(false)
 
       // Test empty ids
-      const response2 = await app.request('/', {
+      const response2 = await app.request('/batch', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${adminToken}`,
@@ -303,7 +303,7 @@ describe('Admin Batch Operations API', () => {
 
       // Test too many ids
       const tooManyIds = Array.from({ length: 101 }, (_, i) => i + 1)
-      const response3 = await app.request('/', {
+      const response3 = await app.request('/batch', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${adminToken}`,
@@ -334,7 +334,7 @@ describe('Admin Batch Operations API', () => {
         })
         .returning({ id: links.id })
 
-      const response = await app.request('/', {
+      const response = await app.request('/batch', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${adminToken}`,

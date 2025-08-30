@@ -24,8 +24,8 @@ function createAdminBatchRouter(database = db) {
     return sendError(c, 'INTERNAL_SERVER_ERROR', 'An internal server error occurred', undefined, 500)
   })
 
-  // POST /api/admin/batch - Perform batch operations on links
-  app.post('/', requireAdmin(database), zValidator('json', batchOperationSchema), async (c) => {
+  // POST /api/admin/pending/batch - Perform batch operations on links
+  app.post('/batch', requireAdmin(database), zValidator('json', batchOperationSchema), async (c) => {
     try {
       const { ids, action, params } = c.req.valid('json')
       

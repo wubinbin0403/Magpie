@@ -105,21 +105,7 @@ interface TagStats {
 }
 ```
 
-### 2. 获取单个链接详情
-```typescript
-GET /api/links/:id
-```
-
-**响应格式：**
-```typescript
-interface LinkDetailResponse {
-  success: boolean;
-  data: Link;
-  message?: string;
-}
-```
-
-### 3. 搜索链接
+### 2. 搜索链接
 ```typescript
 GET /api/search
 ```
@@ -167,7 +153,7 @@ interface SearchResult extends Link {
 }
 ```
 
-### 4. 获取搜索建议
+### 3. 获取搜索建议
 ```typescript
 GET /api/search/suggestions
 ```
@@ -197,7 +183,7 @@ interface Suggestion {
 }
 ```
 
-### 5. 获取统计信息
+### 4. 获取统计信息
 ```typescript
 GET /api/stats
 ```
@@ -596,13 +582,13 @@ GET /api/health
 
 ### 2. 站点地图
 ```typescript
-GET /api/sitemap.xml
+GET /sitemap.xml
 ```
 
 ### 3. RSS 订阅
 ```typescript
-GET /api/feed.xml
-GET /api/feed.json
+GET /feed.xml
+GET /feed.json
 ```
 
 ## 🛡️ 错误处理
@@ -616,7 +602,6 @@ interface ErrorResponse {
     message: string;
     details?: any;
   };
-  timestamp: string;
 }
 ```
 

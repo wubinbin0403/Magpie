@@ -67,7 +67,7 @@ app.route('/api/links', editLinkRouter)     // PUT /api/links/:id
 // Admin API routes
 app.route('/api/admin', adminAuthRouter)    // POST /api/admin/login, /api/admin/init
 app.route('/api/admin/pending', adminPendingRouter) // GET /api/admin/pending
-app.route('/api/admin/batch', adminBatchRouter)     // POST /api/admin/batch
+app.route('/api/admin/pending', adminBatchRouter)   // POST /api/admin/pending/batch
 app.route('/api/admin/settings', adminSettingsRouter) // GET/PUT /api/admin/settings, POST /api/admin/settings/ai/test
 app.route('/api/admin/tokens', adminTokensRouter)   // GET/POST /api/admin/tokens, DELETE /api/admin/tokens/:id
 app.route('/api/admin/categories', adminCategoriesRouter) // GET/POST /api/admin/categories, PUT/DELETE /api/admin/categories/:id
