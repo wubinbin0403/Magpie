@@ -201,6 +201,95 @@ describe('Admin Auth API', () => {
     })
   })
 
+  describe('POST /logout', () => {
+    it('should successfully logout with valid token', async () => {
+      const response = await app.request('/logout', {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer session_xxxxxxxxxxxxxxxxxxxx'
+        }
+      })
+      const data = await response.json() as any
+
+      expect(response.status).toBe(200)
+      expect(data.success).toBe(true)
+      expect(data.data.loggedOut).toBe(true)
+      expect(data.message).toContain('Logout successful')
+    })
+
+    it('should handle logout without token gracefully', async () => {
+      const response = await app.request('/logout', {
+        method: 'POST'
+      })
+      const data = await response.json() as any
+
+      expect(response.status).toBe(200)
+      expect(data.success).toBe(true)
+      expect(data.data.loggedOut).toBe(true)
+      expect(data.message).toContain('Already logged out')
+    })
+
+    it('should handle logout with invalid authorization header', async () => {
+      const response = await app.request('/logout', {
+        method: 'POST',
+        headers: {
+          'Authorization': 'InvalidHeader'
+        }
+      })
+      const data = await response.json() as any
+
+      expect(response.status).toBe(200)
+      expect(data.success).toBe(true)
+      expect(data.data.loggedOut).toBe(true)
+      expect(data.message).toContain('Already logged out')
+    })
+
+    it('should handle logout with JWT token', async () => {
+      // First login to get a real JWT token
+      const password = 'admin123'
+      const { hash, salt } = await hashPassword(password)
+      const now = Math.floor(Date.now() / 1000)
+      
+      await testDrizzle
+        .insert(users)
+        .values({
+          username: 'admin',
+          email: 'admin@example.com',
+          passwordHash: hash,
+          salt: salt,
+          role: 'admin',
+          status: 'active',
+          createdAt: now,
+        })
+
+      const loginResponse = await app.request('/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          password: password
+        })
+      })
+      const loginData = await loginResponse.json() as any
+      const token = loginData.data.token
+
+      // Now test logout with the real token
+      const response = await app.request('/logout', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      const data = await response.json() as any
+
+      expect(response.status).toBe(200)
+      expect(data.success).toBe(true)
+      expect(data.data.loggedOut).toBe(true)
+      expect(data.message).toContain('Logout successful')
+    })
+  })
+
   describe('POST /init', () => {
     it('should initialize admin when no admin exists', async () => {
       const response = await app.request('/init', {

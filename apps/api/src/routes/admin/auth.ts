@@ -91,6 +91,43 @@ function createAdminAuthRouter(database = db) {
     }
   })
 
+  // POST /api/admin/logout - Admin logout
+  app.post('/logout', async (c) => {
+    try {
+      // Get the authorization header
+      const authHeader = c.req.header('Authorization')
+      
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return sendSuccess(c, { loggedOut: true }, 'Already logged out')
+      }
+
+      const token = authHeader.substring(7)
+      
+      // In a production system, you might want to:
+      // 1. Add the token to a blacklist
+      // 2. Clear any server-side session data
+      // 3. Log the logout event
+      
+      // For now, we'll just verify it's a valid token format
+      if (token.startsWith('session_') || token.length > 20) {
+        // Optional: Clear session from database if storing sessions
+        // This implementation assumes client-side token management
+        
+        return sendSuccess(c, { 
+          loggedOut: true,
+          message: 'Logged out successfully'
+        }, 'Logout successful')
+      }
+      
+      return sendSuccess(c, { loggedOut: true }, 'Logout successful')
+      
+    } catch (error) {
+      console.error('Error during admin logout:', error)
+      // Even if there's an error, we return success for logout
+      return sendSuccess(c, { loggedOut: true }, 'Logout successful')
+    }
+  })
+
   // POST /api/admin/init - Initialize admin account
   app.post('/init', zValidator('json', adminInitSchema), async (c) => {
     try {
