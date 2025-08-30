@@ -113,8 +113,8 @@ INSERT INTO settings VALUES ('site_description', '收集和分享有趣的链接
 INSERT INTO settings VALUES ('about_url', '', 'string', '关于页面URL', strftime('%s', 'now'), strftime('%s', 'now'));
 
 -- AI 服务配置
-INSERT INTO settings VALUES ('ai_api_key', '', 'string', 'OpenAI API密钥', strftime('%s', 'now'), strftime('%s', 'now'));
-INSERT INTO settings VALUES ('ai_base_url', 'https://api.openai.com/v1', 'string', 'AI API基础URL', strftime('%s', 'now'), strftime('%s', 'now'));
+INSERT INTO settings VALUES ('openai_api_key', '', 'string', 'OpenAI API密钥', strftime('%s', 'now'), strftime('%s', 'now'));
+INSERT INTO settings VALUES ('openai_base_url', 'https://api.openai.com/v1', 'string', 'OpenAI API基础URL', strftime('%s', 'now'), strftime('%s', 'now'));
 INSERT INTO settings VALUES ('ai_model', 'gpt-3.5-turbo', 'string', 'AI模型名称', strftime('%s', 'now'), strftime('%s', 'now'));
 INSERT INTO settings VALUES ('ai_temperature', '0.7', 'number', 'AI温度参数', strftime('%s', 'now'), strftime('%s', 'now'));
 
