@@ -48,6 +48,10 @@ export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [allLinks, setAllLinks] = useState<Link[]>([])
   const [previousLinks, setPreviousLinks] = useState<Link[]>([])
+  const [sidebarData, setSidebarData] = useState<{
+    categories: { name: string; count: number }[]
+    tags: { name: string; count: number }[]
+  }>({ categories: [], tags: [] })
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
 
   // Fetch links data
@@ -93,6 +97,15 @@ export default function HomePage() {
     return groups
   }, {} as Record<string, { year: number; month: number; links: Link[] }>)
 
+  // Update sidebar data separately to prevent flickering
+  useEffect(() => {
+    if (data?.success && data.data.filters) {
+      setSidebarData({
+        categories: data.data.filters.categories || [],
+        tags: data.data.filters.tags || []
+      })
+    }
+  }, [data?.success, data?.data.filters])
 
   // Update links when data changes
   useEffect(() => {
@@ -179,11 +192,11 @@ export default function HomePage() {
       <NavBar onSearch={handleSearch} />
       
       {/* Fixed Sidebar - completely fixed to screen */}
-      <aside className="hidden lg:block fixed left-0 top-16 bottom-0 w-80 bg-slate-50 border-r border-slate-200 overflow-y-auto z-40">
+      <aside className="hidden lg:block fixed left-0 top-16 bottom-0 w-80 bg-base-200/30 overflow-y-auto z-40">
         <div className="p-6">
           <Sidebar
-            categories={data?.data.filters?.categories || []}
-            tags={data?.data.filters?.tags || []}
+            categories={sidebarData.categories}
+            tags={sidebarData.tags}
             selectedCategory={selectedCategory}
             selectedTags={selectedTags}
             onCategoryFilter={handleCategoryFilter}
@@ -192,16 +205,16 @@ export default function HomePage() {
         </div>
       </aside>
       
-      <div className="lg:ml-80">
+      <div className="lg:ml-80 bg-base-100 min-h-screen">
         {/* Content area with left margin to account for fixed sidebar */}
 
         {/* Mobile Sidebar Drawer */}
         {mobileSidebarOpen && (
           <div className="lg:hidden fixed inset-0 z-50 flex">
             <div className="fixed inset-0 bg-black/20" onClick={() => setMobileSidebarOpen(false)} />
-            <aside className="relative w-80 bg-slate-50 shadow-xl overflow-y-auto">
-              <div className="flex items-center justify-between p-4 border-b border-slate-200">
-                <h2 className="text-lg font-semibold text-slate-800">Filters</h2>
+            <aside className="relative w-80 bg-base-200/30 shadow-xl overflow-y-auto">
+              <div className="flex items-center justify-between p-4 border-b border-base-300/50">
+                <h2 className="text-lg font-semibold text-base-content">Filters</h2>
                 <button
                   onClick={() => setMobileSidebarOpen(false)}
                   className="btn btn-ghost btn-sm btn-square"
@@ -213,8 +226,8 @@ export default function HomePage() {
               </div>
               <div className="p-4">
                 <Sidebar
-                  categories={data?.data.filters?.categories || []}
-                  tags={data?.data.filters?.tags || []}
+                  categories={sidebarData.categories}
+                  tags={sidebarData.tags}
                   selectedCategory={selectedCategory}
                   selectedTags={selectedTags}
                   onCategoryFilter={handleCategoryFilter}
@@ -226,7 +239,7 @@ export default function HomePage() {
         )}
 
         {/* Main Content - scrollable, positioned to right of fixed sidebar */}
-        <main className="min-h-screen">
+        <main className="min-h-screen pt-16">
           <div className="container mx-auto px-4 lg:px-6 py-6">
             {/* Mobile Filter Button - only show when not loading initial data */}
             {!(isLoading && page === 1 && allLinks.length === 0) && (
@@ -252,10 +265,10 @@ export default function HomePage() {
             <div className="relative">
               {/* Show loading overlay only for initial loads, not when filtering */}
               {isLoading && page === 1 && allLinks.length > 0 && previousLinks.length === 0 && (
-                <div className="absolute inset-0 bg-white/50 backdrop-blur-sm z-10 flex items-center justify-center">
-                  <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-lg shadow-sm border">
+                <div className="absolute inset-0 bg-base-100/80 backdrop-blur-sm z-10 flex items-center justify-center">
+                  <div className="flex items-center gap-2 bg-base-100 px-4 py-2 rounded-lg shadow-sm border border-base-300">
                     <span className="loading loading-spinner loading-sm"></span>
-                    <span className="text-sm text-slate-600">Updating...</span>
+                    <span className="text-sm text-base-content/70">Updating...</span>
                   </div>
                 </div>
               )}
@@ -273,9 +286,19 @@ export default function HomePage() {
                         month={group.month}
                         count={group.links.length}
                       >
-                        <div className="space-y-4">
+                        <div className="divide-y divide-base-300/10">
                           {group.links.map(link => (
-                            <LinkCard key={link.id} link={link} />
+                            <div 
+                              key={link.id} 
+                              className="group hover:bg-base-200/30 transition-colors duration-1000 ease-in-out -mx-4 lg:-mx-6 px-4 lg:px-6 py-4"
+                            >
+                              <LinkCard 
+                                link={link}
+                                onTitleClick={() => window.open(link.url, '_blank', 'noopener,noreferrer')}
+                                onTagClick={handleTagFilter}
+                                selectedTags={selectedTags}
+                              />
+                            </div>
                           ))}
                         </div>
                       </MonthSection>
@@ -284,7 +307,7 @@ export default function HomePage() {
                   {/* Show "No results" message only when filter returns empty and not loading */}
                   {data?.success && allLinks.length === 0 && !isLoading && (selectedCategory || selectedTags.length > 0 || searchQuery) && (
                     <div className="text-center py-12">
-                      <div className="text-slate-500">
+                      <div className="text-base-content/60">
                         <svg className="w-16 h-16 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                         </svg>
