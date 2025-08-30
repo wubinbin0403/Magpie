@@ -193,7 +193,7 @@ export default function HomePage() {
       
       {/* Fixed Sidebar - completely fixed to screen */}
       <aside className="hidden lg:block fixed left-0 top-16 bottom-0 w-80 bg-base-200/30 overflow-y-auto z-40">
-        <div className="p-6">
+        <div className="p-6 h-full">
           <Sidebar
             categories={sidebarData.categories}
             tags={sidebarData.tags}
@@ -212,7 +212,7 @@ export default function HomePage() {
         {mobileSidebarOpen && (
           <div className="lg:hidden fixed inset-0 z-50 flex">
             <div className="fixed inset-0 bg-black/20" onClick={() => setMobileSidebarOpen(false)} />
-            <aside className="relative w-80 bg-base-200/30 shadow-xl overflow-y-auto">
+            <aside className="relative w-80 bg-base-200/30 shadow-xl overflow-y-auto h-full flex flex-col">
               <div className="flex items-center justify-between p-4 border-b border-base-300/50">
                 <h2 className="text-lg font-semibold text-base-content">Filters</h2>
                 <button
@@ -224,7 +224,7 @@ export default function HomePage() {
                   </svg>
                 </button>
               </div>
-              <div className="p-4">
+              <div className="p-4 flex-1">
                 <Sidebar
                   categories={sidebarData.categories}
                   tags={sidebarData.tags}

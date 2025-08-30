@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import React, { useState } from 'react'
 
 interface Category {
   name: string
@@ -28,6 +28,7 @@ export default function Sidebar({
   onTagFilter 
 }: SidebarProps) {
   const [showAllTags, setShowAllTags] = useState(false)
+  const [hoverAnimations, setHoverAnimations] = useState<{[key: string]: string}>({})
   
   // Get recent activity stats (mock data for now)
   const recentStats = [
@@ -35,6 +36,62 @@ export default function Sidebar({
     { label: 'Last Week', count: 5 },
     { label: 'Today', count: 2 }
   ]
+
+  // Random animation effects
+  const animations = [
+    'group-hover:scale-110 group-hover:rotate-45',
+    'group-hover:scale-125 group-hover:rotate-12', 
+    'group-hover:scale-105 group-hover:rotate-90 group-hover:skew-x-6',
+    'group-hover:scale-115 group-hover:-rotate-12 group-hover:animate-pulse',
+    'group-hover:scale-120 group-hover:rotate-180',
+    'group-hover:scale-105 group-hover:rotate-45 group-hover:skew-y-3'
+  ]
+  
+  const handleCategoryHover = (categoryKey: string) => {
+    const randomAnimation = animations[Math.floor(Math.random() * animations.length)]
+    setHoverAnimations(prev => ({ ...prev, [categoryKey]: randomAnimation }))
+  }
+  
+  const getCategoryAnimation = (categoryKey: string) => {
+    return hoverAnimations[categoryKey] || animations[0]
+  }
+
+  // Category icon mapping
+  const getCategoryIcon = (categoryName: string) => {
+    const iconMap: { [key: string]: JSX.Element } = {
+      '技术': (
+        <svg className="w-5 h-5 transition-transform group-hover:scale-110 group-hover:rotate-3" fill="currentColor" viewBox="0 0 20 20">
+          <path fillRule="evenodd" d="M12.316 3.051a1 1 0 01.633 1.265l-4 12a1 1 0 11-1.898-.632l4-12a1 1 0 011.265-.633zM5.707 6.293a1 1 0 010 1.414L3.414 10l2.293 2.293a1 1 0 11-1.414 1.414l-3-3a1 1 0 010-1.414l3-3a1 1 0 011.414 0zm8.586 0a1 1 0 011.414 0l3 3a1 1 0 010 1.414l-3 3a1 1 0 11-1.414-1.414L16.586 10l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
+        </svg>
+      ),
+      '产品': (
+        <svg className="w-5 h-5 transition-transform group-hover:scale-110 group-hover:rotate-12" fill="currentColor" viewBox="0 0 20 20">
+          <path d="M10 2L3 6v8l7 4 7-4V6l-7-4zM10 4.618l4.5 2.571L10 9.764 5.5 7.189 10 4.618zM5 8.618l4 2.286v5.714L5 14.332V8.618zm6 8l4-2.286V8.618L11 10.904v5.714z"/>
+        </svg>
+      ),
+      '设计': (
+        <svg className="w-5 h-5 transition-transform group-hover:scale-110 group-hover:-rotate-6" fill="currentColor" viewBox="0 0 20 20">
+          <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+        </svg>
+      ),
+      '工具': (
+        <svg className="w-5 h-5 transition-transform group-hover:scale-110 group-hover:rotate-45" fill="currentColor" viewBox="0 0 20 20">
+          <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
+        </svg>
+      ),
+      'All': (
+        <svg className="w-5 h-5 transition-transform group-hover:scale-110 group-hover:rotate-180" fill="currentColor" viewBox="0 0 20 20">
+          <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" />
+        </svg>
+      )
+    }
+    
+    return iconMap[categoryName] || (
+      <svg className="w-5 h-5 transition-transform group-hover:scale-110 group-hover:rotate-12" fill="currentColor" viewBox="0 0 20 20">
+        <path fillRule="evenodd" d="M2 5a2 2 0 012-2h8a2 2 0 012 2v10a2 2 0 002 2H4a2 2 0 01-2-2V5zm3 1h6v4H5V6zm6 6H5v2h6v-2z" clipRule="evenodd" />
+      </svg>
+    )
+  }
 
   // Determine which tags to show based on showAllTags state
   const popularTagsToShow = showAllTags ? tags : tags.slice(0, 12)
@@ -61,109 +118,166 @@ export default function Sidebar({
   const displayTags = [...popularTagsToShow, ...additionalTags]
 
   return (
-    <div className="space-y-4">
-      {/* Categories Section */}
-      <div className="card bg-white shadow-sm border border-slate-200">
-        <div className="card-body p-4">
-          <h3 className="font-semibold text-slate-800 mb-3 flex items-center">
-            <svg className="w-4 h-4 mr-2 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14-7H5m14 14H5" />
-            </svg>
-            Categories
-          </h3>
-          
-          <div className="space-y-1">
-            {/* All categories */}
-            <button
-              onClick={() => onCategoryFilter(null)}
-              className={`w-full text-left px-2 py-1 rounded text-sm transition-colors ${
+    <div className="flex flex-col h-full">
+      <div className="flex-1 space-y-4">
+        {/* Categories Section */}
+        <div className="grid grid-cols-2 gap-3">
+          {/* All categories */}
+          <button
+            onClick={() => onCategoryFilter(null)}
+            onMouseEnter={() => handleCategoryHover('All')}
+            className={`group relative p-4 rounded-xl transition-all duration-300 hover:shadow-sm ${
+              selectedCategory === null 
+                ? 'bg-magpie-200/10' 
+                : 'hover:bg-magpie-200/5'
+            }`}
+          >
+            {/* Large background icon */}
+            <div className="absolute top-1 left-1 w-12 h-12 flex items-center justify-center">
+              <div className={`transition-all duration-300 ${
                 selectedCategory === null 
-                  ? 'bg-blue-50 text-blue-700 border-l-2 border-blue-400' 
-                  : 'text-slate-600 hover:bg-slate-50'
+                  ? 'text-magpie-200/25' 
+                  : 'text-gray-400/20 group-hover:text-magpie-200/22'
+              }`}>
+                <div className="w-10 h-10 flex items-center justify-center">
+                  {React.cloneElement(getCategoryIcon('All'), { 
+                    className: `w-full h-full transition-transform duration-500 ${getCategoryAnimation('All')}` 
+                  })}
+                </div>
+              </div>
+            </div>
+            
+            {/* Count in top-right corner */}
+            <div className="absolute top-2 right-2 z-10">
+              <span className={`text-xs font-medium transition-colors duration-300 ${
+                selectedCategory === null 
+                  ? 'text-magpie-200' 
+                  : 'text-gray-400 group-hover:text-magpie-200'
+              }`}>
+                {categories.reduce((sum, cat) => sum + cat.count, 0)}
+              </span>
+            </div>
+            
+            {/* Category title centered */}
+            <div className="relative z-10 flex items-center justify-center min-h-[50px]">
+              <div className={`text-lg font-bold transition-colors duration-300 ${
+                selectedCategory === null 
+                  ? 'text-magpie-300' 
+                  : 'text-gray-800 group-hover:text-magpie-300'
+              }`}>
+                All
+              </div>
+            </div>
+          </button>
+          
+          {/* Individual categories */}
+          {categories.map((category) => (
+            <button
+              key={category.name}
+              onClick={() => onCategoryFilter(category.name)}
+              onMouseEnter={() => handleCategoryHover(category.name)}
+              className={`group relative p-4 rounded-xl transition-all duration-300 hover:shadow-sm ${
+                selectedCategory === category.name 
+                  ? 'bg-magpie-200/10' 
+                  : 'hover:bg-magpie-200/5'
               }`}
             >
-              <div className="flex items-center justify-between">
-                <span>All</span>
-                <span className="text-xs text-slate-400">
-                  {categories.reduce((sum, cat) => sum + cat.count, 0)}
+              {/* Large background icon */}
+              <div className="absolute top-1 left-1 w-12 h-12 flex items-center justify-center">
+                <div className={`transition-all duration-300 ${
+                  selectedCategory === category.name 
+                    ? 'text-magpie-200/25' 
+                    : 'text-gray-400/20 group-hover:text-magpie-200/22'
+                }`}>
+                  <div className="w-10 h-10 flex items-center justify-center">
+                    {React.cloneElement(getCategoryIcon(category.name), { 
+                      className: `w-full h-full transition-transform duration-500 ${getCategoryAnimation(category.name)}` 
+                    })}
+                  </div>
+                </div>
+              </div>
+              
+              {/* Count in top-right corner */}
+              <div className="absolute top-2 right-2 z-10">
+                <span className={`text-xs font-medium transition-colors duration-300 ${
+                  selectedCategory === category.name 
+                    ? 'text-magpie-200' 
+                    : 'text-gray-400 group-hover:text-magpie-200'
+                }`}>
+                  {category.count}
                 </span>
               </div>
-            </button>
-            
-            {/* Individual categories */}
-            {categories.map((category) => (
-              <button
-                key={category.name}
-                onClick={() => onCategoryFilter(category.name)}
-                className={`w-full text-left px-2 py-1 rounded text-sm transition-colors ${
+              
+              {/* Category title centered */}
+              <div className="relative z-10 flex items-center justify-center min-h-[50px]">
+                <div className={`text-lg font-bold transition-colors duration-300 ${
                   selectedCategory === category.name 
-                    ? 'bg-blue-50 text-blue-700 border-l-2 border-blue-400' 
-                    : 'text-slate-600 hover:bg-slate-50'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span>{category.name}</span>
-                  <span className="text-xs text-slate-400">{category.count}</span>
+                    ? 'text-magpie-300' 
+                    : 'text-gray-800 group-hover:text-magpie-300'
+                }`}>
+                  {category.name}
                 </div>
-              </button>
-            ))}
-          </div>
+              </div>
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* Popular Tags */}
-      <div className="card bg-white shadow-sm border border-slate-200">
-        <div className="card-body p-4">
-          <h3 className="font-semibold text-slate-800 mb-3 flex items-center">
-            <svg className="w-4 h-4 mr-2 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-            </svg>
-            Popular Tags
-          </h3>
-          
-          <div className={`flex flex-wrap gap-1 transition-all duration-300 ${
-            showAllTags 
-              ? 'max-h-64 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent' 
-              : ''
-          }`}>
-            {displayTags.map((tag) => (
-              <button
-                key={tag.name}
-                onClick={() => onTagFilter(tag.name)}
-                className={`inline-flex items-center px-2 py-1 rounded text-xs border transition-colors ${
-                  selectedTags.includes(tag.name)
-                    ? 'bg-primary/20 text-primary border-primary/50 font-semibold'
-                    : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
-                }`}
-              >
-                #{tag.name}
-                {tag.count > 0 && (
-                  <span className={`ml-1 ${selectedTags.includes(tag.name) ? 'text-primary' : 'text-slate-400'}`}>
-                    {tag.count}
-                  </span>
-                )}
-                {tag.count === 0 && selectedTags.includes(tag.name) && (
-                  <span className="ml-1 text-xs text-primary">•</span>
-                )}
-              </button>
-            ))}
-          </div>
-          
-          {tags.length > 12 && (
-            <div className="flex justify-center mt-2">
-              <button 
-                onClick={() => setShowAllTags(!showAllTags)}
-                className="text-xs text-primary hover:text-primary/80 flex items-center gap-1"
-              >
-                <span className="text-base leading-none">{showAllTags ? '−' : '+'}</span>
-                <span>{showAllTags ? '收起标签' : '显示所有'}</span>
-              </button>
+      {/* Popular Tags - moved to bottom */}
+      <div className="mt-4">
+        <div className="card bg-white shadow-sm border border-slate-200">
+          <div className="card-body p-4">
+            <h3 className="font-semibold text-slate-800 mb-3 flex items-center">
+              <svg className="w-4 h-4 mr-2 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+              </svg>
+              Popular Tags
+            </h3>
+            
+            <div className={`flex flex-wrap gap-1 transition-all duration-300 ${
+              showAllTags 
+                ? 'max-h-64 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent' 
+                : ''
+            }`}>
+              {displayTags.map((tag) => (
+                <button
+                  key={tag.name}
+                  onClick={() => onTagFilter(tag.name)}
+                  className={`inline-flex items-center px-2 py-1 rounded text-xs border transition-colors ${
+                    selectedTags.includes(tag.name)
+                      ? 'bg-primary/20 text-primary border-primary/50 font-semibold'
+                      : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  #{tag.name}
+                  {tag.count > 0 && (
+                    <span className={`ml-1 ${selectedTags.includes(tag.name) ? 'text-primary' : 'text-slate-400'}`}>
+                      {tag.count}
+                    </span>
+                  )}
+                  {tag.count === 0 && selectedTags.includes(tag.name) && (
+                    <span className="ml-1 text-xs text-primary">•</span>
+                  )}
+                </button>
+              ))}
             </div>
-          )}
-          
-          {/* Recent stats as one line */}
-          <div className="mt-4 pt-3 border-t border-slate-200 text-xs text-slate-500 text-center">
-            Today: <span style={{ color: '#127176' }}>{recentStats.find(s => s.label === 'Today')?.count || 0}</span>, This Week: <span style={{ color: '#127176' }}>{recentStats.find(s => s.label === 'Last Week')?.count || 0}</span>, Month: <span style={{ color: '#127176' }}>{recentStats.find(s => s.label === 'This Month')?.count || 0}</span>
+            
+            {tags.length > 12 && (
+              <div className="flex justify-center mt-2">
+                <button 
+                  onClick={() => setShowAllTags(!showAllTags)}
+                  className="text-xs text-primary hover:text-primary/80 flex items-center gap-1"
+                >
+                  <span className="text-base leading-none">{showAllTags ? '−' : '+'}</span>
+                  <span>{showAllTags ? '收起标签' : '显示所有'}</span>
+                </button>
+              </div>
+            )}
+            
+            {/* Recent stats as one line */}
+            <div className="mt-4 pt-3 border-t border-slate-200 text-xs text-slate-500 text-center">
+              Today: <span style={{ color: '#127176' }}>{recentStats.find(s => s.label === 'Today')?.count || 0}</span>, This Week: <span style={{ color: '#127176' }}>{recentStats.find(s => s.label === 'Last Week')?.count || 0}</span>, Month: <span style={{ color: '#127176' }}>{recentStats.find(s => s.label === 'This Month')?.count || 0}</span>
+            </div>
           </div>
         </div>
       </div>
