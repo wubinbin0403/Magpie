@@ -365,13 +365,12 @@ CREATE INDEX idx_search_created_at ON search_logs(createdAt DESC);
 CREATE INDEX idx_search_no_results ON search_logs(noResultsFound);
 ```
 
-## 📊 数据统计视图
+## 📊 实时统计查询
 
-为了优化常用的统计查询，创建一些视图：
+系统采用实时查询而非预计算视图，确保数据的即时性和准确性。常用的统计查询示例：
 
 ```sql
--- 分类统计视图
-CREATE VIEW category_stats AS
+-- 分类统计（实时查询）
 SELECT 
   finalCategory as category,
   COUNT(*) as count,
@@ -381,8 +380,7 @@ WHERE status = 'published'
 GROUP BY finalCategory
 ORDER BY count DESC;
 
--- 域名统计视图
-CREATE VIEW domain_stats AS
+-- 域名统计（实时查询）
 SELECT 
   domain,
   COUNT(*) as count,
@@ -392,8 +390,7 @@ WHERE status = 'published'
 GROUP BY domain
 ORDER BY count DESC;
 
--- 月度统计视图
-CREATE VIEW monthly_stats AS
+-- 月度统计（实时查询）
 SELECT 
   strftime('%Y-%m', publishedAt, 'unixepoch') as month,
   COUNT(*) as count,
@@ -404,8 +401,7 @@ WHERE status = 'published'
 GROUP BY month
 ORDER BY month DESC;
 
--- 标签使用统计
-CREATE VIEW tag_stats AS
+-- 标签使用统计（实时查询）
 SELECT 
   json_each.value as tag,
   COUNT(*) as count
@@ -414,6 +410,8 @@ WHERE links.status = 'published'
 GROUP BY json_each.value
 ORDER BY count DESC;
 ```
+
+这些查询在需要时直接执行，利用合理的索引设计保证查询性能。
 
 ## 🔧 数据库初始化
 
@@ -426,8 +424,8 @@ ORDER BY count DESC;
 -- 2. 创建索引
 -- (见上面的索引定义)
 
--- 3. 创建视图
--- (见上面的视图定义)
+-- 3. 实时查询（不创建视图）
+-- (见上面的实时查询示例，按需执行)
 
 -- 4. 创建 FTS5 搜索表
 -- (见上面的全文搜索定义)
@@ -496,7 +494,7 @@ INSERT INTO settings VALUES ('db_version', '1.0.0', 'string', '数据库版本',
 ### 核心特性
 1. **用户认证完整**：支持管理员密码登录 + API Token 认证
 2. **搜索性能优化**：FTS5 全文搜索 + 合理索引设计  
-3. **统计功能丰富**：日志记录 + 统计视图 + 操作审计
+3. **统计功能丰富**：日志记录 + 实时查询 + 操作审计
 4. **扩展性良好**：预留字段 + 灵活的设置系统
 5. **运维友好**：完整的日志记录 + 性能监控
 6. **安全考虑**：密码哈希 + 会话管理 + 暴力破解防护
