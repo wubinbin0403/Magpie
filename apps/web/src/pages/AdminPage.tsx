@@ -1,27 +1,103 @@
-import NavBar from '../components/NavBar'
+import { useState } from 'react'
+import { Routes, Route, Navigate } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
+import AdminNavBar from '../components/AdminNavBar'
+import AdminSidebar from '../components/AdminSidebar'
+import AdminOverview from './admin/AdminOverview'
+import PendingLinks from './admin/PendingLinks'
+import AddLink from './admin/AddLink'
+import SystemSettings from './admin/SystemSettings'
+
+// Mock user data - in real app this would come from auth context
+const mockUser = {
+  role: 'admin',
+  name: 'Administrator'
+}
 
 export default function AdminPage() {
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  
+  // Mock stats query for sidebar badges
+  const { data: stats } = useQuery({
+    queryKey: ['admin-stats-summary'],
+    queryFn: async () => {
+      await new Promise(resolve => setTimeout(resolve, 200))
+      return {
+        pendingCount: 5,
+        totalLinks: 123
+      }
+    }
+  })
+
   return (
     <div className="min-h-screen bg-base-100">
-      <NavBar onSearch={() => {}} />
+      {/* Admin Navigation Bar */}
+      <AdminNavBar 
+        onToggleSidebar={() => setSidebarOpen(true)}
+        user={mockUser}
+      />
       
-      <div className="container mx-auto px-4 py-6">
-        <div className="text-center py-16">
-          <h1 className="text-3xl font-bold text-slate-800 mb-4">Admin Panel</h1>
-          <p className="text-slate-600 mb-8">Management functionality coming soon...</p>
-          
-          <div className="max-w-md mx-auto">
-            <div className="alert alert-warning">
-              <svg className="stroke-current shrink-0 w-6 h-6" fill="none" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-              </svg>
-              <div>
-                <h3 className="font-bold">Under Development</h3>
-                <div className="text-xs">Admin features will be implemented in the next phase</div>
-              </div>
-            </div>
+      {/* Fixed Admin Sidebar - completely fixed to screen */}
+      <aside className="hidden lg:block fixed left-0 top-16 bottom-0 w-80 bg-base-200/30 z-40">
+        <AdminSidebar
+          pendingCount={stats?.pendingCount}
+          totalLinks={stats?.totalLinks}
+          isOpen={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+        />
+      </aside>
+      
+      <div className="lg:ml-80 bg-base-100 min-h-screen">
+        {/* Content area with left margin to account for fixed sidebar */}
+
+        {/* Mobile Admin Sidebar Drawer */}
+        {sidebarOpen && (
+          <div className="lg:hidden fixed inset-0 z-50 flex">
+            <div className="fixed inset-0 bg-black/20" onClick={() => setSidebarOpen(false)} />
+            <aside className="relative w-80 bg-base-200/30 shadow-xl h-full flex flex-col">
+              <AdminSidebar
+                pendingCount={stats?.pendingCount}
+                totalLinks={stats?.totalLinks}
+                isOpen={sidebarOpen}
+                onClose={() => setSidebarOpen(false)}
+              />
+            </aside>
           </div>
-        </div>
+        )}
+
+        {/* Main Content Area */}
+        <main className="min-h-screen pt-16">
+          <div className="container mx-auto px-4 lg:px-6 py-6">
+            <Routes>
+              <Route path="/" element={<AdminOverview />} />
+              <Route path="/overview" element={<Navigate to="/admin" replace />} />
+              
+              {/* Dashboard routes */}
+              <Route path="/pending" element={<PendingLinks />} />
+              <Route path="/links" element={<div>All Links Page (Coming Soon)</div>} />
+              <Route path="/activity" element={<div>Activity Page (Coming Soon)</div>} />
+              
+              {/* Link Management routes */}
+              <Route path="/add" element={<AddLink />} />
+              <Route path="/confirm" element={<div>Confirm Pending Page (Coming Soon)</div>} />
+              <Route path="/manage" element={<div>Manage Links Page (Coming Soon)</div>} />
+              
+              {/* Settings routes */}
+              <Route path="/system" element={<SystemSettings />} />
+              <Route path="/tokens" element={<div>API Tokens Page (Coming Soon)</div>} />
+              <Route path="/ai-settings" element={<div>AI Settings Page (Coming Soon)</div>} />
+              <Route path="/categories" element={<div>Categories Page (Coming Soon)</div>} />
+              
+              {/* Tools routes */}
+              <Route path="/import" element={<div>Import Data Page (Coming Soon)</div>} />
+              <Route path="/export" element={<div>Export Data Page (Coming Soon)</div>} />
+              <Route path="/cleanup" element={<div>Cleanup Page (Coming Soon)</div>} />
+              
+              {/* Catch all - redirect to overview */}
+              <Route path="*" element={<Navigate to="/admin" replace />} />
+            </Routes>
+          </div>
+        </main>
       </div>
     </div>
   )
