@@ -346,7 +346,7 @@ interface UpdateLinkRequest {
 
 ## 三、管理员 API
 
-### 1. 管理员登录/验证
+### 1. 管理员登录/登出
 ```typescript
 POST /api/admin/login
 ```
@@ -370,6 +370,18 @@ interface AdminLoginResponse {
       permissions: string[];
     };
   };
+}
+```
+
+```typescript
+POST /api/admin/logout
+```
+
+**响应格式：**
+```typescript
+interface AdminLogoutResponse {
+  success: boolean;
+  message: string;
 }
 ```
 

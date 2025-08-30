@@ -79,17 +79,17 @@ API调用 /api/links/add?url=xxx&skipConfirm=true
 ## 📄 页面路由
 
 ### 公开页面
-- `/` - 主页，展示已发布链接 (参考 `doc/PAGE_MAIN.md`)
+- `/` - 主页，React SPA展示已发布链接，爬虫获得静态HTML (参考 `doc/PAGE_MAIN.md`)
   - 主页上可以对 category 进行过滤
-- `/search` - 搜索页面 (参考 `doc/PAGE_SEARCH.md`)
+- `/search` - 搜索页面，React SPA (参考 `doc/PAGE_SEARCH.md`)
 
 ### 认证流程页面
 - `/api/links/add` - 处理页面（显示进度，然后跳转）
 - `/confirm/:id` - 确认编辑页面
 
 ### 管理页面
-- `/admin/login` - 管理员登录页面
-- `/admin` - 管理面板（需要用户认证）
+- `/admin/login` - 管理员登录页面，React SPA
+- `/admin` - 管理面板，React SPA（需要用户认证）
 - `/admin/settings` - 系统设置
 - `/admin/pending` - 待确认列表
 - `/admin/tokens` - API Token 管理
