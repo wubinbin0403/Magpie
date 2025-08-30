@@ -14,8 +14,8 @@ const DEFAULT_SETTINGS = [
   { key: 'about_url', value: '', type: 'string', description: '关于页面URL' },
   
   // AI service configuration
-  { key: 'ai_api_key', value: '', type: 'string', description: 'OpenAI API密钥' },
-  { key: 'ai_base_url', value: 'https://api.openai.com/v1', type: 'string', description: 'AI API基础URL' },
+  { key: 'openai_api_key', value: '', type: 'string', description: 'OpenAI API密钥' },
+  { key: 'openai_base_url', value: 'https://api.openai.com/v1', type: 'string', description: 'OpenAI API基础URL' },
   { key: 'ai_model', value: 'gpt-3.5-turbo', type: 'string', description: 'AI模型名称' },
   { key: 'ai_temperature', value: '0.7', type: 'number', description: 'AI温度参数' },
   
