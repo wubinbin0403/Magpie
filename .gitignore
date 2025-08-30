@@ -55,7 +55,8 @@ dist/
 
 # Gatsby files
 .cache/
-public
+# Note: Commented out 'public' to allow apps/api/src/routes/public/ to be tracked
+# public
 
 # Storybook build outputs
 .out
@@ -230,6 +231,6 @@ coverage/
 config/secrets.*
 config/keys.*
 
-# Generated migration files (ignore during development, uncomment for production)
-apps/api/drizzle/*.sql
-apps/api/drizzle/meta/
+# Generated migration files (commented out to track FTS5 migrations)
+# apps/api/drizzle/*.sql
+# apps/api/drizzle/meta/

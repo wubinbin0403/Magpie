@@ -2,7 +2,7 @@
 
 import { db } from './index.js';
 import { settings, apiTokens, links } from './schema.js';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import crypto from 'crypto';
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
@@ -517,6 +517,16 @@ async function seedDatabase(database = db, includeDevData = false) {
       }
       
       console.log(`✓ Inserted all ${SAMPLE_LINKS.length} sample links`);
+      
+      // Populate FTS5 index for existing published links
+      console.log('Populating FTS5 search index...');
+      await database.run(sql`
+        INSERT INTO links_fts(rowid, title, final_description, final_tags, domain, final_category)
+        SELECT id, title, final_description, final_tags, domain, final_category 
+        FROM links 
+        WHERE status = 'published'
+      `);
+      console.log('✓ FTS5 search index populated');
     }
     
     console.log('Database seeding completed successfully!');
