@@ -41,7 +41,7 @@ export default function AddLink() {
       setProcessingItems(prev => [...prev, {
         id: processingId,
         status: 'processing',
-        message: 'Processing URL...',
+        message: '正在处理URL...',
         url: linkData.url
       }])
 
@@ -51,7 +51,7 @@ export default function AddLink() {
         
         setProcessingItems(prev => prev.map(item => 
           item.id === processingId 
-            ? { ...item, message: 'Fetching content...', status: 'processing' }
+            ? { ...item, message: '正在获取内容...', status: 'processing' }
             : item
         ))
 
@@ -59,7 +59,7 @@ export default function AddLink() {
         
         setProcessingItems(prev => prev.map(item => 
           item.id === processingId 
-            ? { ...item, message: 'AI analyzing...', status: 'processing' }
+            ? { ...item, message: 'AI 正在分析...', status: 'processing' }
             : item
         ))
 
@@ -76,7 +76,7 @@ export default function AddLink() {
             ? { 
                 ...item, 
                 status: 'success',
-                message: linkData.skipConfirm ? 'Published successfully!' : 'Ready for review',
+                message: linkData.skipConfirm ? '发布成功！' : '准备审核',
                 title: mockTitle
               }
             : item
@@ -89,8 +89,8 @@ export default function AddLink() {
             ? { 
                 ...item, 
                 status: 'failed',
-                message: 'Failed to process',
-                error: 'Network error or invalid URL'
+                message: '处理失败',
+                error: '网络错误或无效的URL'
               }
             : item
         ))
@@ -114,7 +114,7 @@ export default function AddLink() {
 
   const handleBatchImport = () => {
     // TODO: Implement batch import functionality
-    alert('Batch import functionality coming soon!')
+    alert('批量导入功能即将推出！')
   }
 
   const clearProcessing = () => {
@@ -160,8 +160,8 @@ export default function AddLink() {
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-base-content">Add New Link</h1>
-          <p className="text-base-content/60 mt-1">Add links for development and testing</p>
+          <h1 className="text-3xl font-bold text-base-content">添加新链接</h1>
+          <p className="text-base-content/60 mt-1">添加链接用于开发和测试</p>
         </div>
       </div>
 
@@ -173,7 +173,7 @@ export default function AddLink() {
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
-              Add New Link
+              添加新链接
             </h2>
           </div>
           <div className="card-body p-6 pt-4">
@@ -181,7 +181,7 @@ export default function AddLink() {
               {/* URL Input */}
               <div className="form-control">
                 <label className="label">
-                  <span className="label-text font-medium">URL Address</span>
+                  <span className="label-text font-medium">链接地址</span>
                 </label>
                 <input
                   type="url"
@@ -196,7 +196,7 @@ export default function AddLink() {
               {/* Advanced Options */}
               <div className="form-control">
                 <label className="label cursor-pointer justify-start gap-2">
-                  <span className="label-text font-medium">Advanced Options</span>
+                  <span className="label-text font-medium">高级选项</span>
                   <input
                     type="checkbox"
                     className="toggle toggle-primary toggle-sm"
@@ -217,21 +217,21 @@ export default function AddLink() {
                         checked={form.skipConfirm}
                         onChange={(e) => setForm(prev => ({ ...prev, skipConfirm: e.target.checked }))}
                       />
-                      <span className="label-text">Skip confirmation, publish directly</span>
+                      <span className="label-text">跳过确认，直接发布</span>
                     </label>
                   </div>
 
                   {/* Preset Category */}
                   <div className="form-control">
                     <label className="label">
-                      <span className="label-text">Preset Category (optional)</span>
+                      <span className="label-text">预设分类（可选）</span>
                     </label>
                     <select
                       className="select select-bordered"
                       value={form.presetCategory}
                       onChange={(e) => setForm(prev => ({ ...prev, presetCategory: e.target.value }))}
                     >
-                      <option value="">Auto-detect</option>
+                      <option value="">自动检测</option>
                       {mockCategories.map(category => (
                         <option key={category} value={category}>{category}</option>
                       ))}
@@ -241,18 +241,18 @@ export default function AddLink() {
                   {/* Preset Tags */}
                   <div className="form-control">
                     <label className="label">
-                      <span className="label-text">Preset Tags (optional)</span>
+                      <span className="label-text">预设标签（可选）</span>
                     </label>
                     <input
                       type="text"
                       className="input input-bordered"
-                      placeholder="react, frontend, tutorial"
+                      placeholder="react, 前端, 教程"
                       value={form.presetTags}
                       onChange={(e) => setForm(prev => ({ ...prev, presetTags: e.target.value }))}
                     />
                     <label className="label">
                       <span className="label-text-alt text-base-content/50">
-                        Multiple tags separated by commas
+                        多个标签用逗号分隔
                       </span>
                     </label>
                   </div>
@@ -269,14 +269,14 @@ export default function AddLink() {
                   {addLinkMutation.isPending ? (
                     <span className="flex items-center gap-2">
                       <span className="loading loading-spinner loading-sm"></span>
-                      Processing...
+                      正在处理...
                     </span>
                   ) : (
                     <span className="flex items-center gap-2">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                       </svg>
-                      Add Link
+                      添加链接
                     </span>
                   )}
                 </button>
@@ -289,7 +289,7 @@ export default function AddLink() {
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 8h6m-6 4h6" />
                     </svg>
-                    Batch Import
+                    批量导入
                   </span>
                 </button>
               </div>
@@ -304,7 +304,7 @@ export default function AddLink() {
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
               </svg>
-              Processing Status
+              处理状态
             </h2>
             {processingItems.length > 0 && (
               <button
@@ -315,7 +315,7 @@ export default function AddLink() {
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                   </svg>
-                  Clear
+                  清空
                 </span>
               </button>
             )}
@@ -326,8 +326,8 @@ export default function AddLink() {
                 <svg className="w-12 h-12 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 8h6m-6 4h6" />
                 </svg>
-                <p>No processing items yet</p>
-                <p className="text-xs mt-1">Add a link to see processing status</p>
+                <p>还没有处理项</p>
+                <p className="text-xs mt-1">添加链接以查看处理状态</p>
               </div>
             ) : (
               <div className="space-y-4">
@@ -339,7 +339,7 @@ export default function AddLink() {
                           {getStatusIcon(item.status)}
                         </span>
                         <span className="text-sm font-medium">
-                          {item.title || 'Processing...'}
+                          {item.title || '正在处理...'}
                         </span>
                       </div>
                       {item.status === 'failed' && (
@@ -347,7 +347,7 @@ export default function AddLink() {
                           className="btn btn-ghost btn-xs"
                           onClick={() => retryProcessing(item.id)}
                         >
-                          Retry
+                          重试
                         </button>
                       )}
                     </div>
@@ -362,7 +362,7 @@ export default function AddLink() {
                     
                     {item.error && (
                       <div className="text-xs text-red-600 mt-1">
-                        Error: {item.error}
+                        错误：{item.error}
                       </div>
                     )}
                     
@@ -386,14 +386,14 @@ export default function AddLink() {
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
             </svg>
-            Recent Links
+            最近链接
           </h2>
           <button className="btn btn-ghost btn-sm">
             <span className="flex items-center gap-2">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
               </svg>
-              View All
+              查看全部
             </span>
           </button>
         </div>
@@ -403,35 +403,35 @@ export default function AddLink() {
               <span>• Tailwind CSS 4.0 发布</span>
               <div className="flex items-center gap-2">
                 <span className="badge badge-outline badge-xs">技术</span>
-                <span className="text-base-content/50">Yesterday</span>
+                <span className="text-base-content/50">昨天</span>
               </div>
             </div>
             <div className="flex justify-between items-center py-2">
               <span>• 设计系统构建指南</span>
               <div className="flex items-center gap-2">
                 <span className="badge badge-outline badge-xs">设计</span>
-                <span className="text-base-content/50">Yesterday</span>
+                <span className="text-base-content/50">昨天</span>
               </div>
             </div>
             <div className="flex justify-between items-center py-2">
               <span>• JavaScript 性能优化技巧</span>
               <div className="flex items-center gap-2">
                 <span className="badge badge-outline badge-xs">技术</span>
-                <span className="text-base-content/50">2 days ago</span>
+                <span className="text-base-content/50">2天前</span>
               </div>
             </div>
             <div className="flex justify-between items-center py-2">
               <span>• Figma 插件开发入门</span>
               <div className="flex items-center gap-2">
                 <span className="badge badge-outline badge-xs">工具</span>
-                <span className="text-base-content/50">3 days ago</span>
+                <span className="text-base-content/50">3天前</span>
               </div>
             </div>
             <div className="flex justify-between items-center py-2">
               <span>• React Server Components 实践</span>
               <div className="flex items-center gap-2">
                 <span className="badge badge-outline badge-xs">技术</span>
-                <span className="text-base-content/50">3 days ago</span>
+                <span className="text-base-content/50">3天前</span>
               </div>
             </div>
           </div>

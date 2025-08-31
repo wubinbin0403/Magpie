@@ -57,7 +57,7 @@ export default function SystemSettings() {
       toast.className = 'toast toast-top toast-end'
       toast.innerHTML = `
         <div class="alert alert-success">
-          <span>Settings saved successfully!</span>
+          <span>设置保存成功！</span>
         </div>
       `
       document.body.appendChild(toast)
@@ -86,11 +86,11 @@ export default function SystemSettings() {
     const categoryToDelete = settings.content.categories[index]
     
     if (categoryToDelete === settings.content.defaultCategory) {
-      alert('Cannot delete the default category. Please set a different default category first.')
+      alert('无法删除默认分类。请先设置其他默认分类。')
       return
     }
     
-    if (confirm(`Are you sure you want to delete "${categoryToDelete}"? This action cannot be undone.`)) {
+    if (confirm(`确定要删除 "${categoryToDelete}" 吗？此操作无法撤销。`)) {
       setSettings(prev => ({
         ...prev,
         content: {
@@ -143,8 +143,8 @@ export default function SystemSettings() {
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-base-content">System Settings</h1>
-          <p className="text-base-content/60 mt-1">Configure site information and content settings</p>
+          <h1 className="text-3xl font-bold text-base-content">系统设置</h1>
+          <p className="text-base-content/60 mt-1">配置站点信息和内容设置</p>
         </div>
         <div className="flex items-center gap-2">
           <button 
@@ -155,14 +155,14 @@ export default function SystemSettings() {
             {updateSettingsMutation.isPending ? (
               <span className="flex items-center gap-2">
                 <span className="loading loading-spinner loading-sm"></span>
-                Saving...
+                正在保存...
               </span>
             ) : (
               <span className="flex items-center gap-2">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
                 </svg>
-                Save All Changes
+                保存所有更改
               </span>
             )}
           </button>
@@ -176,13 +176,13 @@ export default function SystemSettings() {
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9-9a9 9 0 00-9 9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
             </svg>
-            Site Information
+            站点信息
           </h2>
         </div>
         <div className="card-body p-6 pt-4 space-y-4">
           <div className="form-control">
             <label className="label">
-              <span className="label-text font-medium">Site Title</span>
+              <span className="label-text font-medium">站点标题</span>
             </label>
             <input
               type="text"
@@ -192,13 +192,13 @@ export default function SystemSettings() {
                 ...prev,
                 site: { ...prev.site, title: e.target.value }
               }))}
-              placeholder="Your site title"
+              placeholder="您的站点标题"
             />
           </div>
 
           <div className="form-control">
             <label className="label">
-              <span className="label-text font-medium">Site Description</span>
+              <span className="label-text font-medium">站点描述</span>
             </label>
             <textarea
               className="textarea textarea-bordered"
@@ -208,13 +208,13 @@ export default function SystemSettings() {
                 ...prev,
                 site: { ...prev.site, description: e.target.value }
               }))}
-              placeholder="Brief description of your site"
+              placeholder="站点的简要描述"
             />
           </div>
 
           <div className="form-control">
             <label className="label">
-              <span className="label-text font-medium">About Page URL (optional)</span>
+              <span className="label-text font-medium">关于页面 URL（可选）</span>
             </label>
             <input
               type="text"
@@ -224,7 +224,7 @@ export default function SystemSettings() {
                 ...prev,
                 site: { ...prev.site, aboutUrl: e.target.value }
               }))}
-              placeholder="/about or external URL"
+              placeholder="/about 或外部URL"
             />
           </div>
         </div>
@@ -237,14 +237,14 @@ export default function SystemSettings() {
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 8h6m-6 4h6" />
             </svg>
-            Content Settings
+            内容设置
           </h2>
         </div>
         <div className="card-body p-6 pt-4 space-y-6">
           {/* Default Category */}
           <div className="form-control">
             <label className="label">
-              <span className="label-text font-medium">Default Category</span>
+              <span className="label-text font-medium">默认分类</span>
             </label>
             <select
               className="select select-bordered"
@@ -260,7 +260,7 @@ export default function SystemSettings() {
             </select>
             <label className="label">
               <span className="label-text-alt text-base-content/50">
-                Category assigned to new links when AI cannot determine a category
+                当 AI 无法确定分类时分配给新链接的分类
               </span>
             </label>
           </div>
@@ -268,7 +268,7 @@ export default function SystemSettings() {
           {/* Categories Management */}
           <div className="form-control">
             <label className="label">
-              <span className="label-text font-medium">Category Management</span>
+              <span className="label-text font-medium">分类管理</span>
             </label>
             
             {/* Existing Categories */}
@@ -293,7 +293,7 @@ export default function SystemSettings() {
                     <span className="flex-1 font-medium">
                       • {category}
                       {category === settings.content.defaultCategory && (
-                        <span className="badge badge-primary badge-xs ml-2">Default</span>
+                        <span className="badge badge-primary badge-xs ml-2">默认</span>
                       )}
                     </span>
                   )}
@@ -303,14 +303,14 @@ export default function SystemSettings() {
                       className="btn btn-ghost btn-xs"
                       onClick={() => setEditingCategory({index, value: category})}
                     >
-                      Edit
+                      编辑
                     </button>
                     <button
                       className="btn btn-error btn-outline btn-xs"
                       onClick={() => handleDeleteCategory(index)}
                       disabled={category === settings.content.defaultCategory}
                     >
-                      Delete
+                      删除
                     </button>
                   </div>
                 </div>
@@ -322,7 +322,7 @@ export default function SystemSettings() {
               <input
                 type="text"
                 className="input input-bordered flex-1"
-                placeholder="New category name"
+                placeholder="新分类名称"
                 value={newCategory}
                 onChange={(e) => setNewCategory(e.target.value)}
                 onKeyPress={(e) => {
@@ -340,7 +340,7 @@ export default function SystemSettings() {
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
-                  Add
+                  添加
                 </span>
               </button>
             </div>
@@ -349,7 +349,7 @@ export default function SystemSettings() {
           {/* Items Per Page */}
           <div className="form-control">
             <label className="label">
-              <span className="label-text font-medium">Items Per Page</span>
+              <span className="label-text font-medium">每页显示数量</span>
             </label>
             <div className="flex gap-2">
               {[20, 50, 100].map(count => (
@@ -371,7 +371,7 @@ export default function SystemSettings() {
             </div>
             <label className="label">
               <span className="label-text-alt text-base-content/50">
-                Number of links displayed per page on the main site
+                主站每页显示的链接数量
               </span>
             </label>
           </div>
@@ -384,8 +384,8 @@ export default function SystemSettings() {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
         <div>
-          <h3 className="font-bold">Don't forget to save!</h3>
-          <div className="text-xs">Changes will be applied after clicking the "Save All Changes" button above.</div>
+          <h3 className="font-bold">别忘记保存！</h3>
+          <div className="text-xs">点击上方的“保存所有更改”按钮后更改将生效。</div>
         </div>
       </div>
     </div>

@@ -74,24 +74,24 @@ export default function AdminPage() {
               
               {/* Dashboard routes */}
               <Route path="/pending" element={<PendingLinks />} />
-              <Route path="/links" element={<div>All Links Page (Coming Soon)</div>} />
-              <Route path="/activity" element={<div>Activity Page (Coming Soon)</div>} />
+              <Route path="/links" element={<div>所有链接页面（即将推出）</div>} />
+              <Route path="/activity" element={<div>活动页面（即将推出）</div>} />
               
               {/* Link Management routes */}
               <Route path="/add" element={<AddLink />} />
-              <Route path="/confirm" element={<div>Confirm Pending Page (Coming Soon)</div>} />
-              <Route path="/manage" element={<div>Manage Links Page (Coming Soon)</div>} />
+              <Route path="/confirm" element={<div>确认待处理页面（即将推出）</div>} />
+              <Route path="/manage" element={<div>管理链接页面（即将推出）</div>} />
               
               {/* Settings routes */}
               <Route path="/system" element={<SystemSettings />} />
-              <Route path="/tokens" element={<div>API Tokens Page (Coming Soon)</div>} />
-              <Route path="/ai-settings" element={<div>AI Settings Page (Coming Soon)</div>} />
-              <Route path="/categories" element={<div>Categories Page (Coming Soon)</div>} />
+              <Route path="/tokens" element={<div>API 令牌页面（即将推出）</div>} />
+              <Route path="/ai-settings" element={<div>AI 设置页面（即将推出）</div>} />
+              <Route path="/categories" element={<div>分类页面（即将推出）</div>} />
               
               {/* Tools routes */}
-              <Route path="/import" element={<div>Import Data Page (Coming Soon)</div>} />
-              <Route path="/export" element={<div>Export Data Page (Coming Soon)</div>} />
-              <Route path="/cleanup" element={<div>Cleanup Page (Coming Soon)</div>} />
+              <Route path="/import" element={<div>导入数据页面（即将推出）</div>} />
+              <Route path="/export" element={<div>导出数据页面（即将推出）</div>} />
+              <Route path="/cleanup" element={<div>清理页面（即将推出）</div>} />
               
               {/* Catch all - redirect to overview */}
               <Route path="*" element={<Navigate to="/admin" replace />} />

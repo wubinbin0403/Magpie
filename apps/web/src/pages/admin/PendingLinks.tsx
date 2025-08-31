@@ -140,7 +140,7 @@ export default function PendingLinks() {
   }
 
   const handleDelete = (ids: number[]) => {
-    if (confirm(`Are you sure you want to delete ${ids.length} link(s)?`)) {
+    if (confirm(`确定要删除 ${ids.length} 个链接吗？`)) {
       deleteMutation.mutate(ids)
     }
   }
@@ -181,8 +181,8 @@ export default function PendingLinks() {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
         <div>
-          <h3 className="font-bold">Failed to load pending links</h3>
-          <div className="text-xs">Please try refreshing the page</div>
+          <h3 className="font-bold">加载待处理链接失败</h3>
+          <div className="text-xs">请尝试刷新页面</div>
         </div>
       </div>
     )
@@ -193,9 +193,9 @@ export default function PendingLinks() {
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-base-content">Pending Links</h1>
+          <h1 className="text-3xl font-bold text-base-content">待处理链接</h1>
           <p className="text-base-content/60 mt-1">
-            {pendingLinks.length} link{pendingLinks.length !== 1 ? 's' : ''} waiting for review
+            {pendingLinks.length} 个链接待审核
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -206,7 +206,7 @@ export default function PendingLinks() {
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
-            Refresh
+            刷新
           </button>
         </div>
       </div>
@@ -216,8 +216,8 @@ export default function PendingLinks() {
           <svg className="w-16 h-16 mx-auto mb-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <h3 className="text-xl font-semibold text-base-content mb-2">All caught up!</h3>
-          <p className="text-base-content/60">No pending links to review at the moment.</p>
+          <h3 className="text-xl font-semibold text-base-content mb-2">全部处理完毕！</h3>
+          <p className="text-base-content/60">暂时没有待审核的链接。</p>
         </div>
       ) : (
         <>
@@ -228,7 +228,7 @@ export default function PendingLinks() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <div className="flex-1">
-                <span className="font-semibold">{selectedIds.length} link{selectedIds.length !== 1 ? 's' : ''} selected</span>
+                <span className="font-semibold">已选择 {selectedIds.length} 个链接</span>
               </div>
               <div className="flex gap-2">
                 <button 
@@ -239,14 +239,14 @@ export default function PendingLinks() {
                   {confirmMutation.isPending ? (
                     <span className="flex items-center gap-2">
                       <span className="loading loading-spinner loading-sm"></span>
-                      Confirming...
+                      正在确认...
                     </span>
                   ) : (
                     <span className="flex items-center gap-2">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
-                      Confirm All
+                      全部确认
                     </span>
                   )}
                 </button>
@@ -258,14 +258,14 @@ export default function PendingLinks() {
                   {deleteMutation.isPending ? (
                     <span className="flex items-center gap-2">
                       <span className="loading loading-spinner loading-sm"></span>
-                      Deleting...
+                      正在删除...
                     </span>
                   ) : (
                     <span className="flex items-center gap-2">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                       </svg>
-                      Delete All
+                      全部删除
                     </span>
                   )}
                 </button>
@@ -273,7 +273,7 @@ export default function PendingLinks() {
                   className="btn btn-ghost btn-sm"
                   onClick={() => setSelectedIds([])}
                 >
-                  Cancel
+                  取消
                 </button>
               </div>
             </div>
@@ -288,10 +288,10 @@ export default function PendingLinks() {
                 checked={selectedIds.length === pendingLinks.length}
                 onChange={handleSelectAll}
               />
-              <span className="text-sm text-base-content/70">Select all</span>
+              <span className="text-sm text-base-content/70">全选</span>
             </label>
             <div className="text-sm text-base-content/50">
-              {selectedIds.length} of {pendingLinks.length} selected
+              已选择 {selectedIds.length} / {pendingLinks.length}
             </div>
           </div>
 
@@ -332,18 +332,18 @@ export default function PendingLinks() {
                       {/* AI Summary */}
                       <div className="mb-4">
                         <div className="text-sm text-base-content/80 leading-relaxed">
-                          <strong className="text-base-content">AI Summary:</strong> {link.aiSummary}
+                          <strong className="text-base-content">AI 摘要：</strong> {link.aiSummary}
                         </div>
                       </div>
 
                       {/* AI Suggestions */}
                       <div className="flex flex-wrap items-center gap-4 mb-4">
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-base-content/70">Category:</span>
+                          <span className="text-sm font-medium text-base-content/70">分类：</span>
                           <span className="badge badge-outline">{link.aiCategory}</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-base-content/70">Tags:</span>
+                          <span className="text-sm font-medium text-base-content/70">标签：</span>
                           <div className="flex gap-1">
                             {link.aiTags.map((tag, index) => (
                               <span key={index} className="badge badge-ghost badge-sm">
@@ -365,7 +365,7 @@ export default function PendingLinks() {
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
-                            Quick Confirm
+                            快速确认
                           </span>
                         </button>
                         <button 
@@ -376,7 +376,7 @@ export default function PendingLinks() {
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                             </svg>
-                            Edit
+                            编辑
                           </span>
                         </button>
                         <button 
@@ -388,7 +388,7 @@ export default function PendingLinks() {
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                             </svg>
-                            Delete
+                            删除
                           </span>
                         </button>
                         <a 
@@ -401,7 +401,7 @@ export default function PendingLinks() {
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                             </svg>
-                            Visit
+                            访问
                           </span>
                         </a>
                       </div>
