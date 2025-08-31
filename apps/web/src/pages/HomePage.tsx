@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import api from '../utils/api'
 import NavBar from '../components/NavBar'
 import Sidebar from '../components/Sidebar'
 import LinkCard from '../components/LinkCard'
@@ -58,20 +59,16 @@ export default function HomePage() {
   const { data, isLoading, error, refetch } = useQuery<LinksResponse>({
     queryKey: ['links', page, selectedCategory, selectedTags, searchQuery],
     queryFn: async () => {
-      const params = new URLSearchParams({
+      const params: Record<string, string> = {
         page: page.toString(),
         limit: '20'
-      })
-      
-      if (selectedCategory) params.set('category', selectedCategory)
-      if (selectedTags.length > 0) params.set('tags', selectedTags.join(','))
-      if (searchQuery) params.set('search', searchQuery)
-      
-      const response = await fetch(`/api/links?${params}`)
-      if (!response.ok) {
-        throw new Error('Failed to fetch links')
       }
-      return response.json()
+      
+      if (selectedCategory) params.category = selectedCategory
+      if (selectedTags.length > 0) params.tags = selectedTags.join(',')
+      if (searchQuery) params.search = searchQuery
+      
+      return await api.getLinks(params)
     }
   })
 

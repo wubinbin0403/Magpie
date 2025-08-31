@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
+import api from '../utils/api'
 
 interface User {
   role: 'admin'
@@ -88,17 +89,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = useCallback(async (password: string) => {
     try {
-      const response = await fetch('/api/admin/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ password }),
-      })
+      const data = await api.adminLogin(password)
 
-      const data = await response.json()
-
-      if (response.ok && data.success) {
+      if (data.success) {
         const { token: authToken, user: userData } = data.data
         
         // Store auth data
@@ -130,12 +123,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       // Call logout API
       if (token) {
-        await fetch('/api/admin/logout', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        })
+        await api.adminLogout()
       }
     } catch (error) {
       console.error('Logout API error:', error)
@@ -154,17 +142,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const initAdmin = useCallback(async (password: string) => {
     try {
-      const response = await fetch('/api/admin/init', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ password }),
-      })
+      const data = await api.adminInit(password)
 
-      const data = await response.json()
-
-      if (response.ok && data.success) {
+      if (data.success) {
         return { success: true }
       } else {
         return { 
@@ -183,6 +163,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const checkAdminExists = useCallback(async () => {
     try {
+      // Use direct fetch for this endpoint since it's public
       const response = await fetch('/api/admin/check', {
         method: 'GET',
         headers: {
