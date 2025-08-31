@@ -290,44 +290,57 @@ CREATE TABLE categories (
   
   -- 基本信息
   name TEXT UNIQUE NOT NULL,          -- 分类名称
-  slug TEXT UNIQUE,                    -- URL友好的标识符（可选）
+  slug TEXT UNIQUE,                    -- URL友好的标识符（自动生成）
   
   -- 显示配置
   icon TEXT DEFAULT 'folder',         -- 预设图标名称
-  color TEXT,                          -- 主题色（十六进制颜色值）
-  description TEXT,                    -- 分类描述
+  description TEXT,                    -- 分类描述（可选）
   
   -- 排序和状态
-  display_order INTEGER DEFAULT 0,     -- 显示顺序（数值越小越靠前）
-  is_active INTEGER DEFAULT 1,         -- 是否启用（0=禁用，1=启用）
+  displayOrder INTEGER DEFAULT 0,     -- 显示顺序（数值越小越靠前）
+  isActive INTEGER DEFAULT 1,         -- 是否启用（0=禁用，1=启用）
   
   -- 时间戳
   createdAt INTEGER NOT NULL,
   updatedAt INTEGER,
   
   -- 约束
-  CHECK (is_active IN (0, 1)),
+  CHECK (isActive IN (0, 1)),
   CHECK (createdAt > 0)
 );
 ```
 
+**实现说明：**
+- 使用驼峰命名（displayOrder, isActive）符合Drizzle ORM规范
+- 移除color字段，使用图标系统替代
+- slug字段自动生成，支持中文分类名转换
+- 支持Heroicons图标库的所有图标名称
+
 **预设图标列表：**
-支持以下预设图标名称（基于Heroicons）：
-- `code` - 代码图标（技术类）
-- `cube` - 立方体图标（产品类）
-- `palette` - 调色板图标（设计类）
-- `wrench` - 扳手图标（工具类）
-- `folder` - 文件夹图标（默认/其他）
-- `game-controller` - 游戏手柄图标（游戏类）
-- `book` - 书本图标（阅读类）
-- `video` - 视频图标（媒体类）
-- `music` - 音乐图标（音频类）
-- `photo` - 照片图标（图片类）
-- `document` - 文档图标（文档类）
-- `globe` - 地球图标（网络类）
-- `chat` - 聊天图标（社交类）
-- `shopping` - 购物图标（电商类）
-- `academic` - 学术帽图标（教育类）
+支持Heroicons库的所有图标，包括常用的18个精选图标：
+- `folder` - 文件夹（默认/其他）
+- `code` - 代码括号（技术/编程）
+- `book` - 书本（阅读/文档）
+- `news` - 报纸（新闻/资讯）
+- `video` - 视频摄像头（媒体/视频）
+- `music` - 音符（音乐/音频）
+- `image` - 图片（照片/设计）
+- `web` - 地球（网站/网络）
+- `tech` - CPU芯片（科技/硬件）
+- `business` - 办公楼（商业/企业）
+- `shopping` - 购物袋（电商/购物）
+- `game` - 拼图（游戏/娱乐）
+- `education` - 学士帽（教育/学习）
+- `finance` - 钞票（金融/财务）
+- `tool` - 工具（实用工具）
+- `email` - 信封（邮件/通讯）
+- `location` - 地图标记（位置/地图）
+- `search` - 放大镜（搜索/查找）
+
+**自定义图标支持：**
+- 支持输入任何Heroicons图标名称（300+个图标）
+- 智能别名映射，如'mail'自动映射为'EnvelopeIcon'
+- 不存在的图标自动回退到'FolderIcon'
 
 **初始数据：**
 ```sql

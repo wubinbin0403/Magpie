@@ -246,6 +246,36 @@ interface DomainStatsResponse {
 - 只在用户悬停域名时调用，优化初始页面加载性能
 - 响应小于200字节，支持快速加载
 
+### 6. 获取分类列表
+```typescript
+GET /api/categories
+```
+
+**响应格式：**
+```typescript
+interface PublicCategoriesResponse {
+  success: boolean;
+  data: PublicCategory[];
+  message?: string;
+}
+
+interface PublicCategory {
+  id: number;
+  name: string;
+  slug: string;
+  icon: string;
+  description?: string;
+  displayOrder: number;
+  linkCount: number;        // 该分类下已发布链接数量
+}
+```
+
+**设计说明：**
+- 公开API，用于前端展示分类信息
+- 只返回活跃分类（isActive=1）
+- 按displayOrder排序
+- 包含每个分类的链接统计数量
+
 ## 二、认证 API（需要 Token）
 
 ### 1. 添加新链接（流程页面）
@@ -603,20 +633,109 @@ interface AITestResponse {
 GET /api/admin/categories
 ```
 
-#### 7.2 创建分类
+**响应格式：**
+```typescript
+interface CategoriesResponse {
+  success: boolean;
+  data: Category[];
+  message?: string;
+}
+
+interface Category {
+  id: number;
+  name: string;
+  slug: string;
+  icon: string;
+  description?: string;
+  displayOrder: number;
+  isActive: number;           // 0=禁用, 1=启用
+  createdAt: number;
+  updatedAt?: number;
+}
+```
+
+#### 7.2 获取可用图标列表
+```typescript
+GET /api/admin/categories/icons
+```
+
+**响应格式：**
+```typescript
+interface IconsResponse {
+  success: boolean;
+  data: string[];           // 预设图标名称数组
+}
+```
+
+**预设图标列表：**
+- `folder`, `code`, `book`, `news`, `video`, `music`, `image`
+- `web`, `tech`, `business`, `shopping`, `game`, `education`  
+- `finance`, `tool`, `heart`, `star`, `home`
+
+#### 7.3 创建分类
 ```typescript
 POST /api/admin/categories
 ```
 
-#### 7.3 更新分类
+**请求体：**
+```typescript
+interface CreateCategoryRequest {
+  name: string;             // 分类名称，必需，1-50字符
+  slug?: string;           // URL友好标识符，可选，自动生成
+  icon?: string;           // 图标名称，默认'folder'
+  description?: string;    // 描述，可选，最多200字符
+  displayOrder?: number;   // 显示顺序，默认0
+  isActive?: number;       // 是否启用，默认1
+}
+```
+
+#### 7.4 更新分类
 ```typescript
 PUT /api/admin/categories/:id
 ```
 
-#### 7.4 删除分类
+**请求体：**
+```typescript
+interface UpdateCategoryRequest {
+  name?: string;
+  slug?: string;
+  icon?: string;
+  description?: string;
+  displayOrder?: number;
+  isActive?: number;
+}
+```
+
+**特殊保护：**
+- 不能禁用最后一个活跃的默认分类
+- 智能slug生成，支持中文分类名
+- 自动处理slug唯一性冲突
+
+#### 7.5 删除分类
 ```typescript
 DELETE /api/admin/categories/:id
 ```
+
+**保护机制：**
+- 不能删除最后一个活跃的默认分类
+- 删除前检查是否为系统默认分类
+
+#### 7.6 分类排序
+```typescript
+POST /api/admin/categories/reorder
+```
+
+**请求体：**
+```typescript
+interface ReorderCategoriesRequest {
+  categoryIds: number[];   // 分类ID数组，按新顺序排列
+}
+```
+
+**功能说明：**
+- 重新设置所有分类的displayOrder值
+- 按数组顺序分配1, 2, 3...的序号
+- 支持拖拽排序功能
 
 ## 四、特殊端点
 

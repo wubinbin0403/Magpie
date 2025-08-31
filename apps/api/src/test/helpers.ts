@@ -65,7 +65,7 @@ export function getTestDbStats() {
  * Clear all test data
  */
 export function clearTestData() {
-  const tables = ['operation_logs', 'search_logs', 'links', 'api_tokens', 'users', 'settings'];
+  const tables = ['operation_logs', 'search_logs', 'links', 'api_tokens', 'users', 'categories', 'settings'];
   
   // 先禁用外键约束
   testDb.exec('PRAGMA foreign_keys = OFF');

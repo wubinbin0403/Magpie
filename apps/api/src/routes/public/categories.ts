@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { db } from '../../db/index.js'
-import { categories } from '../../db/schema.js'
+import { categories, links } from '../../db/schema.js'
 import { eq, asc, sql } from 'drizzle-orm'
 import { sendSuccess, sendError } from '../../utils/response.js'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
@@ -15,18 +15,24 @@ function createPublicCategoriesRouter(database = db) {
     return sendError(c, 'INTERNAL_SERVER_ERROR', 'An internal server error occurred', undefined, 500)
   })
 
-  // GET /api/categories - 获取所有启用的分类
+  // GET /api/categories - 获取所有启用的分类（包含链接数量）
   app.get('/', async (c) => {
     try {
+      // Get all active categories with link counts
       const result = await database
         .select({
           id: categories.id,
           name: categories.name,
           slug: categories.slug,
           icon: categories.icon,
-          color: categories.color,
           description: categories.description,
           displayOrder: categories.displayOrder,
+          linkCount: sql<number>`COALESCE((
+            SELECT COUNT(*)
+            FROM ${links}
+            WHERE ${links.finalCategory} = ${categories.name}
+            AND ${links.status} = 'published'
+          ), 0)`,
         })
         .from(categories)
         .where(eq(categories.isActive, 1))

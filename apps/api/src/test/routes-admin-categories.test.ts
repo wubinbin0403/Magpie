@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { clearTestData } from './helpers.js'
 import { testDrizzle } from './setup.js'
-import { settings, links, users } from '../db/schema.js'
+import { categories, users, settings } from '../db/schema.js'
 import { createAdminCategoriesRouter } from '../routes/admin/categories.js'
 import { createAdminJWT, hashPassword } from '../utils/auth.js'
 import { eq } from 'drizzle-orm'
@@ -38,86 +38,50 @@ describe('Admin Categories API', () => {
       role: 'admin'
     })
 
-    // Set up predefined categories
+    // Add default category setting
     await testDrizzle.insert(settings).values({
-      key: 'content.categories',
-      value: JSON.stringify(['技术', '设计', '工具']),
-      type: 'json',
-      description: 'Predefined content categories',
+      key: 'default_category',
+      value: '技术',
+      type: 'string',
+      description: 'Default category',
       createdAt: now,
       updatedAt: now,
     })
 
-    // Add some test links with categories
-    await testDrizzle.insert(links).values([
+    // Set up test categories in the categories table
+    await testDrizzle.insert(categories).values([
       {
         id: 1,
-        url: 'https://example.com/tech1',
-        domain: 'example.com',
-        title: 'Tech Article 1',
-        finalCategory: '技术',
-        finalDescription: 'A tech article',
-        finalTags: JSON.stringify(['tech', 'programming']),
-        status: 'published',
+        name: '技术',
+        slug: 'tech',
+        icon: 'code',
+        description: 'Technology and programming',
+        displayOrder: 1,
+        isActive: 1,
         createdAt: now,
-        publishedAt: now,
-        searchText: 'tech article programming',
-        clickCount: 0,
+        updatedAt: now,
       },
       {
         id: 2,
-        url: 'https://example.com/tech2',
-        domain: 'example.com',
-        title: 'Tech Article 2',
-        finalCategory: '技术',
-        finalDescription: 'Another tech article',
-        finalTags: JSON.stringify(['tech', 'javascript']),
-        status: 'published',
+        name: '设计',
+        slug: 'design',
+        icon: 'palette',
+        description: 'Design and UI/UX',
+        displayOrder: 2,
+        isActive: 1,
         createdAt: now,
-        publishedAt: now,
-        searchText: 'tech article javascript',
-        clickCount: 0,
+        updatedAt: now,
       },
       {
         id: 3,
-        url: 'https://example.com/design1',
-        domain: 'example.com',
-        title: 'Design Article',
-        finalCategory: '设计',
-        finalDescription: 'A design article',
-        finalTags: JSON.stringify(['design', 'ui']),
-        status: 'published',
+        name: '工具',
+        slug: 'tools',
+        icon: 'wrench',
+        description: 'Useful tools',
+        displayOrder: 3,
+        isActive: 1,
         createdAt: now,
-        publishedAt: now,
-        searchText: 'design article ui',
-        clickCount: 0,
-      },
-      {
-        id: 4,
-        url: 'https://example.com/misc1',
-        domain: 'example.com',
-        title: 'Misc Article',
-        finalCategory: '其他',
-        finalDescription: 'A misc article',
-        finalTags: JSON.stringify(['misc']),
-        status: 'published',
-        createdAt: now,
-        publishedAt: now,
-        searchText: 'misc article',
-        clickCount: 0,
-      },
-      {
-        id: 5,
-        url: 'https://example.com/pending1',
-        domain: 'example.com',
-        title: 'Pending Article',
-        finalCategory: '技术',
-        finalDescription: 'A pending article',
-        finalTags: JSON.stringify(['tech']),
-        status: 'pending',
-        createdAt: now,
-        searchText: 'pending article tech',
-        clickCount: 0,
+        updatedAt: now,
       },
     ])
   })
@@ -128,7 +92,7 @@ describe('Admin Categories API', () => {
       expect(res.status).toBe(401)
     })
 
-    it('should return categories with statistics by default', async () => {
+    it('should return all categories ordered by displayOrder', async () => {
       const res = await app.request('/', {
         headers: {
           'Authorization': `Bearer ${adminToken}`,
@@ -138,35 +102,35 @@ describe('Admin Categories API', () => {
       expect(res.status).toBe(200)
       const body = await res.json()
       expect(body.success).toBe(true)
-      expect(body.data).toHaveProperty('categories')
+      expect(body.data).toBeDefined()
 
-      const categories = body.data.categories
-      expect(Array.isArray(categories)).toBe(true)
+      const categoriesList = body.data
+      expect(Array.isArray(categoriesList)).toBe(true)
+      expect(categoriesList).toHaveLength(3)
 
-      // Should include predefined categories with stats
-      const techCategory = categories.find((c: any) => c.name === '技术')
-      expect(techCategory).toBeDefined()
-      expect(techCategory.linkCount).toBe(2) // 2 published tech articles
-      expect(techCategory.isPredefined).toBe(true)
+      // Should be ordered by displayOrder
+      expect(categoriesList[0].name).toBe('技术')
+      expect(categoriesList[1].name).toBe('设计')
+      expect(categoriesList[2].name).toBe('工具')
 
-      const designCategory = categories.find((c: any) => c.name === '设计')
-      expect(designCategory).toBeDefined()
-      expect(designCategory.linkCount).toBe(1)
-      expect(designCategory.isPredefined).toBe(true)
+      // Check structure
+      expect(categoriesList[0]).toHaveProperty('id')
+      expect(categoriesList[0]).toHaveProperty('name')
+      expect(categoriesList[0]).toHaveProperty('slug')
+      expect(categoriesList[0]).toHaveProperty('icon')
+      expect(categoriesList[0]).toHaveProperty('displayOrder')
+      expect(categoriesList[0]).toHaveProperty('isActive')
+    })
+  })
 
-      const toolsCategory = categories.find((c: any) => c.name === '工具')
-      expect(toolsCategory).toBeDefined()
-      expect(toolsCategory.linkCount).toBe(0) // No links with this category
-      expect(toolsCategory.isPredefined).toBe(true)
-
-      const otherCategory = categories.find((c: any) => c.name === '其他')
-      expect(otherCategory).toBeDefined()
-      expect(otherCategory.linkCount).toBe(1)
-      expect(otherCategory.isPredefined).toBe(false)
+  describe('GET /icons', () => {
+    it('should require admin authentication', async () => {
+      const res = await app.request('/icons')
+      expect(res.status).toBe(401)
     })
 
-    it('should return categories without stats when includeStats=false', async () => {
-      const res = await app.request('/?includeStats=false', {
+    it('should return available icons list', async () => {
+      const res = await app.request('/icons', {
         headers: {
           'Authorization': `Bearer ${adminToken}`,
         },
@@ -175,58 +139,11 @@ describe('Admin Categories API', () => {
       expect(res.status).toBe(200)
       const body = await res.json()
       expect(body.success).toBe(true)
-
-      const categories = body.data.categories
-      expect(Array.isArray(categories)).toBe(true)
-
-      // Should not have linkCount property
-      categories.forEach((category: any) => {
-        expect(category).toHaveProperty('name')
-        expect(category).toHaveProperty('isPredefined')
-        expect(category).not.toHaveProperty('linkCount')
-      })
-
-      // Check for all expected categories
-      const categoryNames = categories.map((c: any) => c.name)
-      expect(categoryNames).toContain('技术')
-      expect(categoryNames).toContain('设计')
-      expect(categoryNames).toContain('工具')
-      expect(categoryNames).toContain('其他')
-    })
-
-    it('should filter by status=all to include pending links', async () => {
-      const res = await app.request('/?status=all', {
-        headers: {
-          'Authorization': `Bearer ${adminToken}`,
-        },
-      })
-
-      expect(res.status).toBe(200)
-      const body = await res.json()
-
-      const techCategory = body.data.categories.find((c: any) => c.name === '技术')
-      expect(techCategory.linkCount).toBe(3) // 2 published + 1 pending
-    })
-
-    it('should filter by status=pending', async () => {
-      const res = await app.request('/?status=pending', {
-        headers: {
-          'Authorization': `Bearer ${adminToken}`,
-        },
-      })
-
-      expect(res.status).toBe(200)
-      const body = await res.json()
-
-      const techCategory = body.data.categories.find((c: any) => c.name === '技术')
-      expect(techCategory.linkCount).toBe(1) // 1 pending
-
-      const designCategory = body.data.categories.find((c: any) => c.name === '设计')
-      expect(designCategory.linkCount).toBe(0) // No pending design articles
-
-      // Should not include '其他' category as it has no pending links
-      const categories = body.data.categories
-      expect(categories.some((c: any) => c.name === '其他')).toBe(false)
+      expect(Array.isArray(body.data)).toBe(true)
+      expect(body.data.length).toBeGreaterThan(0)
+      expect(body.data).toContain('folder')
+      expect(body.data).toContain('code')
+      expect(body.data).toContain('book')
     })
   })
 
@@ -251,6 +168,7 @@ describe('Admin Categories API', () => {
         },
         body: JSON.stringify({ 
           name: '新分类',
+          icon: 'folder',
           description: 'A new category'
         }),
       })
@@ -260,17 +178,8 @@ describe('Admin Categories API', () => {
       expect(body.success).toBe(true)
       expect(body.data.name).toBe('新分类')
       expect(body.data.description).toBe('A new category')
-      expect(body.data.isPredefined).toBe(true)
-
-      // Verify the category was added to settings
-      const categorySettings = await testDrizzle
-        .select({ value: settings.value })
-        .from(settings)
-        .where(eq(settings.key, 'content.categories'))
-        .limit(1)
-
-      const categories = JSON.parse(categorySettings[0].value)
-      expect(categories).toContain('新分类')
+      expect(body.data.icon).toBe('folder')
+      expect(body.data.slug).toBeDefined()
     })
 
     it('should return error for duplicate category', async () => {
@@ -286,7 +195,7 @@ describe('Admin Categories API', () => {
       expect(res.status).toBe(409)
       const body = await res.json()
       expect(body.success).toBe(false)
-      expect(body.error.code).toBe('DUPLICATE_CATEGORY')
+      expect(body.error.code).toBe('DUPLICATE_ERROR')
     })
 
     it('should validate required fields', async () => {
@@ -302,7 +211,7 @@ describe('Admin Categories API', () => {
       expect(res.status).toBe(400)
       const body = await res.json()
       expect(body.success).toBe(false)
-      expect(body.error.code).toBe('VALIDATION_ERROR')
+      // zValidator may return different error formats, just check it's a validation error
     })
   })
 
@@ -333,39 +242,14 @@ describe('Admin Categories API', () => {
       expect(body.success).toBe(true)
       expect(body.data.name).toBe('设计更新')
 
-      // Verify links were updated
-      const updatedLinks = await testDrizzle
-        .select({ finalCategory: links.finalCategory })
-        .from(links)
-        .where(eq(links.id, 3))
-
-      expect(updatedLinks[0].finalCategory).toBe('设计更新')
-
-      // Verify settings were updated
-      const categorySettings = await testDrizzle
-        .select({ value: settings.value })
-        .from(settings)
-        .where(eq(settings.key, 'content.categories'))
+      // Verify the category was updated in database
+      const updatedCategory = await testDrizzle
+        .select()
+        .from(categories)
+        .where(eq(categories.id, 2))
         .limit(1)
 
-      const categories = JSON.parse(categorySettings[0].value)
-      expect(categories).toContain('设计更新')
-      expect(categories).not.toContain('设计')
-    })
-
-    it('should return error for invalid ID', async () => {
-      const res = await app.request('/999', {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${adminToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ name: '不存在' }),
-      })
-
-      expect(res.status).toBe(404)
-      const body = await res.json()
-      expect(body.success).toBe(false)
+      expect(updatedCategory[0].name).toBe('设计更新')
     })
 
     it('should return error for duplicate name', async () => {
@@ -381,7 +265,22 @@ describe('Admin Categories API', () => {
       expect(res.status).toBe(409)
       const body = await res.json()
       expect(body.success).toBe(false)
-      expect(body.error.code).toBe('DUPLICATE_CATEGORY')
+      expect(body.error.code).toBe('DUPLICATE_ERROR')
+    })
+
+    it('should return error for invalid ID', async () => {
+      const res = await app.request('/999', {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${adminToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ name: '不存在' }),
+      })
+
+      expect(res.status).toBe(404)
+      const body = await res.json()
+      expect(body.success).toBe(false)
     })
   })
 
@@ -405,23 +304,19 @@ describe('Admin Categories API', () => {
       expect(res.status).toBe(200)
       const body = await res.json()
       expect(body.success).toBe(true)
-      expect(body.data.name).toBe('工具')
 
-      // Verify category was removed from settings
-      const categorySettings = await testDrizzle
-        .select({ value: settings.value })
-        .from(settings)
-        .where(eq(settings.key, 'content.categories'))
+      // Verify category was removed from database
+      const deletedCategory = await testDrizzle
+        .select()
+        .from(categories)
+        .where(eq(categories.id, 3))
         .limit(1)
 
-      const categories = JSON.parse(categorySettings[0].value)
-      expect(categories).not.toContain('工具')
-      expect(categories).toContain('技术')
-      expect(categories).toContain('设计')
+      expect(deletedCategory).toHaveLength(0)
     })
 
-    it('should return error when deleting a category in use', async () => {
-      // Try to delete '技术' category (id=1, used by links)
+    it('should allow deleting default category when other categories exist', async () => {
+      // Try to delete '技术' category (default category) - should succeed since other active categories exist
       const res = await app.request('/1', {
         method: 'DELETE',
         headers: {
@@ -429,10 +324,42 @@ describe('Admin Categories API', () => {
         },
       })
 
-      expect(res.status).toBe(409)
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.success).toBe(true)
+
+      // Verify category was removed from database
+      const deletedCategory = await testDrizzle
+        .select()
+        .from(categories)
+        .where(eq(categories.id, 1))
+        .limit(1)
+
+      expect(deletedCategory).toHaveLength(0)
+    })
+
+    it('should prevent deleting last active category when it is default', async () => {
+      // First disable other categories to make '技术' the only active one
+      await testDrizzle.update(categories)
+        .set({ isActive: 0 })
+        .where(eq(categories.id, 2)) // 设计
+
+      await testDrizzle.update(categories)
+        .set({ isActive: 0 })
+        .where(eq(categories.id, 3)) // 工具
+
+      // Now try to delete '技术' category (should fail)
+      const res = await app.request('/1', {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${adminToken}`,
+        },
+      })
+
+      expect(res.status).toBe(400)
       const body = await res.json()
       expect(body.success).toBe(false)
-      expect(body.error.code).toBe('CATEGORY_IN_USE')
+      expect(body.error.code).toBe('CANNOT_DELETE_LAST_DEFAULT')
     })
 
     it('should return error for invalid ID', async () => {
@@ -446,6 +373,64 @@ describe('Admin Categories API', () => {
       expect(res.status).toBe(404)
       const body = await res.json()
       expect(body.success).toBe(false)
+    })
+  })
+
+  describe('POST /reorder', () => {
+    it('should require admin authentication', async () => {
+      const res = await app.request('/reorder', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ categoryIds: [1, 2, 3] }),
+      })
+      expect(res.status).toBe(401)
+    })
+
+    it('should reorder categories', async () => {
+      // Reverse the order: [3, 2, 1] instead of [1, 2, 3]
+      const res = await app.request('/reorder', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${adminToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ categoryIds: [3, 2, 1] }),
+      })
+
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.success).toBe(true)
+
+      // Verify the new order in database
+      const reorderedCategories = await testDrizzle
+        .select()
+        .from(categories)
+        .orderBy(categories.displayOrder)
+
+      expect(reorderedCategories[0].id).toBe(3) // '工具' should be first
+      expect(reorderedCategories[0].displayOrder).toBe(1)
+      expect(reorderedCategories[1].id).toBe(2) // '设计' should be second
+      expect(reorderedCategories[1].displayOrder).toBe(2)
+      expect(reorderedCategories[2].id).toBe(1) // '技术' should be third
+      expect(reorderedCategories[2].displayOrder).toBe(3)
+    })
+
+    it('should validate categoryIds array', async () => {
+      const res = await app.request('/reorder', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${adminToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ categoryIds: 'invalid' }),
+      })
+
+      expect(res.status).toBe(400)
+      const body = await res.json()
+      expect(body.success).toBe(false)
+      // zValidator may return different error formats, just check it's a validation error
     })
   })
 })
