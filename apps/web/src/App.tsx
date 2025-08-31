@@ -21,23 +21,30 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <Router>
-        <AuthProvider>
-          <div className="min-h-screen bg-base-100">
-            <Routes>
-              <Route path="/" element={<HomePage />} />
-              <Route path="/search" element={<SearchPage />} />
-              <Route path="/admin/login" element={<AdminLogin />} />
-              <Route 
-                path="/admin/*" 
-                element={
+        <div className="min-h-screen bg-base-100">
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/search" element={<SearchPage />} />
+            <Route 
+              path="/admin/login" 
+              element={
+                <AuthProvider>
+                  <AdminLogin />
+                </AuthProvider>
+              } 
+            />
+            <Route 
+              path="/admin/*" 
+              element={
+                <AuthProvider>
                   <ProtectedRoute requireAdmin>
                     <AdminPage />
                   </ProtectedRoute>
-                } 
-              />
-            </Routes>
-          </div>
-        </AuthProvider>
+                </AuthProvider>
+              } 
+            />
+          </Routes>
+        </div>
       </Router>
     </QueryClientProvider>
   )

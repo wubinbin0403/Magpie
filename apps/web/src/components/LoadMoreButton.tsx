@@ -9,12 +9,12 @@ export default function LoadMoreButton({ onLoadMore, loading = false }: LoadMore
       <button
         onClick={onLoadMore}
         disabled={loading}
-        className="btn btn-outline btn-primary bg-white hover:bg-blue-50 border-blue-200 hover:border-blue-400 text-blue-700 hover:text-blue-800 px-8"
+        className="btn btn-outline btn-primary px-8 hover:bg-primary hover:text-primary-content transition-colors"
       >
         {loading ? (
           <>
-            <span className="loading loading-spinner loading-sm mr-2"></span>
-            Loading...
+            <span className="loading loading-spinner loading-sm"></span>
+            加载中...
           </>
         ) : (
           <>

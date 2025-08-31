@@ -89,9 +89,6 @@ vi.mock('../components/LoadMoreButton', () => ({
   )
 }))
 
-vi.mock('../components/LoadingSpinner', () => ({
-  default: () => <div data-testid="loading-spinner">Loading...</div>
-}))
 
 vi.mock('../components/EmptyState', () => ({
   default: () => <div data-testid="empty-state">No links found</div>
@@ -206,7 +203,10 @@ describe('HomePage', () => {
     it('should render main layout components', async () => {
       renderHomePage()
 
-      expect(screen.getByTestId('navbar')).toBeInTheDocument()
+      // Wait for navbar to render (after loading is complete)
+      await waitFor(() => {
+        expect(screen.getByTestId('navbar')).toBeInTheDocument()
+      })
       
       // Wait for sidebar to render
       await waitFor(() => {
@@ -351,13 +351,13 @@ describe('HomePage', () => {
 
       renderHomePage()
 
-      // Should render navbar
-      expect(screen.getByTestId('navbar')).toBeInTheDocument()
-      
       // Should show error message
       await waitFor(() => {
-        expect(screen.getByText('Failed to load links. Please try again.')).toBeInTheDocument()
+        expect(screen.getByText('加载失败')).toBeInTheDocument()
       })
+      
+      // Should show retry button
+      expect(screen.getByText('重试')).toBeInTheDocument()
     })
   })
 

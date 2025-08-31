@@ -46,7 +46,11 @@ export default function NavBar({ onSearch }: NavBarProps) {
 
   // Magpie-inspired color scheme (black, white, blue accents)
   return (
-    <div className="navbar text-white shadow-lg fixed top-0 left-0 right-0 z-50" style={{ backgroundColor: '#127176' }}>
+    <div 
+      className="navbar text-white shadow-lg fixed top-0 left-0 right-0 z-50" 
+      style={{ backgroundColor: '#127176' }}
+      data-testid="navbar"
+    >
       <div className="w-full flex items-center justify-between px-4 lg:px-6">
         {/* Left side - Logo and desktop navigation */}
         <div className="flex items-center gap-8">
