@@ -1,7 +1,31 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '../../utils/api'
 import CategoryIcon from '../../components/CategoryIcon'
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent
+} from '@dnd-kit/core'
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  rectSortingStrategy,
+  useSortable
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+
+// Constants
+const ICON_OPTIONS = [
+  'folder', 'bookmark', 'tag', 'star', 'heart',
+  'code', 'globe', 'book', 'image', 'music',
+  'video', 'tool', 'game', 'shopping-cart', 'other'
+] as const
 
 interface SystemSettings {
   site: {
@@ -20,10 +44,118 @@ interface Category {
   name: string
   slug: string
   icon: string
-  color?: string
   description?: string
   displayOrder: number
   isActive: number
+  count?: number
+}
+
+// Sortable Category Item Component
+function SortableCategoryItem({ 
+  category, 
+  isDefault, 
+  onEdit, 
+  onDelete, 
+  isDeleting
+}: { 
+  category: Category
+  isDefault: boolean
+  onEdit: () => void
+  onDelete: () => void
+  isDeleting: boolean
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging
+  } = useSortable({ id: category.id })
+  
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition: isDragging ? 'none' : transition,
+  }
+  
+  return (
+    <div 
+      ref={setNodeRef}
+      style={style}
+      className={`group relative ${
+        isDragging ? 'z-50 opacity-90 shadow-lg' : ''
+      }`}
+      {...attributes}
+    >
+      {/* Category Button (Admin style with subtle yellow border) */}
+      <button
+        className="group relative p-4 rounded-xl transition-all duration-300 hover:shadow-sm hover:bg-magpie-100/10 w-full border border-magpie-100/40 hover:border-magpie-100/60"
+        onClick={onEdit}
+      >
+        {/* Drag handle - only show on hover */}
+        <div 
+          className="absolute top-2 left-2 opacity-0 group-hover:opacity-60 transition-opacity duration-200 cursor-grab active:cursor-grabbing z-20"
+          {...listeners}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <svg className="w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M8 6h2v2H8V6zM8 10h2v2H8v-2zM8 14h2v2H8v-2zM14 6h2v2h-2V6zM14 10h2v2h-2v-2zM14 14h2v2h-2v-2z"/>
+          </svg>
+        </div>
+        
+        {/* Large background icon (exactly like homepage) */}
+        <div className="absolute top-1 left-1 w-12 h-12 flex items-center justify-center">
+          <div className="text-gray-400/20 group-hover:text-magpie-200/22 transition-all duration-300">
+            <div className="w-10 h-10 flex items-center justify-center">
+              <CategoryIcon icon={category.icon} className="w-full h-full" />
+            </div>
+          </div>
+        </div>
+        
+        {/* Count in top-right corner (like homepage) */}
+        <div className="absolute top-2 right-2 z-10">
+          <span className="text-xs font-medium text-gray-400 group-hover:text-magpie-200 transition-colors duration-300">
+            {category.count || 0}
+          </span>
+        </div>
+        
+        {/* Default badge in bottom-right corner with padding */}
+        {isDefault && (
+          <div className="absolute bottom-2 right-2 z-10">
+            <span className="badge badge-primary badge-sm px-3 py-2">默认</span>
+          </div>
+        )}
+        
+        {/* Category title centered (exactly like homepage) */}
+        <div className="relative z-10 flex items-center justify-center min-h-[50px]">
+          <div className="text-lg font-bold text-gray-800 group-hover:text-magpie-300 transition-colors duration-300">
+            {category.name}
+          </div>
+        </div>
+        
+        {/* Edit icon overlay - bottom right */}
+        <div className="absolute bottom-2 left-2 opacity-0 group-hover:opacity-60 transition-opacity duration-200 z-20">
+          <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+          </svg>
+        </div>
+      </button>
+      
+      {/* Quick delete button */}
+      {!isDefault && (
+        <button
+          className="absolute bottom-2 right-2 w-6 h-6 bg-error/80 text-white rounded-full opacity-0 group-hover:opacity-100 transition-all duration-200 flex items-center justify-center text-xs hover:scale-110 hover:bg-error z-20"
+          onClick={(e) => {
+            e.stopPropagation()
+            onDelete()
+          }}
+          disabled={isDeleting}
+        >
+          ×
+        </button>
+      )}
+    </div>
+  )
 }
 
 export default function SystemSettings() {
@@ -39,10 +171,18 @@ export default function SystemSettings() {
     }
   })
   const [categories, setCategories] = useState<Category[]>([])
-  const [newCategory, setNewCategory] = useState({ name: '', icon: 'folder', color: '#6B7280', description: '' })
+  const [isDragging, setIsDragging] = useState(false)
   const [editingCategory, setEditingCategory] = useState<Category | null>(null)
   
   const queryClient = useQueryClient()
+  
+  // Drag and drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  )
 
   // Fetch settings
   const { data: settingsData, isLoading, error } = useQuery({
@@ -58,7 +198,16 @@ export default function SystemSettings() {
     queryKey: ['admin-categories'],
     queryFn: async () => {
       const response = await api.getCategories()
-      return response
+      return response.data
+    }
+  })
+  
+  // Fetch links data to get category counts
+  const { data: linksData } = useQuery({
+    queryKey: ['links-for-categories'],
+    queryFn: async () => {
+      const response = await api.getLinks({ page: 1, limit: 1 })
+      return response.data
     }
   })
 
@@ -71,12 +220,30 @@ export default function SystemSettings() {
 
   // Update categories when API data is loaded
   useEffect(() => {
-    if (Array.isArray(categoriesData)) {
-      setCategories(categoriesData)
-    } else if (categoriesData?.success && categoriesData?.data) {
-      setCategories(categoriesData.data)
+    if (Array.isArray(categoriesData) && categoriesData.length > 0) {
+      // Merge categories with count information from links data
+      if (linksData?.filters?.categories) {
+        const categoriesWithCounts = categoriesData.map(category => {
+          const categoryFilter = linksData.filters.categories.find((f: { name: string; count: number }) => f.name === category.name)
+          return {
+            ...category,
+            count: categoryFilter?.count || 0
+          }
+        })
+        setCategories(categoriesWithCounts)
+      } else {
+        // Set categories without counts initially
+        const categoriesWithDefaultCounts = categoriesData.map(category => ({
+          ...category,
+          count: 0
+        }))
+        setCategories(categoriesWithDefaultCounts)
+      }
+    } else if (Array.isArray(categoriesData)) {
+      // Handle empty categories array
+      setCategories([])
     }
-  }, [categoriesData])
+  }, [categoriesData, linksData])
 
   // Update settings mutation
   const updateSettingsMutation = useMutation({
@@ -92,14 +259,13 @@ export default function SystemSettings() {
 
   // Create category mutation
   const createCategoryMutation = useMutation({
-    mutationFn: async (categoryData: { name: string; icon?: string; color?: string; description?: string }) => {
-      const response = await api.createCategory(categoryData.name, categoryData.description, categoryData.icon, categoryData.color)
-      return response.data
+    mutationFn: async (categoryData: { name: string; icon?: string; description?: string }) => {
+      const response = await api.createCategory(categoryData.name, categoryData.description, categoryData.icon)
+      return response
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-categories'] })
       queryClient.invalidateQueries({ queryKey: ['categories'] })
-      setNewCategory({ name: '', icon: 'folder', color: '#6B7280', description: '' })
       showToast('分类创建成功！', 'success')
     }
   })
@@ -108,7 +274,7 @@ export default function SystemSettings() {
   const updateCategoryMutation = useMutation({
     mutationFn: async ({ id, updates }: { id: number; updates: Partial<Category> }) => {
       const response = await api.updateCategory(id, updates)
-      return response.data
+      return response
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-categories'] })
@@ -130,9 +296,18 @@ export default function SystemSettings() {
       showToast('分类删除成功！', 'success')
     }
   })
+  
+  // Reorder categories mutation - don't auto-invalidate to avoid state conflicts
+  const reorderCategoriesMutation = useMutation({
+    mutationFn: async (categoryIds: number[]) => {
+      const response = await api.reorderCategories(categoryIds)
+      return response.data
+    }
+    // onSuccess and onError are now handled in handleDragEnd
+  })
 
   // Helper function for showing toasts
-  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+  const showToast = useCallback((message: string, type: 'success' | 'error' = 'success') => {
     const toast = document.createElement('div')
     toast.className = 'toast toast-top toast-end'
     toast.innerHTML = `
@@ -141,23 +316,34 @@ export default function SystemSettings() {
       </div>
     `
     document.body.appendChild(toast)
-    setTimeout(() => document.body.removeChild(toast), 3000)
-  }
+    setTimeout(() => {
+      if (document.body.contains(toast)) {
+        document.body.removeChild(toast)
+      }
+    }, 3000)
+  }, [])
 
-  const handleSave = () => {
+  const handleSave = useCallback(() => {
     updateSettingsMutation.mutate(settings)
-  }
+  }, [updateSettingsMutation, settings])
 
-  const handleAddCategory = () => {
-    if (newCategory.name.trim() && !categories.some(cat => cat.name === newCategory.name.trim())) {
-      createCategoryMutation.mutate({
-        name: newCategory.name.trim(),
-        description: newCategory.description.trim() || undefined
+  const handleAddCategory = useCallback(async () => {
+    if (!editingCategory || !editingCategory.name.trim()) return
+    
+    try {
+      await createCategoryMutation.mutateAsync({
+        name: editingCategory.name.trim(),
+        description: editingCategory.description?.trim() || undefined,
+        icon: editingCategory.icon
       })
+      
+      setEditingCategory(null)
+    } catch (error) {
+      console.error('Failed to create category:', error)
     }
-  }
+  }, [editingCategory, createCategoryMutation])
 
-  const handleDeleteCategory = (category: Category) => {
+  const handleDeleteCategory = useCallback((category: Category) => {
     if (category.name === settings.content.defaultCategory) {
       alert('无法删除默认分类。请先设置其他默认分类。')
       return
@@ -166,29 +352,73 @@ export default function SystemSettings() {
     if (confirm(`确定要删除分类 "${category.name}" 吗？此操作无法撤销。`)) {
       deleteCategoryMutation.mutate(category.id)
     }
-  }
+  }, [settings.content.defaultCategory, deleteCategoryMutation])
 
-  const handleUpdateCategory = (category: Category) => {
-    if (editingCategory && editingCategory.id === category.id) {
-      updateCategoryMutation.mutate({
-        id: category.id,
-        updates: {
-          name: editingCategory.name.trim(),
-          description: editingCategory.description?.trim() || null,
-          icon: editingCategory.icon,
-          color: editingCategory.color
-        }
+  const handleUpdateCategory = useCallback(async (originalCategory: Category) => {
+    if (!editingCategory) return
+    
+    try {
+      await updateCategoryMutation.mutateAsync({
+        id: originalCategory.id,
+        name: editingCategory.name.trim(),
+        description: editingCategory.description?.trim() || undefined,
+        icon: editingCategory.icon
       })
+      
+      setEditingCategory(null)
+    } catch (error) {
+      console.error('Failed to update category:', error)
     }
-  }
+  }, [editingCategory, updateCategoryMutation])
 
-  const handleStartEditing = (category: Category) => {
-    setEditingCategory({ ...category })
-  }
+  // handleStartEditing and handleCancelEditing removed as they're now handled by setEditingCategory directly
+  
+  const handleDragStart = useCallback(() => {
+    setIsDragging(true)
+  }, [])
 
-  const handleCancelEditing = () => {
-    setEditingCategory(null)
-  }
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event
+    
+    if (active.id !== over?.id && over?.id && categories.length > 1) {
+      // Use sorted categories as base to ensure consistent ordering
+      const sortedCategories = [...categories].sort((a, b) => a.displayOrder - b.displayOrder)
+      const oldIndex = sortedCategories.findIndex(c => c.id === active.id)
+      const newIndex = sortedCategories.findIndex(c => c.id === over?.id)
+      
+      if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
+        // Create new order with arrayMove
+        const newOrder = arrayMove(sortedCategories, oldIndex, newIndex)
+        
+        // Update local state with new display orders
+        const updatedCategories = newOrder.map((category, index) => ({
+          ...category,
+          displayOrder: index
+        }))
+        
+        setCategories(updatedCategories)
+        
+        // Extract just the IDs in the new order for the API call
+        const categoryIds = newOrder.map(c => c.id)
+        
+        // Call reorder API but don't invalidate queries to avoid conflicting updates
+        reorderCategoriesMutation.mutate(categoryIds, {
+          onSuccess: () => {
+            // Only show toast, don't refetch data to avoid state conflicts
+            showToast('分类顺序已更新！', 'success')
+          },
+          onError: () => {
+            // Revert local state on error
+            queryClient.invalidateQueries({ queryKey: ['admin-categories'] })
+            showToast('排序失败，已恢复原顺序', 'error')
+          }
+        })
+      }
+    }
+    
+    // Always reset dragging state after processing
+    setIsDragging(false)
+  }, [categories, reorderCategoriesMutation, queryClient])
 
   if (isLoading) {
     return (
@@ -348,219 +578,55 @@ export default function SystemSettings() {
             </label>
             
             {/* Existing Categories */}
-            <div className="space-y-3 mb-6">
-              {categories
-                .sort((a, b) => a.displayOrder - b.displayOrder)
-                .map((category) => (
-                  <div key={category.id} className="flex items-center gap-3 p-4 bg-base-200/30 rounded-xl border border-base-300/20">
-                    {/* Category Icon */}
-                    <div className="flex-shrink-0">
-                      <div 
-                        className="w-10 h-10 rounded-lg flex items-center justify-center"
-                        style={{ backgroundColor: category.color + '15', color: category.color }}
-                      >
-                        <CategoryIcon icon={category.icon} className="w-5 h-5" />
-                      </div>
-                    </div>
-                    
-                    {/* Category Info */}
-                    {editingCategory?.id === category.id ? (
-                      <div className="flex-1 space-y-3">
-                        <input
-                          type="text"
-                          className="input input-sm input-bordered w-full"
-                          value={editingCategory.name}
-                          onChange={(e) => setEditingCategory(prev => prev ? { ...prev, name: e.target.value } : null)}
-                          placeholder="分类名称"
-                        />
-                        <input
-                          type="text"
-                          className="input input-sm input-bordered w-full"
-                          value={editingCategory.description || ''}
-                          onChange={(e) => setEditingCategory(prev => prev ? { ...prev, description: e.target.value } : null)}
-                          placeholder="分类描述（可选）"
-                        />
-                        
-                        {/* Icon Selector */}
-                        <div className="space-y-2">
-                          <label className="text-xs font-medium text-base-content/70">图标选择</label>
-                          <div className="grid grid-cols-8 gap-2">
-                            {['code', 'cube', 'palette', 'wrench', 'folder', 'game-controller', 'book', 'video', 'music', 'photo', 'document', 'globe', 'chat', 'shopping', 'academic'].map((iconName) => (
-                              <button
-                                key={iconName}
-                                type="button"
-                                className={`btn btn-xs p-2 ${editingCategory.icon === iconName ? 'btn-primary' : 'btn-ghost'}`}
-                                onClick={() => setEditingCategory(prev => prev ? { ...prev, icon: iconName } : null)}
-                              >
-                                <CategoryIcon icon={iconName} className="w-4 h-4" />
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                        
-                        {/* Color Selector */}
-                        <div className="space-y-2">
-                          <label className="text-xs font-medium text-base-content/70">颜色选择</label>
-                          <div className="flex gap-2 flex-wrap">
-                            {['#3B82F6', '#8B5CF6', '#10B981', '#F59E0B', '#EC4899', '#EF4444', '#6B7280', '#14B8A6', '#F97316', '#8B5CF6'].map((color) => (
-                              <button
-                                key={color}
-                                type="button"
-                                className={`w-6 h-6 rounded-full border-2 ${editingCategory.color === color ? 'border-base-content' : 'border-base-300'}`}
-                                style={{ backgroundColor: color }}
-                                onClick={() => setEditingCategory(prev => prev ? { ...prev, color } : null)}
-                              />
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex-1">
-                        <div className="font-medium text-base-content flex items-center gap-2">
-                          {category.name}
-                          {category.name === settings.content.defaultCategory && (
-                            <span className="badge badge-primary badge-xs">默认</span>
-                          )}
-                        </div>
-                        {category.description && (
-                          <div className="text-sm text-base-content/60 mt-1">
-                            {category.description}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                    
-                    {/* Action Buttons */}
-                    <div className="flex-shrink-0 flex gap-1">
-                      {editingCategory?.id === category.id ? (
-                        <>
-                          <button
-                            className="btn btn-success btn-xs"
-                            onClick={() => handleUpdateCategory(category)}
-                            disabled={updateCategoryMutation.isPending}
-                          >
-                            保存
-                          </button>
-                          <button
-                            className="btn btn-ghost btn-xs"
-                            onClick={handleCancelEditing}
-                          >
-                            取消
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <button
-                            className="btn btn-ghost btn-xs"
-                            onClick={() => handleStartEditing(category)}
-                          >
-                            编辑
-                          </button>
-                          <button
-                            className="btn btn-error btn-outline btn-xs"
-                            onClick={() => handleDeleteCategory(category)}
-                            disabled={category.name === settings.content.defaultCategory || deleteCategoryMutation.isPending}
-                          >
-                            删除
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                ))}
-            </div>
-
-            {/* Add New Category */}
-            <div className="bg-base-100 p-4 rounded-xl border-2 border-dashed border-base-300">
-              <div className="space-y-4">
-                <div className="flex gap-3 items-start">
-                  {/* Preview */}
-                  <div className="flex-shrink-0 pt-2">
-                    <div 
-                      className="w-10 h-10 rounded-lg flex items-center justify-center"
-                      style={{ backgroundColor: newCategory.color + '15', color: newCategory.color }}
-                    >
-                      <CategoryIcon icon={newCategory.icon} className="w-5 h-5" />
-                    </div>
-                  </div>
-                  
-                  {/* Form */}
-                  <div className="flex-1 space-y-3">
-                    <div className="flex gap-3">
-                      <input
-                        type="text"
-                        className="input input-bordered flex-1"
-                        placeholder="分类名称"
-                        value={newCategory.name}
-                        onChange={(e) => setNewCategory(prev => ({ ...prev, name: e.target.value }))}
-                        onKeyPress={(e) => {
-                          if (e.key === 'Enter') {
-                            handleAddCategory()
-                          }
-                        }}
+            <DndContext 
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext 
+                items={categories.sort((a, b) => a.displayOrder - b.displayOrder).map(c => c.id)}
+                strategy={rectSortingStrategy}
+              >
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
+                  {categories
+                    .sort((a, b) => a.displayOrder - b.displayOrder)
+                    .map((category) => (
+                      <SortableCategoryItem 
+                        key={category.id}
+                        category={category}
+                        isDefault={category.name === settings.content.defaultCategory}
+                        onEdit={() => setEditingCategory(category)}
+                        onDelete={() => handleDeleteCategory(category)}
+                        isDeleting={deleteCategoryMutation.isPending}
                       />
-                      <button
-                        className={`btn btn-primary ${createCategoryMutation.isPending ? 'loading' : ''}`}
-                        onClick={handleAddCategory}
-                        disabled={!newCategory.name.trim() || categories.some(cat => cat.name === newCategory.name.trim()) || createCategoryMutation.isPending}
-                      >
-                        {createCategoryMutation.isPending ? (
-                          '添加中...'
-                        ) : (
-                          <span className="flex items-center gap-2">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                            </svg>
-                            添加分类
-                          </span>
-                        )}
-                      </button>
-                    </div>
-                    
-                    <input
-                      type="text"
-                      className="input input-bordered w-full"
-                      placeholder="分类描述（可选）"
-                      value={newCategory.description}
-                      onChange={(e) => setNewCategory(prev => ({ ...prev, description: e.target.value }))}
-                    />
-                    
-                    {/* Icon Selector */}
-                    <div className="space-y-2">
-                      <label className="text-xs font-medium text-base-content/70">图标选择</label>
-                      <div className="grid grid-cols-8 gap-2">
-                        {['code', 'cube', 'palette', 'wrench', 'folder', 'game-controller', 'book', 'video', 'music', 'photo', 'document', 'globe', 'chat', 'shopping', 'academic'].map((iconName) => (
-                          <button
-                            key={iconName}
-                            type="button"
-                            className={`btn btn-xs p-2 ${newCategory.icon === iconName ? 'btn-primary' : 'btn-ghost'}`}
-                            onClick={() => setNewCategory(prev => ({ ...prev, icon: iconName }))}
-                          >
-                            <CategoryIcon icon={iconName} className="w-4 h-4" />
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    
-                    {/* Color Selector */}
-                    <div className="space-y-2">
-                      <label className="text-xs font-medium text-base-content/70">颜色选择</label>
-                      <div className="flex gap-2 flex-wrap">
-                        {['#3B82F6', '#8B5CF6', '#10B981', '#F59E0B', '#EC4899', '#EF4444', '#6B7280', '#14B8A6', '#F97316', '#A855F7'].map((color) => (
-                          <button
-                            key={color}
-                            type="button"
-                            className={`w-6 h-6 rounded-full border-2 ${newCategory.color === color ? 'border-base-content' : 'border-base-300'}`}
-                            style={{ backgroundColor: color }}
-                            onClick={() => setNewCategory(prev => ({ ...prev, color }))}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  </div>
+                    ))}
                 </div>
+              </SortableContext>
+            </DndContext>
+
+            {/* Add New Category Button */}
+            <button
+              className="group relative p-4 rounded-xl border-2 border-dashed border-base-300 hover:border-primary/50 transition-all duration-300 w-full flex flex-col items-center justify-center min-h-[120px] hover:bg-base-200/30"
+              onClick={() => setEditingCategory({
+                id: 0,
+                name: '',
+                slug: '',
+                icon: 'folder',
+                description: '',
+                displayOrder: categories.length > 0 ? Math.max(...categories.map(c => c.displayOrder), 0) + 1 : 0,
+                isActive: 1
+              } as Category)}
+            >
+              <div className="w-12 h-12 rounded-full border-2 border-dashed border-base-300 group-hover:border-primary/50 flex items-center justify-center mb-2 transition-colors duration-300">
+                <svg className="w-6 h-6 text-base-content/50 group-hover:text-primary/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
               </div>
-            </div>
+              <span className="text-sm font-medium text-base-content/70 group-hover:text-primary/70 transition-colors duration-300">
+                添加分类
+              </span>
+            </button>
           </div>
 
           {/* Items Per Page */}
@@ -602,9 +668,147 @@ export default function SystemSettings() {
         </svg>
         <div>
           <h3 className="font-bold">别忘记保存！</h3>
-          <div className="text-xs">点击上方的“保存所有更改”按钮后更改将生效。</div>
+          <div className="text-xs">点击上方的"保存所有更改"按钮后更改将生效。</div>
         </div>
       </div>
+
+      {/* Edit Category Modal */}
+      {editingCategory && (
+        <div className="modal modal-open">
+          <div className="modal-box max-w-4xl h-full max-h-screen overflow-hidden flex flex-col">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="font-bold text-lg">
+                {editingCategory.id === 0 ? '添加新分类' : '编辑分类'}
+              </h3>
+              <button
+                className="btn btn-sm btn-circle btn-ghost"
+                onClick={() => setEditingCategory(null)}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto space-y-6">
+              {/* Preview Section */}
+              <div className="bg-base-200/30 p-4 rounded-xl">
+                <h4 className="font-semibold mb-3 text-sm text-base-content/70">预览效果</h4>
+                <div className="w-48">
+                  <div className="group relative p-4 rounded-xl border border-magpie-100/40 hover:border-magpie-100/60 transition-all duration-300 hover:bg-magpie-100/10">
+                    {/* Background icon */}
+                    <div className="absolute top-1 left-1 w-12 h-12 flex items-center justify-center">
+                      <div className="text-gray-400/20 group-hover:text-magpie-200/22 transition-all duration-300">
+                        <div className="w-10 h-10 flex items-center justify-center">
+                          <CategoryIcon icon={editingCategory.icon || 'folder'} className="w-full h-full" />
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Count in top-right */}
+                    <div className="absolute top-2 right-2">
+                      <span className="text-xs font-medium text-gray-400 group-hover:text-magpie-200 transition-colors duration-300">
+                        0
+                      </span>
+                    </div>
+                    
+                    {/* Title centered */}
+                    <div className="relative z-10 flex items-center justify-center min-h-[50px]">
+                      <div className="text-lg font-bold text-gray-800 group-hover:text-magpie-300 transition-colors duration-300">
+                        {editingCategory.name || '分类名称'}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Form Fields */}
+              <div className="space-y-4">
+                <div className="form-control">
+                  <label className="label">
+                    <span className="label-text font-medium">分类名称 *</span>
+                  </label>
+                  <input
+                    type="text"
+                    className="input input-bordered w-full"
+                    value={editingCategory.name}
+                    onChange={(e) => setEditingCategory(prev => prev ? { ...prev, name: e.target.value } : null)}
+                    placeholder="输入分类名称"
+                    required
+                  />
+                </div>
+
+                <div className="form-control">
+                  <label className="label">
+                    <span className="label-text font-medium">描述（可选）</span>
+                  </label>
+                  <textarea
+                    className="textarea textarea-bordered"
+                    rows={2}
+                    value={editingCategory.description || ''}
+                    onChange={(e) => setEditingCategory(prev => prev ? { ...prev, description: e.target.value } : null)}
+                    placeholder="分类的简要描述"
+                  />
+                </div>
+
+                {/* Icon Selection */}
+                <div className="form-control">
+                  <label className="label">
+                    <span className="label-text font-medium">图标</span>
+                  </label>
+                  <div className="grid grid-cols-5 gap-3">
+                    {ICON_OPTIONS.map((iconName) => (
+                      <button
+                        key={iconName}
+                        type="button"
+                        className={`p-3 rounded-lg border-2 transition-all duration-200 hover:scale-105 ${
+                          editingCategory.icon === iconName
+                            ? 'border-primary bg-primary/10'
+                            : 'border-base-300 hover:border-primary/50'
+                        }`}
+                        onClick={() => setEditingCategory(prev => prev ? { ...prev, icon: iconName } : null)}
+                      >
+                        <CategoryIcon icon={iconName} className="w-8 h-8 mx-auto" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="flex justify-end gap-2 mt-6 pt-4 border-t border-base-300">
+              <button
+                className="btn btn-outline"
+                onClick={() => setEditingCategory(null)}
+              >
+                取消
+              </button>
+              <button
+                className={`btn btn-primary ${
+                  (createCategoryMutation.isPending || updateCategoryMutation.isPending) ? 'loading' : ''
+                }`}
+                onClick={() => {
+                  if (editingCategory.id === 0) {
+                    handleAddCategory()
+                  } else {
+                    const originalCategory = categories.find(c => c.id === editingCategory.id)
+                    if (originalCategory) {
+                      handleUpdateCategory(originalCategory)
+                    }
+                  }
+                }}
+                disabled={
+                  !editingCategory.name.trim() || 
+                  createCategoryMutation.isPending || 
+                  updateCategoryMutation.isPending
+                }
+              >
+                {editingCategory.id === 0 ? '添加分类' : '保存更改'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

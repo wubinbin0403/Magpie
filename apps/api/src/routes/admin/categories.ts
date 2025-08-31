@@ -13,7 +13,6 @@ const createCategorySchema = z.object({
   name: z.string().min(1).max(50),
   slug: z.string().min(1).max(50).regex(/^[a-z0-9-]+$/).optional(),
   icon: z.string().min(1).max(50).default('folder'),
-  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
   description: z.string().max(200).optional(),
   displayOrder: z.number().int().min(0).default(0),
   isActive: z.number().int().min(0).max(1).default(1),

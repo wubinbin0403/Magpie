@@ -137,14 +137,14 @@ class ApiClient {
     })
   }
 
-  async createCategory(name: string, description?: string, icon?: string, color?: string) {
+  async createCategory(name: string, description?: string, icon?: string) {
     return this.request('/admin/categories', {
       method: 'POST',
-      body: JSON.stringify({ name, description, icon, color }),
+      body: JSON.stringify({ name, description, icon }),
     })
   }
 
-  async updateCategory(id: number, updates: { name?: string; description?: string; icon?: string; color?: string }) {
+  async updateCategory(id: number, updates: { name?: string; description?: string; icon?: string }) {
     return this.request(`/admin/categories/${id}`, {
       method: 'PUT',
       body: JSON.stringify(updates),
@@ -154,6 +154,13 @@ class ApiClient {
   async deleteCategory(id: number) {
     return this.request(`/admin/categories/${id}`, {
       method: 'DELETE',
+    })
+  }
+
+  async reorderCategories(categoryIds: number[]) {
+    return this.request('/admin/categories/reorder', {
+      method: 'POST',
+      body: JSON.stringify({ categoryIds }),
     })
   }
 
