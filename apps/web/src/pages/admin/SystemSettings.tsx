@@ -20,11 +20,11 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 
-// Constants
+// Constants - 最常见的链接话题图标
 const ICON_OPTIONS = [
-  'folder', 'bookmark', 'tag', 'star', 'heart',
-  'code', 'globe', 'book', 'image', 'music',
-  'video', 'tool', 'game', 'shopping-cart', 'other'
+  'folder', 'code', 'book', 'news', 'video', 'music', 'image', 
+  'web', 'tech', 'business', 'shopping', 'game', 'education', 
+  'finance', 'tool', 'heart', 'star', 'home'
 ] as const
 
 interface SystemSettings {
@@ -331,17 +331,27 @@ export default function SystemSettings() {
     if (!editingCategory || !editingCategory.name.trim()) return
     
     try {
+      // Create category
       await createCategoryMutation.mutateAsync({
         name: editingCategory.name.trim(),
         description: editingCategory.description?.trim() || undefined,
         icon: editingCategory.icon
       })
       
+      // Check if this category should be set as default
+      const editingCategoryAny = editingCategory as any
+      if (editingCategoryAny.tempIsDefault) {
+        await updateSettingsMutation.mutateAsync({
+          ...settings,
+          content: { ...settings.content, defaultCategory: editingCategory.name }
+        })
+      }
+      
       setEditingCategory(null)
     } catch (error) {
       console.error('Failed to create category:', error)
     }
-  }, [editingCategory, createCategoryMutation])
+  }, [editingCategory, createCategoryMutation, updateSettingsMutation, settings])
 
   const handleDeleteCategory = useCallback((category: Category) => {
     if (category.name === settings.content.defaultCategory) {
@@ -358,18 +368,59 @@ export default function SystemSettings() {
     if (!editingCategory) return
     
     try {
+      // Update category
       await updateCategoryMutation.mutateAsync({
         id: originalCategory.id,
-        name: editingCategory.name.trim(),
-        description: editingCategory.description?.trim() || undefined,
-        icon: editingCategory.icon
+        updates: {
+          name: editingCategory.name.trim(),
+          description: editingCategory.description?.trim() || undefined,
+          icon: editingCategory.icon
+        }
       })
+      
+      // Handle default category updates
+      const editingCategoryAny = editingCategory as any
+      const wasOriginallyDefault = originalCategory.name === settings.content.defaultCategory
+      const shouldBeDefault = editingCategoryAny.tempIsDefault ?? wasOriginallyDefault
+      const nameChanged = editingCategory.name !== originalCategory.name
+      
+      if (wasOriginallyDefault && nameChanged) {
+        // If this was the default category and name changed, always update default setting
+        await updateSettingsMutation.mutateAsync({
+          ...settings,
+          content: { ...settings.content, defaultCategory: shouldBeDefault ? editingCategory.name : (() => {
+            // If user unchecked default, find another active category
+            const otherCategory = categories.find(cat => cat.isActive && cat.id !== editingCategory.id)
+            return otherCategory?.name || editingCategory.name // Fallback to current name if no other category
+          })() }
+        })
+      } else if (editingCategoryAny.tempIsDefault !== undefined) {
+        const currentlyDefault = originalCategory.name === settings.content.defaultCategory
+        
+        if (shouldBeDefault && !currentlyDefault) {
+          // Set this category as default
+          await updateSettingsMutation.mutateAsync({
+            ...settings,
+            content: { ...settings.content, defaultCategory: editingCategory.name }
+          })
+        } else if (!shouldBeDefault && currentlyDefault) {
+          // Remove default status, set another category as default
+          const otherCategory = categories.find(cat => cat.isActive && cat.id !== editingCategory.id)
+          if (otherCategory) {
+            await updateSettingsMutation.mutateAsync({
+              ...settings,
+              content: { ...settings.content, defaultCategory: otherCategory.name }
+            })
+          }
+          // If no other category available, keep current as default (don't allow removing last default)
+        }
+      }
       
       setEditingCategory(null)
     } catch (error) {
       console.error('Failed to update category:', error)
     }
-  }, [editingCategory, updateCategoryMutation])
+  }, [editingCategory, updateCategoryMutation, updateSettingsMutation, settings, categories])
 
   // handleStartEditing and handleCancelEditing removed as they're now handled by setEditingCategory directly
   
@@ -542,29 +593,6 @@ export default function SystemSettings() {
           </h2>
         </div>
         <div className="card-body p-6 pt-4 space-y-6">
-          {/* Default Category */}
-          <div className="form-control">
-            <label className="label">
-              <span className="label-text font-medium">默认分类</span>
-            </label>
-            <select
-              className="select select-bordered"
-              value={settings.content.defaultCategory}
-              onChange={(e) => setSettings(prev => ({
-                ...prev,
-                content: { ...prev.content, defaultCategory: e.target.value }
-              }))}
-            >
-              {categories.filter(cat => cat.isActive).map(category => (
-                <option key={category.id} value={category.name}>{category.name}</option>
-              ))}
-            </select>
-            <label className="label">
-              <span className="label-text-alt text-base-content/50">
-                当 AI 无法确定分类时分配给新链接的分类
-              </span>
-            </label>
-          </div>
 
           {/* Categories Management */}
           <div className="form-control">
@@ -596,7 +624,10 @@ export default function SystemSettings() {
                         key={category.id}
                         category={category}
                         isDefault={category.name === settings.content.defaultCategory}
-                        onEdit={() => setEditingCategory(category)}
+                        onEdit={() => setEditingCategory({
+                          ...category,
+                          tempIsDefault: category.name === settings.content.defaultCategory
+                        } as any)}
                         onDelete={() => handleDeleteCategory(category)}
                         isDeleting={deleteCategoryMutation.isPending}
                       />
@@ -615,8 +646,9 @@ export default function SystemSettings() {
                 icon: 'folder',
                 description: '',
                 displayOrder: categories.length > 0 ? Math.max(...categories.map(c => c.displayOrder), 0) + 1 : 0,
-                isActive: 1
-              } as Category)}
+                isActive: 1,
+                tempIsDefault: false
+              } as any)}
             >
               <div className="w-12 h-12 rounded-full border-2 border-dashed border-base-300 group-hover:border-primary/50 flex items-center justify-center mb-2 transition-colors duration-300">
                 <svg className="w-6 h-6 text-base-content/50 group-hover:text-primary/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -675,45 +707,54 @@ export default function SystemSettings() {
       {/* Edit Category Modal */}
       {editingCategory && (
         <div className="modal modal-open">
-          <div className="modal-box max-w-4xl h-full max-h-screen overflow-hidden flex flex-col">
+          <div className="modal-box max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col bg-magpie-50 border-2 border-magpie-100/30">
             {/* Modal Header */}
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="font-bold text-lg">
-                {editingCategory.id === 0 ? '添加新分类' : '编辑分类'}
-              </h3>
+            <div className="flex items-center justify-between p-6 pb-4 border-b border-magpie-100/20">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-magpie-200 rounded-lg flex items-center justify-center">
+                  <CategoryIcon icon={editingCategory.icon || 'folder'} className="w-5 h-5 text-white" />
+                </div>
+                <h3 className="font-bold text-xl text-magpie-400">
+                  {editingCategory.id === 0 ? '添加新分类' : '编辑分类'}
+                </h3>
+              </div>
               <button
-                className="btn btn-sm btn-circle btn-ghost"
+                className="btn btn-sm btn-circle btn-ghost hover:bg-magpie-100/20"
                 onClick={() => setEditingCategory(null)}
               >
                 ✕
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto space-y-6">
-              {/* Preview Section */}
-              <div className="bg-base-200/30 p-4 rounded-xl">
-                <h4 className="font-semibold mb-3 text-sm text-base-content/70">预览效果</h4>
-                <div className="w-48">
-                  <div className="group relative p-4 rounded-xl border border-magpie-100/40 hover:border-magpie-100/60 transition-all duration-300 hover:bg-magpie-100/10">
+            <div className="flex-1 overflow-y-auto p-6 space-y-5">
+              {/* Compact Preview */}
+              <div className="bg-white/60 p-4 rounded-lg border border-magpie-100/30">
+                <h4 className="font-medium mb-3 text-sm text-magpie-300 flex items-center gap-2">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M10 12a2 2 0 100-4 2 2 0 000 4z"/>
+                    <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd"/>
+                  </svg>
+                  预览效果
+                </h4>
+                <div className="inline-block">
+                  <div className="group relative p-3 rounded-lg border border-magpie-100/40 hover:border-magpie-100/60 transition-all duration-300 hover:bg-magpie-100/10 min-w-[120px]">
                     {/* Background icon */}
-                    <div className="absolute top-1 left-1 w-12 h-12 flex items-center justify-center">
+                    <div className="absolute top-0.5 left-0.5 w-8 h-8 flex items-center justify-center">
                       <div className="text-gray-400/20 group-hover:text-magpie-200/22 transition-all duration-300">
-                        <div className="w-10 h-10 flex items-center justify-center">
-                          <CategoryIcon icon={editingCategory.icon || 'folder'} className="w-full h-full" />
-                        </div>
+                        <CategoryIcon icon={editingCategory.icon || 'folder'} className="w-6 h-6" />
                       </div>
                     </div>
                     
                     {/* Count in top-right */}
-                    <div className="absolute top-2 right-2">
+                    <div className="absolute top-1 right-1">
                       <span className="text-xs font-medium text-gray-400 group-hover:text-magpie-200 transition-colors duration-300">
                         0
                       </span>
                     </div>
                     
                     {/* Title centered */}
-                    <div className="relative z-10 flex items-center justify-center min-h-[50px]">
-                      <div className="text-lg font-bold text-gray-800 group-hover:text-magpie-300 transition-colors duration-300">
+                    <div className="relative z-10 flex items-center justify-center min-h-[35px] px-2">
+                      <div className="text-sm font-bold text-gray-800 group-hover:text-magpie-300 transition-colors duration-300 text-center">
                         {editingCategory.name || '分类名称'}
                       </div>
                     </div>
@@ -724,12 +765,12 @@ export default function SystemSettings() {
               {/* Form Fields */}
               <div className="space-y-4">
                 <div className="form-control">
-                  <label className="label">
-                    <span className="label-text font-medium">分类名称 *</span>
+                  <label className="label pb-2">
+                    <span className="label-text font-medium text-magpie-400">分类名称 *</span>
                   </label>
                   <input
                     type="text"
-                    className="input input-bordered w-full"
+                    className="input input-bordered w-full border-magpie-100/40 focus:border-magpie-200 focus:outline-none bg-white/80"
                     value={editingCategory.name}
                     onChange={(e) => setEditingCategory(prev => prev ? { ...prev, name: e.target.value } : null)}
                     placeholder="输入分类名称"
@@ -738,11 +779,11 @@ export default function SystemSettings() {
                 </div>
 
                 <div className="form-control">
-                  <label className="label">
-                    <span className="label-text font-medium">描述（可选）</span>
+                  <label className="label pb-2">
+                    <span className="label-text font-medium text-magpie-400">描述（可选）</span>
                   </label>
                   <textarea
-                    className="textarea textarea-bordered"
+                    className="textarea textarea-bordered border-magpie-100/40 focus:border-magpie-200 focus:outline-none bg-white/80"
                     rows={2}
                     value={editingCategory.description || ''}
                     onChange={(e) => setEditingCategory(prev => prev ? { ...prev, description: e.target.value } : null)}
@@ -750,41 +791,112 @@ export default function SystemSettings() {
                   />
                 </div>
 
+                {/* Default Category Toggle */}
+                <div className="form-control">
+                  <label className="label cursor-pointer">
+                    <span className="label-text font-medium text-magpie-400">设为默认分类</span>
+                    <input
+                      type="checkbox"
+                      className="toggle toggle-sm toggle-primary"
+                      checked={!!(editingCategory as any).tempIsDefault ?? (editingCategory.name === settings.content.defaultCategory)}
+                      onChange={(e) => {
+                        setEditingCategory(prev => prev ? { 
+                          ...prev, 
+                          tempIsDefault: e.target.checked 
+                        } as any : null)
+                      }}
+                      disabled={
+                        // 新建分类时需要有名称
+                        (editingCategory.id === 0 && !editingCategory.name.trim()) ||
+                        // 如果这是当前默认分类且是唯一活跃分类，禁用取消操作
+                        (editingCategory.name === settings.content.defaultCategory && 
+                         categories.filter(cat => cat.isActive).length <= 1)
+                      }
+                    />
+                  </label>
+                  <div className="text-xs text-magpie-300/70 mt-1">
+                    {editingCategory.name === settings.content.defaultCategory && categories.filter(cat => cat.isActive).length <= 1
+                      ? "至少需要一个默认分类，无法取消"
+                      : "当AI无法确定分类时，新链接将分配到此分类"
+                    }
+                  </div>
+                </div>
+
                 {/* Icon Selection */}
                 <div className="form-control">
-                  <label className="label">
-                    <span className="label-text font-medium">图标</span>
+                  <label className="label pb-2">
+                    <span className="label-text font-medium text-magpie-400">图标选择</span>
                   </label>
-                  <div className="grid grid-cols-5 gap-3">
+                  
+                  {/* Preset Icons */}
+                  <div className="grid grid-cols-6 gap-2 mb-4">
                     {ICON_OPTIONS.map((iconName) => (
                       <button
                         key={iconName}
                         type="button"
-                        className={`p-3 rounded-lg border-2 transition-all duration-200 hover:scale-105 ${
+                        className={`p-2.5 rounded-lg border-2 transition-all duration-200 ${
                           editingCategory.icon === iconName
-                            ? 'border-primary bg-primary/10'
-                            : 'border-base-300 hover:border-primary/50'
+                            ? 'border-magpie-200 bg-magpie-200/10 shadow-sm'
+                            : 'border-magpie-100/30 hover:border-magpie-200/60 bg-white/80 hover:bg-magpie-100/10'
                         }`}
                         onClick={() => setEditingCategory(prev => prev ? { ...prev, icon: iconName } : null)}
                       >
-                        <CategoryIcon icon={iconName} className="w-8 h-8 mx-auto" />
+                        <CategoryIcon 
+                          icon={iconName} 
+                          className={`w-6 h-6 mx-auto ${
+                            editingCategory.icon === iconName ? 'text-magpie-200' : 'text-gray-600'
+                          }`} 
+                        />
                       </button>
                     ))}
+                  </div>
+                  
+                  {/* Custom Icon Input */}
+                  <div className="mt-3">
+                    <label className="label pb-1">
+                      <span className="label-text text-sm text-magpie-300">或输入自定义图标名</span>
+                      <a 
+                        href="https://heroicons.com/" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-xs text-magpie-200 hover:text-magpie-300 underline"
+                      >
+                        浏览Heroicons →
+                      </a>
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        className="input input-sm input-bordered flex-1 border-magpie-100/40 focus:border-magpie-200 focus:outline-none bg-white/80 text-sm"
+                        value={editingCategory.icon}
+                        onChange={(e) => setEditingCategory(prev => prev ? { ...prev, icon: e.target.value } : null)}
+                        placeholder="例如: arrow-down-circle, check-badge, sparkles..."
+                      />
+                      <div className="flex-shrink-0 w-10 h-8 flex items-center justify-center bg-white/80 border border-magpie-100/40 rounded-lg">
+                        <CategoryIcon 
+                          icon={editingCategory.icon || 'folder'} 
+                          className="w-5 h-5 text-magpie-200" 
+                        />
+                      </div>
+                    </div>
+                    <div className="text-xs text-magpie-300/70 mt-1">
+                      支持所有Heroicons图标（如：arrow-down-circle, check-badge, sparkles等）
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
 
             {/* Modal Actions */}
-            <div className="flex justify-end gap-2 mt-6 pt-4 border-t border-base-300">
+            <div className="flex justify-end gap-3 p-6 pt-4 border-t border-magpie-100/20 bg-white/40">
               <button
-                className="btn btn-outline"
+                className="btn btn-outline border-magpie-100 text-magpie-300 hover:bg-magpie-100/20 hover:border-magpie-200"
                 onClick={() => setEditingCategory(null)}
               >
                 取消
               </button>
               <button
-                className={`btn btn-primary ${
+                className={`btn bg-magpie-200 hover:bg-magpie-300 text-white border-none ${
                   (createCategoryMutation.isPending || updateCategoryMutation.isPending) ? 'loading' : ''
                 }`}
                 onClick={() => {

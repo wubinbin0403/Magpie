@@ -30,9 +30,9 @@ const reorderSchema = z.object({
 
 // Available preset icons
 const PRESET_ICONS = [
-  'code', 'cube', 'palette', 'wrench', 'folder', 'game-controller',
-  'book', 'video', 'music', 'photo', 'document', 'globe',
-  'chat', 'shopping', 'academic'
+  'folder', 'code', 'book', 'news', 'video', 'music', 'image', 
+  'web', 'tech', 'business', 'shopping', 'game', 'education', 
+  'finance', 'tool', 'heart', 'star', 'home'
 ]
 
 // Create categories router with optional database dependency injection
@@ -63,7 +63,6 @@ function createAdminCategoriesRouter(database = db) {
           name: categories.name,
           slug: categories.slug,
           icon: categories.icon,
-          color: categories.color,
           description: categories.description,
           displayOrder: categories.displayOrder,
           isActive: categories.isActive,
@@ -115,17 +114,43 @@ function createAdminCategoriesRouter(database = db) {
       
       // Generate slug if not provided
       if (!data.slug) {
-        data.slug = data.name.toLowerCase()
-          .replace(/[^\w\s-]/g, '')
-          .replace(/[\s_-]+/g, '-')
-          .replace(/^-+|-+$/g, '')
+        // Better slug generation that handles Chinese characters
+        let baseSlug = data.name.toLowerCase()
+          .replace(/[\s_-]+/g, '-') // Replace spaces, underscores, and multiple hyphens with single hyphen
+          .replace(/[^\w\u4e00-\u9fff-]/g, '') // Keep word characters and Chinese characters
+          .replace(/^-+|-+$/g, '') // Remove leading/trailing hyphens
+        
+        // If slug is empty after processing (e.g., all Chinese characters removed by \w), use a fallback
+        if (!baseSlug) {
+          baseSlug = `category-${Date.now()}` // Unique fallback based on timestamp
+        }
+        
+        // Check for existing slug and make it unique if necessary
+        let finalSlug = baseSlug
+        let counter = 1
+        let existingSlug = await database
+          .select({ slug: categories.slug })
+          .from(categories)
+          .where(eq(categories.slug, finalSlug))
+          .limit(1)
+        
+        while (existingSlug.length > 0) {
+          finalSlug = `${baseSlug}-${counter}`
+          counter++
+          existingSlug = await database
+            .select({ slug: categories.slug })
+            .from(categories)
+            .where(eq(categories.slug, finalSlug))
+            .limit(1)
+        }
+        
+        data.slug = finalSlug
       }
       
       const insertData = {
         name: data.name,
         slug: data.slug,
         icon: data.icon,
-        color: data.color || null,
         description: data.description || null,
         displayOrder: data.displayOrder,
         isActive: data.isActive,
@@ -170,10 +195,60 @@ function createAdminCategoriesRouter(database = db) {
       
       // Generate slug if name is updated but slug is not provided
       if (data.name && !data.slug) {
-        data.slug = data.name.toLowerCase()
-          .replace(/[^\w\s-]/g, '')
-          .replace(/[\s_-]+/g, '-')
-          .replace(/^-+|-+$/g, '')
+        // Better slug generation that handles Chinese characters
+        let baseSlug = data.name.toLowerCase()
+          .replace(/[\s_-]+/g, '-') // Replace spaces, underscores, and multiple hyphens with single hyphen
+          .replace(/[^\w\u4e00-\u9fff-]/g, '') // Keep word characters and Chinese characters
+          .replace(/^-+|-+$/g, '') // Remove leading/trailing hyphens
+        
+        // If slug is empty after processing, use a fallback
+        if (!baseSlug) {
+          baseSlug = `category-${Date.now()}` // Unique fallback based on timestamp
+        }
+        
+        // Check for existing slug and make it unique if necessary (excluding current category)
+        let finalSlug = baseSlug
+        let counter = 1
+        let existingSlug = await database
+          .select({ slug: categories.slug })
+          .from(categories)
+          .where(sql`${categories.slug} = ${finalSlug} AND ${categories.id} != ${id}`)
+          .limit(1)
+        
+        while (existingSlug.length > 0) {
+          finalSlug = `${baseSlug}-${counter}`
+          counter++
+          existingSlug = await database
+            .select({ slug: categories.slug })
+            .from(categories)
+            .where(sql`${categories.slug} = ${finalSlug} AND ${categories.id} != ${id}`)
+            .limit(1)
+        }
+        
+        data.slug = finalSlug
+      }
+      
+      // Check if trying to disable a default category
+      if (data.isActive === 0) {
+        const { settings } = await import('../../db/schema.js')
+        const defaultCategorySetting = await database
+          .select({ value: settings.value })
+          .from(settings)
+          .where(eq(settings.key, 'default_category'))
+          .limit(1)
+        
+        if (defaultCategorySetting.length > 0 && 
+            defaultCategorySetting[0].value === existingCategory[0].name) {
+          // Check if there are other active categories
+          const otherActiveCategories = await database
+            .select({ count: sql<number>`count(*)` })
+            .from(categories)
+            .where(sql`${categories.isActive} = 1 AND ${categories.id} != ${id}`)
+          
+          if (!otherActiveCategories[0]?.count || otherActiveCategories[0].count === 0) {
+            return sendError(c, 'CANNOT_DISABLE_LAST_DEFAULT', 'Cannot disable the only active default category', undefined, 400)
+          }
+        }
       }
       
       const updateData = {
@@ -213,6 +288,27 @@ function createAdminCategoriesRouter(database = db) {
       
       if (existingCategory.length === 0) {
         return notFound(c, 'Category not found')
+      }
+      
+      // Check if this is the default category
+      const { settings } = await import('../../db/schema.js')
+      const defaultCategorySetting = await database
+        .select({ value: settings.value })
+        .from(settings)
+        .where(eq(settings.key, 'default_category'))
+        .limit(1)
+      
+      if (defaultCategorySetting.length > 0 && 
+          defaultCategorySetting[0].value === existingCategory[0].name) {
+        // Check if there are other active categories
+        const otherActiveCategories = await database
+          .select({ count: sql<number>`count(*)` })
+          .from(categories)
+          .where(sql`${categories.isActive} = 1 AND ${categories.id} != ${id}`)
+        
+        if (!otherActiveCategories[0]?.count || otherActiveCategories[0].count === 0) {
+          return sendError(c, 'CANNOT_DELETE_LAST_DEFAULT', 'Cannot delete the only active default category', undefined, 400)
+        }
       }
       
       // TODO: Check if category is being used by links

@@ -186,6 +186,24 @@ function createAdminSettingsRouter(database = db) {
       // Update content settings
       if (updates.content) {
         if (updates.content.defaultCategory !== undefined) {
+          // Validate that the default category exists and is active
+          const { categories } = await import('../../db/schema.js')
+          const { eq } = await import('drizzle-orm')
+          
+          const categoryExists = await database
+            .select()
+            .from(categories)
+            .where(eq(categories.name, updates.content.defaultCategory))
+            .limit(1)
+          
+          if (categoryExists.length === 0) {
+            return sendError(c, 'INVALID_DEFAULT_CATEGORY', 'Default category does not exist', undefined, 400)
+          }
+          
+          if (categoryExists[0].isActive !== 1) {
+            return sendError(c, 'INACTIVE_DEFAULT_CATEGORY', 'Default category must be active', undefined, 400)
+          }
+          
           await setSetting('default_category', updates.content.defaultCategory)
         }
         if (updates.content.categories !== undefined) {
