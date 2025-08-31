@@ -88,7 +88,9 @@ export default function HomePage() {
       if (searchQuery) params.search = searchQuery
       
       return await api.getLinks(params)
-    }
+    },
+    keepPreviousData: true, // 保持之前的数据直到新数据加载完成
+    staleTime: 1 * 60 * 1000, // 1分钟内认为数据是新鲜的
   })
 
   // Show previous links during loading to prevent flash
@@ -116,12 +118,27 @@ export default function HomePage() {
   // Update sidebar data by combining categories from categories API with counts from links API
   useEffect(() => {
     if (Array.isArray(categoriesData) && data?.success && data.data.filters) {
+      // Preserve existing counts for categories not in the current filter
+      // This prevents flash when switching to empty categories
+      const existingCategoriesMap = new Map(
+        sidebarData.categories.map(cat => [cat.name, cat.count])
+      )
+      
       // Merge categories from API with count information from links filters
       const categoriesWithCounts = categoriesData.map(category => {
         const categoryFilter = data.data.filters.categories.find(f => f.name === category.name)
+        const newCount = categoryFilter?.count || 0
+        
+        // For non-selected categories, preserve existing count if the new count is 0
+        // This prevents visual changes when switching between categories
+        const shouldPreserveCount = selectedCategory !== category.name && 
+          newCount === 0 && 
+          existingCategoriesMap.has(category.name) && 
+          existingCategoriesMap.get(category.name)! > 0
+        
         return {
           ...category,
-          count: categoryFilter?.count || 0
+          count: shouldPreserveCount ? existingCategoriesMap.get(category.name)! : newCount
         }
       })
 
@@ -129,8 +146,8 @@ export default function HomePage() {
         categories: categoriesWithCounts,
         tags: data.data.filters.tags || []
       })
-    } else if (Array.isArray(categoriesData)) {
-      // If only categories data is available, use it with zero counts
+    } else if (Array.isArray(categoriesData) && sidebarData.categories.length === 0) {
+      // Only set initial zero counts if sidebar data is empty (first load)
       const categoriesWithZeroCounts = categoriesData.map(category => ({ ...category, count: 0 }))
       
       setSidebarData({
@@ -138,7 +155,7 @@ export default function HomePage() {
         tags: []
       })
     }
-  }, [categoriesData, data?.success, data?.data.filters])
+  }, [categoriesData, data?.success, data?.data.filters, selectedCategory, sidebarData.categories])
 
   // Update links when data changes
   useEffect(() => {

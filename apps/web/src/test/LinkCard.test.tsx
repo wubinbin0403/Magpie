@@ -1,0 +1,260 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { render, screen, fireEvent } from '@testing-library/react'
+import LinkCard from '../components/LinkCard'
+
+// Mock the API module
+vi.mock('../utils/api', () => ({
+  default: {
+    getDomainStats: vi.fn(),
+  }
+}))
+
+describe('LinkCard', () => {
+  const mockLink = {
+    id: 1,
+    url: 'https://example.com/article',
+    title: 'Test Article Title',
+    description: 'This is a test description for the article.',
+    category: '技术',
+    tags: ['javascript', 'react', 'testing', 'frontend'],
+    domain: 'example.com',
+    publishedAt: '2024-01-15T10:30:00Z',
+    createdAt: '2024-01-15T10:30:00Z'
+  }
+
+  const defaultProps = {
+    link: mockLink,
+    onTitleClick: vi.fn(),
+    onTagClick: vi.fn(),
+    selectedTags: []
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2024-01-20T10:30:00Z'))
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  describe('Basic Rendering', () => {
+    it('should render link title correctly', () => {
+      render(<LinkCard {...defaultProps} />)
+      
+      expect(screen.getByText('Test Article Title')).toBeInTheDocument()
+      expect(screen.getByText('Test Article Title')).toHaveAttribute('title', 'Test Article Title')
+    })
+
+    it('should render link description', () => {
+      render(<LinkCard {...defaultProps} />)
+      
+      expect(screen.getByText('This is a test description for the article.')).toBeInTheDocument()
+    })
+
+    it('should render domain', () => {
+      render(<LinkCard {...defaultProps} />)
+      
+      expect(screen.getByText('example.com')).toBeInTheDocument()
+    })
+
+    it('should render category', () => {
+      render(<LinkCard {...defaultProps} />)
+      
+      expect(screen.getByText('技术')).toBeInTheDocument()
+    })
+
+    it('should render first 3 tags', () => {
+      render(<LinkCard {...defaultProps} />)
+      
+      expect(screen.getByText('#javascript')).toBeInTheDocument()
+      expect(screen.getByText('#react')).toBeInTheDocument()
+      expect(screen.getByText('#testing')).toBeInTheDocument()
+      expect(screen.getByText('+1 more')).toBeInTheDocument()
+    })
+
+    it('should not show +more when tags are 3 or fewer', () => {
+      const linkWith2Tags = { ...mockLink, tags: ['javascript', 'react'] }
+      render(<LinkCard {...defaultProps} link={linkWith2Tags} />)
+      
+      expect(screen.getByText('#javascript')).toBeInTheDocument()
+      expect(screen.getByText('#react')).toBeInTheDocument()
+      expect(screen.queryByText('+1 more')).not.toBeInTheDocument()
+    })
+
+    it('should handle missing description', () => {
+      const linkWithoutDesc = { ...mockLink, description: '' }
+      render(<LinkCard {...defaultProps} link={linkWithoutDesc} />)
+      
+      expect(screen.queryByText('This is a test description')).not.toBeInTheDocument()
+    })
+  })
+
+  describe('Date Formatting', () => {
+    it('should format recent dates correctly', () => {
+      render(<LinkCard {...defaultProps} />)
+      
+      // 5 days ago from the mocked current time
+      expect(screen.getByText('5 days ago')).toBeInTheDocument()
+    })
+
+    it('should show "Yesterday" for yesterday', () => {
+      const yesterdayLink = {
+        ...mockLink,
+        publishedAt: '2024-01-19T10:30:00Z' // Yesterday
+      }
+      render(<LinkCard {...defaultProps} link={yesterdayLink} />)
+      
+      expect(screen.getByText('Yesterday')).toBeInTheDocument()
+    })
+
+    it('should show weeks for recent weeks', () => {
+      const twoWeeksAgoLink = {
+        ...mockLink,
+        publishedAt: '2024-01-06T10:30:00Z' // 2 weeks ago
+      }
+      render(<LinkCard {...defaultProps} link={twoWeeksAgoLink} />)
+      
+      expect(screen.getByText('2 weeks ago')).toBeInTheDocument()
+    })
+
+    it('should show months for older dates', () => {
+      const oldLink = {
+        ...mockLink,
+        publishedAt: '2023-11-15T10:30:00Z' // Several months ago
+      }
+      render(<LinkCard {...defaultProps} link={oldLink} />)
+      
+      // Should show months - accept any number of months
+      expect(screen.getByText(/\d+ months? ago/)).toBeInTheDocument()
+    })
+  })
+
+  describe('Click Interactions', () => {
+    it('should call onTitleClick when title is clicked', () => {
+      render(<LinkCard {...defaultProps} />)
+      
+      fireEvent.click(screen.getByText('Test Article Title'))
+      expect(defaultProps.onTitleClick).toHaveBeenCalled()
+    })
+
+    it('should call onTagClick when tag is clicked', () => {
+      render(<LinkCard {...defaultProps} />)
+      
+      fireEvent.click(screen.getByText('#javascript'))
+      expect(defaultProps.onTagClick).toHaveBeenCalledWith('javascript')
+    })
+
+    it('should handle domain click (currently logs to console)', () => {
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+      render(<LinkCard {...defaultProps} />)
+      
+      fireEvent.click(screen.getByText('example.com'))
+      expect(consoleSpy).toHaveBeenCalledWith('Filter by domain:', 'example.com')
+      
+      consoleSpy.mockRestore()
+    })
+
+    it('should handle category click (currently logs to console)', () => {
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+      render(<LinkCard {...defaultProps} />)
+      
+      fireEvent.click(screen.getByText('技术'))
+      expect(consoleSpy).toHaveBeenCalledWith('Filter by category:', '技术')
+      
+      consoleSpy.mockRestore()
+    })
+
+    it('should not call onTitleClick when onTitleClick is not provided', () => {
+      render(<LinkCard link={mockLink} />)
+      
+      // Should not throw error when clicked
+      fireEvent.click(screen.getByText('Test Article Title'))
+    })
+
+    it('should not call onTagClick when onTagClick is not provided', () => {
+      render(<LinkCard link={mockLink} />)
+      
+      // Should not throw error when clicked
+      fireEvent.click(screen.getByText('#javascript'))
+    })
+  })
+
+  describe('Tag Highlighting', () => {
+    it('should highlight selected tags', () => {
+      render(<LinkCard {...defaultProps} selectedTags={['javascript', 'react']} />)
+      
+      const jsTag = screen.getByText('#javascript').closest('button')
+      const reactTag = screen.getByText('#react').closest('button')
+      const testingTag = screen.getByText('#testing').closest('button')
+      
+      expect(jsTag).toHaveClass('bg-primary/30', 'text-primary', 'font-semibold', 'border-primary/50')
+      expect(reactTag).toHaveClass('bg-primary/30', 'text-primary', 'font-semibold', 'border-primary/50')
+      expect(testingTag).toHaveClass('bg-primary/10', 'hover:bg-primary/20', 'text-primary')
+    })
+
+    it('should handle empty selectedTags array', () => {
+      render(<LinkCard {...defaultProps} selectedTags={[]} />)
+      
+      const jsTag = screen.getByText('#javascript').closest('button')
+      expect(jsTag).toHaveClass('bg-primary/10', 'hover:bg-primary/20', 'text-primary')
+    })
+  })
+
+  describe('Styling and Layout', () => {
+    it('should have correct CSS classes for title', () => {
+      render(<LinkCard {...defaultProps} />)
+      
+      const title = screen.getByText('Test Article Title')
+      expect(title).toHaveClass('text-lg', 'font-semibold', 'line-clamp-2', 'cursor-pointer', 'hover:underline')
+      expect(title).toHaveStyle({ color: '#06161a' })
+    })
+
+    it('should have correct CSS classes for domain', () => {
+      render(<LinkCard {...defaultProps} />)
+      
+      const domain = screen.getByText('example.com')
+      expect(domain).toHaveStyle({ 
+        color: '#2c5766',
+        textDecoration: 'underline',
+        textDecorationStyle: 'dashed'
+      })
+    })
+
+    it('should have proper article structure', () => {
+      render(<LinkCard {...defaultProps} />)
+      
+      const article = screen.getByRole('article')
+      expect(article).toHaveClass('bg-transparent')
+    })
+  })
+
+  describe('Accessibility', () => {
+    it('should have proper ARIA labels and roles', () => {
+      render(<LinkCard {...defaultProps} />)
+      
+      expect(screen.getByRole('article')).toBeInTheDocument()
+      
+      // Title should be clickable
+      const title = screen.getByText('Test Article Title')
+      expect(title).toHaveAttribute('title', 'Test Article Title')
+    })
+
+    it('should have cursor help for date element', () => {
+      render(<LinkCard {...defaultProps} />)
+      
+      const dateElement = screen.getByText('5 days ago')
+      expect(dateElement).toHaveClass('cursor-help')
+    })
+
+    it('should have proper button elements for interactive parts', () => {
+      render(<LinkCard {...defaultProps} />)
+      
+      // Domain, category, and tags should be buttons
+      expect(screen.getByText('example.com').closest('button')).toBeInTheDocument()
+      expect(screen.getByText('技术').closest('button')).toBeInTheDocument()
+      expect(screen.getByText('#javascript').closest('button')).toBeInTheDocument()
+    })
+  })
+})

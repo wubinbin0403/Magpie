@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, memo } from 'react'
 import CategoryIcon from './CategoryIcon'
 
 interface Category {
@@ -26,24 +26,17 @@ interface SidebarProps {
   onTagFilter: (tag: string) => void
 }
 
-export default function Sidebar({ 
+const Sidebar = memo(function Sidebar({ 
   categories, 
   tags, 
   selectedCategory, 
   selectedTags, 
   onCategoryFilter, 
-  onTagFilter 
+  onTagFilter
 }: SidebarProps) {
   const [showAllTags, setShowAllTags] = useState(false)
   const [hoverAnimations, setHoverAnimations] = useState<{[key: string]: string}>({})
   
-  
-  // Get recent activity stats (mock data for now)
-  const recentStats = [
-    { label: 'This Month', count: 12 },
-    { label: 'Last Week', count: 5 },
-    { label: 'Today', count: 2 }
-  ]
 
   // Random animation effects
   const animations = [
@@ -159,8 +152,8 @@ export default function Sidebar({
             </div>
           </button>
           
-          {/* Individual categories */}
-          {categories.map((category) => (
+          {/* Individual categories - only show categories with count > 0 */}
+          {categories.filter(category => category.count > 0).map((category) => (
             <button
               key={category.name}
               onClick={() => onCategoryFilter(category.name)}
@@ -260,15 +253,12 @@ export default function Sidebar({
                 </button>
               </div>
             )}
-            
-            {/* Recent stats as one line */}
-            <div className="mt-4 pt-3 border-t border-slate-200 text-xs text-slate-500 text-center">
-              新增条目 - 今天: <span style={{ color: '#127176' }}>{recentStats.find(s => s.label === 'Today')?.count || 0}</span> | 本周: <span style={{ color: '#127176' }}>{recentStats.find(s => s.label === 'Last Week')?.count || 0}</span> | 本月: <span style={{ color: '#127176' }}>{recentStats.find(s => s.label === 'This Month')?.count || 0}</span>
-            </div>
           </div>
         </div>
       </div>
 
     </div>
   )
-}
+})
+
+export default Sidebar
