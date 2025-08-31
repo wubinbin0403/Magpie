@@ -12,6 +12,7 @@ import { initializeDatabase } from './db/index.js'
 import linksRouter from './routes/public/links.js'
 import searchRouter from './routes/public/search.js'
 import statsRouter from './routes/public/stats.js'
+import domainsRouter from './routes/public/domains.js'
 import addLinkRouter from './routes/auth/add-link.js'
 import pendingLinkRouter from './routes/auth/pending-link.js'
 import confirmLinkRouter from './routes/auth/confirm-link.js'
@@ -57,6 +58,7 @@ app.get('/api/health', (c) => {
 app.route('/api/links', linksRouter)
 app.route('/api/search', searchRouter)
 app.route('/api/stats', statsRouter)
+app.route('/api/domains', domainsRouter)
 
 // Authentication required routes
 app.route('/api/links', addLinkRouter)      // POST /api/links

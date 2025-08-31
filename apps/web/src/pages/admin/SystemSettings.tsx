@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import api from '../../utils/api'
 
 interface SystemSettings {
   site: {
@@ -14,41 +15,45 @@ interface SystemSettings {
   }
 }
 
-// Mock system settings
-const mockSettings: SystemSettings = {
-  site: {
-    title: 'Magpie - 我的链接收藏',
-    description: '收集和分享有趣的链接和内容',
-    aboutUrl: '/about'
-  },
-  content: {
-    defaultCategory: '其他',
-    categories: ['技术', '产品', '设计', '工具', '其他'],
-    itemsPerPage: 20
-  }
-}
-
 export default function SystemSettings() {
-  const [settings, setSettings] = useState<SystemSettings>(mockSettings)
+  const [settings, setSettings] = useState<SystemSettings>({
+    site: {
+      title: '',
+      description: '',
+      aboutUrl: ''
+    },
+    content: {
+      defaultCategory: '其他',
+      categories: ['技术', '产品', '设计', '工具', '其他'],
+      itemsPerPage: 20
+    }
+  })
   const [newCategory, setNewCategory] = useState('')
   const [editingCategory, setEditingCategory] = useState<{ index: number, value: string } | null>(null)
   
   const queryClient = useQueryClient()
 
   // Fetch settings
-  const { isLoading } = useQuery<SystemSettings>({
+  const { data: settingsData, isLoading, error } = useQuery({
     queryKey: ['system-settings'],
     queryFn: async () => {
-      await new Promise(resolve => setTimeout(resolve, 500))
-      return mockSettings
+      const response = await api.getSettings()
+      return response.data
     }
   })
 
+  // Update local settings when API data is loaded
+  useEffect(() => {
+    if (settingsData) {
+      setSettings(settingsData)
+    }
+  }, [settingsData])
+
   // Update settings mutation
   const updateSettingsMutation = useMutation({
-    mutationFn: async (_newSettings: SystemSettings) => {
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      return { success: true }
+    mutationFn: async (newSettings: SystemSettings) => {
+      const response = await api.updateSettings(newSettings)
+      return response.data
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['system-settings'] })

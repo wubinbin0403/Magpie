@@ -480,11 +480,8 @@ describe('Public Links API', () => {
       expect(filters.categories.find((c: any) => c.name === 'Design')).toEqual({ name: 'Design', count: 1 })
       expect(filters.categories.find((c: any) => c.name === 'Other')).toBeUndefined() // pending链接不应包含
 
-      // 检查域名统计
-      expect(filters.domains).toHaveLength(3)
-      expect(filters.domains.find((d: any) => d.name === 'example.com')).toEqual({ name: 'example.com', count: 1 })
-      expect(filters.domains.find((d: any) => d.name === 'github.com')).toEqual({ name: 'github.com', count: 1 })
-      expect(filters.domains.find((d: any) => d.name === 'design.com')).toEqual({ name: 'design.com', count: 1 })
+      // 域名统计已移除，现在通过独立的domains API按需获取
+      expect(filters.domains).toBeUndefined()
 
       // 检查标签统计
       expect(filters.tags.length).toBeGreaterThan(0)
@@ -524,7 +521,7 @@ describe('Public Links API', () => {
       expect(data.data.links).toHaveLength(0)
       expect(data.data.filters.categories).toHaveLength(0)
       expect(data.data.filters.tags).toHaveLength(0)
-      expect(data.data.filters.domains).toHaveLength(0)
+      expect(data.data.filters.domains).toBeUndefined()
       expect(data.data.filters.yearMonths).toHaveLength(0)
     })
 
@@ -566,8 +563,7 @@ describe('Public Links API', () => {
       // 空值/null分类不应出现在统计中
       expect(data.data.filters.categories).toHaveLength(0)
       expect(data.data.filters.tags).toHaveLength(0)
-      expect(data.data.filters.domains).toHaveLength(1)
-      expect(data.data.filters.domains[0]).toEqual({ name: 'example.com', count: 2 })
+      expect(data.data.filters.domains).toBeUndefined()
     })
   })
 })

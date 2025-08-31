@@ -55,13 +55,13 @@ export default function HomePage() {
   }>({ categories: [], tags: [] })
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
 
-  // Fetch links data
+  // Fetch links data - backend will handle limit from settings
   const { data, isLoading, error, refetch } = useQuery<LinksResponse>({
     queryKey: ['links', page, selectedCategory, selectedTags, searchQuery],
     queryFn: async () => {
       const params: Record<string, string> = {
-        page: page.toString(),
-        limit: '20'
+        page: page.toString()
+        // Don't specify limit - let backend use system settings
       }
       
       if (selectedCategory) params.category = selectedCategory

@@ -60,6 +60,10 @@ class ApiClient {
     return this.request('/stats')
   }
 
+  async getDomainStats(domain: string) {
+    return this.request(`/domains/${domain}/stats`)
+  }
+
   // Admin endpoints
   async adminLogin(password: string) {
     return this.request('/admin/login', {

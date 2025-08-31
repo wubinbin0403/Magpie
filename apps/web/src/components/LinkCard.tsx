@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import api from '../utils/api'
 
 interface Link {
   id: number
@@ -24,20 +25,19 @@ export default function LinkCard({ link, onTitleClick, onTagClick, selectedTags 
   const [showTooltip, setShowTooltip] = useState(false)
   const [showDateTooltip, setShowDateTooltip] = useState(false)
 
-  // Fetch domain count on hover
+  // Fetch domain count on hover using new dedicated API
   const fetchDomainCount = async () => {
     if (domainCount !== null) return // Already fetched
     
     try {
-      const response = await fetch(`/api/links?domain=${encodeURIComponent(link.domain)}&limit=1`)
-      if (response.ok) {
-        const data = await response.json()
-        if (data.success && data.data.pagination) {
-          setDomainCount(data.data.pagination.total)
-        }
+      const response = await api.getDomainStats(link.domain)
+      if (response.success && response.data) {
+        setDomainCount(response.data.count)
       }
     } catch (error) {
       console.error('Failed to fetch domain count:', error)
+      // Set to 0 to show something rather than keep loading
+      setDomainCount(0)
     }
   }
 

@@ -5,6 +5,7 @@ import { links } from '../../db/schema.js'
 import { eq, desc, asc, like, and, or, count, sql } from 'drizzle-orm'
 import { sendSuccess, sendError, notFound, badRequest } from '../../utils/response.js'
 import { linksQuerySchema, idParamSchema, buildDateFilter } from '../../utils/validation.js'
+import { getSettings } from '../../utils/settings.js'
 import type { LinksResponse, Link, Pagination } from '../../types/api.js'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 
@@ -27,7 +28,20 @@ app.onError((err, c) => {
 // GET /api/links - 获取链接列表
 app.get('/', zValidator('query', linksQuerySchema), async (c) => {
   try {
-    const { page, limit, category, tags, search, domain, year, month, sort } = c.req.valid('query')
+    const queryParams = c.req.valid('query')
+    let { page, limit, category, tags, search, domain, year, month, sort } = queryParams
+    
+    // 如果没有提供limit参数，从系统设置中获取默认值
+    if (!c.req.query('limit')) {
+      try {
+        const settings = await getSettings(database)
+        const itemsPerPage = parseInt(settings.items_per_page || '20')
+        limit = Math.min(Math.max(itemsPerPage, 1), 100) // 确保在1-100范围内
+      } catch (error) {
+        console.warn('Failed to get items_per_page from settings, using default:', error)
+        limit = 20 // 如果获取设置失败，使用默认值
+      }
+    }
     
     const offset = (page - 1) * limit
     
@@ -140,8 +154,8 @@ app.get('/', zValidator('query', linksQuerySchema), async (c) => {
       hasPrev: page > 1,
     }
     
-    // 获取filters统计数据
-    const [categoryStats, domainStats, tagData, yearMonthData] = await Promise.all([
+    // 获取filters统计数据（移除域名统计，按需加载）
+    const [categoryStats, tagData, yearMonthData] = await Promise.all([
       // 分类统计
       database
         .select({
@@ -152,17 +166,6 @@ app.get('/', zValidator('query', linksQuerySchema), async (c) => {
         .where(eq(links.status, 'published'))
         .groupBy(links.finalCategory)
         .having(sql`${links.finalCategory} IS NOT NULL AND ${links.finalCategory} != ''`)
-        .orderBy(sql`count(*) desc`),
-
-      // 域名统计  
-      database
-        .select({
-          name: links.domain,
-          count: sql<number>`count(*)`
-        })
-        .from(links)
-        .where(eq(links.status, 'published'))
-        .groupBy(links.domain)
         .orderBy(sql`count(*) desc`),
 
       // 标签数据（需要进一步处理）
@@ -217,7 +220,6 @@ app.get('/', zValidator('query', linksQuerySchema), async (c) => {
     const filters = {
       categories: categoryStats,
       tags: tagStats,
-      domains: domainStats,
       yearMonths: yearMonthStats,
     }
     

@@ -46,7 +46,7 @@ GET /api/links
 ```typescript
 interface LinksQuery {
   page?: number;           // 页码，默认 1
-  limit?: number;          // 每页数量，默认 20，最大 100
+  limit?: number;          // 每页数量，默认从系统设置获取(items_per_page)，最大 100
   category?: string;       // 分类筛选
   tags?: string;          // 标签筛选，逗号分隔
   search?: string;        // 搜索关键词
@@ -75,7 +75,6 @@ interface LinksResponse {
     filters: {
       categories: CategoryStats[];
       tags: TagStats[];
-      domains: DomainStats[];
       yearMonths: YearMonthStats[];
     };
   };
@@ -212,6 +211,40 @@ interface ActivityItem {
   timestamp: string;
 }
 ```
+
+### 5. 获取域名统计信息
+```typescript
+GET /api/domains/:domain/stats
+```
+
+**路径参数：**
+```typescript
+interface DomainStatsParams {
+  domain: string;            // 域名，如 github.com
+}
+```
+
+**响应格式：**
+```typescript
+interface DomainStatsResponse {
+  success: boolean;
+  data: {
+    domain: string;          // 域名
+    count: number;           // 该域名下已发布的链接数量
+    latestPublished: string; // 最新发布链接的时间 (ISO 8601)
+    latestTitle: string;     // 最新发布链接的标题
+  };
+  message?: string;
+}
+```
+
+**错误响应：**
+- `404 NOT_FOUND`：域名不存在或没有已发布的链接
+
+**设计说明：**
+- 此API用于按需加载域名统计信息，替代之前在links API中包含的domains统计
+- 只在用户悬停域名时调用，优化初始页面加载性能
+- 响应小于200字节，支持快速加载
 
 ## 二、认证 API（需要 Token）
 
