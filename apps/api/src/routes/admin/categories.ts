@@ -311,9 +311,40 @@ function createAdminCategoriesRouter(database = db) {
         }
       }
       
-      // TODO: Check if category is being used by links
-      // For now, we'll allow deletion but you might want to add a check
+      // Get default category to move links to
+      let defaultCategory = 'General'
+      if (defaultCategorySetting.length > 0) {
+        defaultCategory = defaultCategorySetting[0].value
+      }
       
+      // Move all links from this category to the default category
+      const { links } = await import('../../db/schema.js')
+      const categoryToDelete = existingCategory[0].name
+      
+      // Update all links that use this category
+      await database
+        .update(links)
+        .set({
+          finalCategory: defaultCategory,
+          // Also update user category if it matches
+          userCategory: sql`CASE 
+            WHEN ${links.userCategory} = ${categoryToDelete} THEN ${defaultCategory}
+            ELSE ${links.userCategory}
+          END`,
+          // Update AI category if it matches  
+          aiCategory: sql`CASE 
+            WHEN ${links.aiCategory} = ${categoryToDelete} THEN ${defaultCategory}
+            ELSE ${links.aiCategory}
+          END`,
+          updatedAt: Math.floor(Date.now() / 1000)
+        })
+        .where(sql`
+          ${links.finalCategory} = ${categoryToDelete} OR
+          ${links.userCategory} = ${categoryToDelete} OR  
+          ${links.aiCategory} = ${categoryToDelete}
+        `)
+      
+      // Now delete the category
       await database
         .delete(categories)
         .where(eq(categories.id, id))

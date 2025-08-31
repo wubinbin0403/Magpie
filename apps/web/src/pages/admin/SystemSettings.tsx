@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '../../utils/api'
 import CategoryIcon from '../../components/CategoryIcon'
+import ConfirmDialog from '../../components/admin/ConfirmDialog'
 import {
   DndContext,
   closestCenter,
@@ -173,6 +174,13 @@ export default function SystemSettings() {
   const [categories, setCategories] = useState<Category[]>([])
   const [isDragging, setIsDragging] = useState(false)
   const [editingCategory, setEditingCategory] = useState<Category | null>(null)
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean
+    category: Category | null
+  }>({
+    isOpen: false,
+    category: null
+  })
   
   const queryClient = useQueryClient()
   
@@ -293,6 +301,8 @@ export default function SystemSettings() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-categories'] })
       queryClient.invalidateQueries({ queryKey: ['categories'] })
+      queryClient.invalidateQueries({ queryKey: ['links-for-categories'] })
+      queryClient.invalidateQueries({ queryKey: ['system-settings'] })
       showToast('分类删除成功！', 'success')
     }
   })
@@ -359,10 +369,28 @@ export default function SystemSettings() {
       return
     }
     
-    if (confirm(`确定要删除分类 "${category.name}" 吗？此操作无法撤销。`)) {
-      deleteCategoryMutation.mutate(category.id)
+    setConfirmDialog({
+      isOpen: true,
+      category
+    })
+  }, [settings.content.defaultCategory])
+
+  const handleConfirmDelete = useCallback(() => {
+    if (confirmDialog.category) {
+      deleteCategoryMutation.mutate(confirmDialog.category.id)
+      setConfirmDialog({
+        isOpen: false,
+        category: null
+      })
     }
-  }, [settings.content.defaultCategory, deleteCategoryMutation])
+  }, [confirmDialog.category, deleteCategoryMutation])
+
+  const handleCancelDelete = useCallback(() => {
+    setConfirmDialog({
+      isOpen: false,
+      category: null
+    })
+  }, [])
 
   const handleUpdateCategory = useCallback(async (originalCategory: Category) => {
     if (!editingCategory) return
@@ -921,6 +949,18 @@ export default function SystemSettings() {
           </div>
         </div>
       )}
+
+      {/* Confirm Delete Dialog */}
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        title="删除分类"
+        message={confirmDialog.category ? `确定要删除分类 "${confirmDialog.category.name}" 吗？该分类下的所有链接将会移动到默认分类 "${settings.content.defaultCategory}" 下。此操作无法撤销。` : ''}
+        type="danger"
+        confirmText="删除"
+        cancelText="取消"
+        onConfirm={handleConfirmDelete}
+        onCancel={handleCancelDelete}
+      />
     </div>
   )
 }

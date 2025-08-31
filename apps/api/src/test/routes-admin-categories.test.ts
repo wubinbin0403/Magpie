@@ -362,6 +362,84 @@ describe('Admin Categories API', () => {
       expect(body.error.code).toBe('CANNOT_DELETE_LAST_DEFAULT')
     })
 
+    it('should move links to default category when deleting category with links', async () => {
+      // First, create some test links with different categories
+      const { links } = await import('../db/schema.js')
+      
+      // Create links in '设计' category (id=2)
+      await testDrizzle.insert(links).values([
+        {
+          url: 'https://test1.com',
+          domain: 'test1.com',
+          title: 'Test Link 1',
+          finalCategory: '设计',
+          userCategory: '设计',
+          aiCategory: '设计',
+          status: 'published',
+          createdAt: Math.floor(Date.now() / 1000),
+          publishedAt: Math.floor(Date.now() / 1000),
+        },
+        {
+          url: 'https://test2.com',
+          domain: 'test2.com',
+          title: 'Test Link 2',
+          finalCategory: '设计',
+          userCategory: '设计',
+          aiCategory: '技术', // Different AI category
+          status: 'published',
+          createdAt: Math.floor(Date.now() / 1000),
+          publishedAt: Math.floor(Date.now() / 1000),
+        }
+      ])
+
+      // Verify links exist with '设计' category
+      const linksBeforeDeletion = await testDrizzle
+        .select()
+        .from(links)
+        .where(eq(links.finalCategory, '设计'))
+      expect(linksBeforeDeletion).toHaveLength(2)
+
+      // Delete '设计' category (id=2)
+      const res = await app.request('/2', {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${adminToken}`,
+        },
+      })
+
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.success).toBe(true)
+
+      // Verify category was removed from database
+      const deletedCategory = await testDrizzle
+        .select()
+        .from(categories)
+        .where(eq(categories.id, 2))
+      expect(deletedCategory).toHaveLength(0)
+
+      // Verify all links were moved to default category ('技术')
+      const movedLinks = await testDrizzle
+        .select()
+        .from(links)
+        .where(eq(links.finalCategory, '技术'))
+      expect(movedLinks.length).toBeGreaterThanOrEqual(2)
+
+      // Verify no links remain in the deleted category
+      const linksInDeletedCategory = await testDrizzle
+        .select()
+        .from(links)
+        .where(eq(links.finalCategory, '设计'))
+      expect(linksInDeletedCategory).toHaveLength(0)
+
+      // Verify user categories were also updated
+      const linksWithUpdatedUserCategory = await testDrizzle
+        .select()
+        .from(links)
+        .where(eq(links.userCategory, '技术'))
+      expect(linksWithUpdatedUserCategory.length).toBeGreaterThanOrEqual(2)
+    })
+
     it('should return error for invalid ID', async () => {
       const res = await app.request('/999', {
         method: 'DELETE',
