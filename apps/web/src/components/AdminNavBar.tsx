@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { useAuth } from '../contexts/AuthContext'
 
 interface AdminNavBarProps {
   onToggleSidebar?: () => void
@@ -9,6 +10,12 @@ interface AdminNavBarProps {
 }
 
 export default function AdminNavBar({ onToggleSidebar, user }: AdminNavBarProps) {
+  const { logout } = useAuth()
+  
+  const handleLogout = async () => {
+    await logout()
+  }
+
   return (
     <div className="navbar shadow-lg fixed top-0 left-0 right-0 z-40 bg-magpie-200 text-white">
       <div className="w-full flex items-center justify-between px-4 lg:px-6">
@@ -30,11 +37,11 @@ export default function AdminNavBar({ onToggleSidebar, user }: AdminNavBarProps)
               <img 
                 src="/magpie-icon.png" 
                 alt="Magpie" 
-                className="h-8 w-8 object-contain transition-transform duration-500 group-hover:[transform:rotateY(180deg)]"
+                className="h-10 max-w-10 object-contain transition-transform duration-500 group-hover:[transform:rotateY(180deg)]"
                 style={{ transformStyle: 'preserve-3d' }}
               />
               <div className="flex items-center gap-2">
-                <span className="text-white text-lg font-bold">Magpie</span>
+                <span className="text-white text-xl font-bold">Magpie</span>
                 <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full font-medium">
                   Admin
                 </span>
@@ -110,7 +117,10 @@ export default function AdminNavBar({ onToggleSidebar, user }: AdminNavBarProps)
                 </Link>
               </li>
               <li>
-                <button className="flex items-center gap-3 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-md w-full text-left">
+                <button 
+                  onClick={handleLogout}
+                  className="flex items-center gap-3 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-md w-full text-left"
+                >
                   <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                   </svg>

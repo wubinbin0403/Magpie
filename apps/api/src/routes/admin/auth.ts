@@ -6,6 +6,7 @@ import { eq, and } from 'drizzle-orm'
 import { sendSuccess, sendError, notFound } from '../../utils/response.js'
 import { adminLoginSchema, adminInitSchema } from '../../utils/validation.js'
 import { hashPassword, verifyPassword, createAdminJWT, getClientIp } from '../../utils/auth.js'
+import { requireAdmin } from '../../middleware/admin.js'
 import type { AdminLoginResponse } from '../../types/api.js'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 
@@ -125,6 +126,43 @@ function createAdminAuthRouter(database = db) {
       console.error('Error during admin logout:', error)
       // Even if there's an error, we return success for logout
       return sendSuccess(c, { loggedOut: true }, 'Logout successful')
+    }
+  })
+
+  // GET /api/admin/check - Check if admin account exists (public endpoint)
+  app.get('/check', async (c) => {
+    try {
+      const existingAdmin = await database
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.role, 'admin'))
+        .limit(1)
+
+      return sendSuccess(c, { 
+        exists: existingAdmin.length > 0 
+      })
+    } catch (error) {
+      console.error('Error checking admin existence:', error)
+      return sendError(c, 'INTERNAL_SERVER_ERROR', 'Failed to check admin status', undefined, 500)
+    }
+  })
+
+  // GET /api/admin/verify - Verify admin token (protected endpoint)
+  app.get('/verify', requireAdmin(database), async (c) => {
+    try {
+      const adminData = c.get('adminData')
+      
+      return sendSuccess(c, {
+        valid: true,
+        user: {
+          id: adminData.id,
+          username: adminData.username,
+          role: adminData.role
+        }
+      })
+    } catch (error) {
+      console.error('Error verifying admin token:', error)
+      return sendError(c, 'INTERNAL_SERVER_ERROR', 'Failed to verify token', undefined, 500)
     }
   })
 

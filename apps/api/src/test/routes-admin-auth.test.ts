@@ -16,6 +16,46 @@ describe('Admin Auth API', () => {
     app = createAdminAuthRouter(testDrizzle)
   })
 
+  describe('GET /check', () => {
+    it('should return exists: false when no admin exists', async () => {
+      const response = await app.request('/check', {
+        method: 'GET',
+      })
+      const data = await response.json() as any
+
+      expect(response.status).toBe(200)
+      expect(data.success).toBe(true)
+      expect(data.data.exists).toBe(false)
+    })
+
+    it('should return exists: true when admin exists', async () => {
+      // Create admin user
+      const { hash, salt } = await hashPassword('admin123')
+      const now = Math.floor(Date.now() / 1000)
+      
+      await testDrizzle
+        .insert(users)
+        .values({
+          username: 'admin',
+          email: 'admin@example.com',
+          passwordHash: hash,
+          salt: salt,
+          role: 'admin',
+          status: 'active',
+          createdAt: now,
+        })
+
+      const response = await app.request('/check', {
+        method: 'GET',
+      })
+      const data = await response.json() as any
+
+      expect(response.status).toBe(200)
+      expect(data.success).toBe(true)
+      expect(data.data.exists).toBe(true)
+    })
+  })
+
   describe('POST /login', () => {
     it('should login with valid password', async () => {
       // Create admin user

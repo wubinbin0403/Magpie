@@ -6,6 +6,7 @@ import { prettyJSON } from 'hono/pretty-json'
 import { HTTPException } from 'hono/http-exception'
 import { serveStatic } from '@hono/node-server/serve-static'
 import * as dotenv from 'dotenv'
+import { initializeDatabase } from './db/index.js'
 
 // Import route handlers
 import linksRouter from './routes/public/links.js'
@@ -146,11 +147,27 @@ app.notFound((c) => {
 
 const port = parseInt(process.env.PORT || '3001')
 
-console.log(`Starting Magpie API server on port ${port}`)
+// Initialize database before starting server
+async function startServer() {
+  try {
+    // Initialize database (run migrations)
+    await initializeDatabase()
+    
+    console.log(`Starting Magpie API server on port ${port}`)
+    
+    serve({
+      fetch: app.fetch,
+      port,
+    })
+    
+    console.log(`🚀 Server is running on http://localhost:${port}`)
+  } catch (error) {
+    console.error('Failed to start server:', error)
+    process.exit(1)
+  }
+}
 
-serve({
-  fetch: app.fetch,
-  port,
-})
+// Start the server
+startServer()
 
 export default app
