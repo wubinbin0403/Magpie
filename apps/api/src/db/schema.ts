@@ -61,6 +61,34 @@ export const settings = sqliteTable('settings', {
   updatedAt: integer('updated_at').notNull(),
 });
 
+// Categories table - Category management with icons
+export const categories = sqliteTable('categories', {
+  // Primary key
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  
+  // Basic information
+  name: text('name').unique().notNull(),
+  slug: text('slug').unique(),
+  
+  // Display configuration
+  icon: text('icon').default('folder').notNull(), // Preset icon name
+  color: text('color'), // Hex color value
+  description: text('description'),
+  
+  // Sort and status
+  displayOrder: integer('display_order').default(0).notNull(),
+  isActive: integer('is_active').default(1).notNull(), // 0=disabled, 1=enabled
+  
+  // Timestamps
+  createdAt: integer('created_at').notNull(),
+  updatedAt: integer('updated_at'),
+}, (table) => ({
+  // Indexes for common queries
+  displayOrderIdx: index('idx_categories_display_order').on(table.displayOrder),
+  isActiveIdx: index('idx_categories_is_active').on(table.isActive),
+  slugIdx: index('idx_categories_slug').on(table.slug),
+}));
+
 // API tokens table - Access control
 export const apiTokens = sqliteTable('api_tokens', {
   id: integer('id').primaryKey({ autoIncrement: true }),

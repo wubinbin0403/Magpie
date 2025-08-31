@@ -13,6 +13,7 @@ import linksRouter from './routes/public/links.js'
 import searchRouter from './routes/public/search.js'
 import statsRouter from './routes/public/stats.js'
 import domainsRouter from './routes/public/domains.js'
+import publicCategoriesRouter from './routes/public/categories.js'
 import addLinkRouter from './routes/auth/add-link.js'
 import pendingLinkRouter from './routes/auth/pending-link.js'
 import confirmLinkRouter from './routes/auth/confirm-link.js'
@@ -59,6 +60,7 @@ app.route('/api/links', linksRouter)
 app.route('/api/search', searchRouter)
 app.route('/api/stats', statsRouter)
 app.route('/api/domains', domainsRouter)
+app.route('/api/categories', publicCategoriesRouter)
 
 // Authentication required routes
 app.route('/api/links', addLinkRouter)      // POST /api/links

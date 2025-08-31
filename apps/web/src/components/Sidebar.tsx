@@ -1,8 +1,15 @@
 import React, { useState } from 'react'
+import CategoryIcon from './CategoryIcon'
 
 interface Category {
+  id: number
   name: string
-  count: number
+  slug: string
+  icon: string
+  color?: string
+  description?: string
+  displayOrder: number
+  count?: number // Will be added dynamically from links API
 }
 
 interface Tag {
@@ -30,6 +37,7 @@ export default function Sidebar({
   const [showAllTags, setShowAllTags] = useState(false)
   const [hoverAnimations, setHoverAnimations] = useState<{[key: string]: string}>({})
   
+  
   // Get recent activity stats (mock data for now)
   const recentStats = [
     { label: 'This Month', count: 12 },
@@ -56,40 +64,23 @@ export default function Sidebar({
     return hoverAnimations[categoryKey] || animations[0]
   }
 
-  // Category icon mapping
-  const getCategoryIcon = (categoryName: string) => {
-    const iconMap: { [key: string]: JSX.Element } = {
-      '技术': (
-        <svg className="w-5 h-5 transition-transform group-hover:scale-110 group-hover:rotate-3" fill="currentColor" viewBox="0 0 20 20">
-          <path fillRule="evenodd" d="M12.316 3.051a1 1 0 01.633 1.265l-4 12a1 1 0 11-1.898-.632l4-12a1 1 0 011.265-.633zM5.707 6.293a1 1 0 010 1.414L3.414 10l2.293 2.293a1 1 0 11-1.414 1.414l-3-3a1 1 0 010-1.414l3-3a1 1 0 011.414 0zm8.586 0a1 1 0 011.414 0l3 3a1 1 0 010 1.414l-3 3a1 1 0 11-1.414-1.414L16.586 10l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
-        </svg>
-      ),
-      '产品': (
-        <svg className="w-5 h-5 transition-transform group-hover:scale-110 group-hover:rotate-12" fill="currentColor" viewBox="0 0 20 20">
-          <path d="M10 2L3 6v8l7 4 7-4V6l-7-4zM10 4.618l4.5 2.571L10 9.764 5.5 7.189 10 4.618zM5 8.618l4 2.286v5.714L5 14.332V8.618zm6 8l4-2.286V8.618L11 10.904v5.714z"/>
-        </svg>
-      ),
-      '设计': (
-        <svg className="w-5 h-5 transition-transform group-hover:scale-110 group-hover:-rotate-6" fill="currentColor" viewBox="0 0 20 20">
-          <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
-        </svg>
-      ),
-      '工具': (
-        <svg className="w-5 h-5 transition-transform group-hover:scale-110 group-hover:rotate-45" fill="currentColor" viewBox="0 0 20 20">
-          <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
-        </svg>
-      ),
-      'All': (
-        <svg className="w-5 h-5 transition-transform group-hover:scale-110 group-hover:rotate-180" fill="currentColor" viewBox="0 0 20 20">
-          <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" />
-        </svg>
-      )
-    }
-    
-    return iconMap[categoryName] || (
-      <svg className="w-5 h-5 transition-transform group-hover:scale-110 group-hover:rotate-12" fill="currentColor" viewBox="0 0 20 20">
-        <path fillRule="evenodd" d="M2 5a2 2 0 012-2h8a2 2 0 012 2v10a2 2 0 002 2H4a2 2 0 01-2-2V5zm3 1h6v4H5V6zm6 6H5v2h6v-2z" clipRule="evenodd" />
-      </svg>
+  // Get category icon with animation
+  const getCategoryIcon = (category: Category, animationClass: string) => {
+    return (
+      <CategoryIcon 
+        icon={category.icon} 
+        className={`w-full h-full transition-transform duration-500 ${animationClass}`}
+      />
+    )
+  }
+  
+  // Get "All" category icon
+  const getAllCategoryIcon = (animationClass: string) => {
+    return (
+      <CategoryIcon 
+        icon="folder" 
+        className={`w-full h-full transition-transform duration-500 ${animationClass}`}
+      />
     )
   }
 
@@ -140,9 +131,7 @@ export default function Sidebar({
                   : 'text-gray-400/20 group-hover:text-magpie-200/22'
               }`}>
                 <div className="w-10 h-10 flex items-center justify-center">
-                  {React.cloneElement(getCategoryIcon('All'), { 
-                    className: `w-full h-full transition-transform duration-500 ${getCategoryAnimation('All')}` 
-                  })}
+                  {getAllCategoryIcon(getCategoryAnimation('All'))}
                 </div>
               </div>
             </div>
@@ -190,9 +179,7 @@ export default function Sidebar({
                     : 'text-gray-400/20 group-hover:text-magpie-200/22'
                 }`}>
                   <div className="w-10 h-10 flex items-center justify-center">
-                    {React.cloneElement(getCategoryIcon(category.name), { 
-                      className: `w-full h-full transition-transform duration-500 ${getCategoryAnimation(category.name)}` 
-                    })}
+                    {getCategoryIcon(category, getCategoryAnimation(category.name))}
                   </div>
                 </div>
               </div>

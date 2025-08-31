@@ -64,6 +64,10 @@ class ApiClient {
     return this.request(`/domains/${domain}/stats`)
   }
 
+  async getCategories() {
+    return this.request('/categories')
+  }
+
   // Admin endpoints
   async adminLogin(password: string) {
     return this.request('/admin/login', {
@@ -133,18 +137,14 @@ class ApiClient {
     })
   }
 
-  async getCategories() {
-    return this.request('/admin/categories')
-  }
-
-  async createCategory(name: string, description?: string) {
+  async createCategory(name: string, description?: string, icon?: string, color?: string) {
     return this.request('/admin/categories', {
       method: 'POST',
-      body: JSON.stringify({ name, description }),
+      body: JSON.stringify({ name, description, icon, color }),
     })
   }
 
-  async updateCategory(id: number, updates: { name?: string; description?: string }) {
+  async updateCategory(id: number, updates: { name?: string; description?: string; icon?: string; color?: string }) {
     return this.request(`/admin/categories/${id}`, {
       method: 'PUT',
       body: JSON.stringify(updates),

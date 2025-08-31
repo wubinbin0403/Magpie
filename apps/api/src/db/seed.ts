@@ -1,7 +1,7 @@
 #!/usr/bin/env tsx
 
 import { db } from './index.js';
-import { settings, apiTokens, links } from './schema.js';
+import { settings, apiTokens, links, categories } from './schema.js';
 import { eq, sql } from 'drizzle-orm';
 import crypto from 'crypto';
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
@@ -44,6 +44,58 @@ const DEFAULT_SETTINGS = [
   
   // Database version
   { key: 'db_version', value: '1.0.0', type: 'string', description: '数据库版本' },
+] as const;
+
+// Default categories for the system
+const DEFAULT_CATEGORIES = [
+  {
+    name: '技术',
+    slug: 'tech',
+    icon: 'code',
+    color: '#3B82F6',
+    description: '编程、开发、技术相关内容',
+    displayOrder: 1
+  },
+  {
+    name: '设计',
+    slug: 'design',
+    icon: 'palette',
+    color: '#8B5CF6',
+    description: '设计、UI/UX、创意相关内容',
+    displayOrder: 2
+  },
+  {
+    name: '产品',
+    slug: 'product',
+    icon: 'cube',
+    color: '#10B981',
+    description: '产品管理、商业分析相关内容',
+    displayOrder: 3
+  },
+  {
+    name: '工具',
+    slug: 'tools',
+    icon: 'wrench',
+    color: '#F59E0B',
+    description: '实用工具、软件推荐',
+    displayOrder: 4
+  },
+  {
+    name: '游戏',
+    slug: 'game',
+    icon: 'game-controller',
+    color: '#EC4899',
+    description: '游戏相关内容',
+    displayOrder: 5
+  },
+  {
+    name: '其他',
+    slug: 'other',
+    icon: 'folder',
+    color: '#6B7280',
+    description: '其他未分类内容',
+    displayOrder: 99
+  }
 ] as const;
 
 // Sample links for development environment
@@ -447,6 +499,31 @@ async function seedDatabase(database = db, includeDevData = false) {
         console.log(`✓ Added setting: ${setting.key}`);
       } else {
         console.log(`- Setting already exists: ${setting.key}`);
+      }
+    }
+
+    // Insert default categories
+    console.log('Inserting default categories...');
+    
+    for (const category of DEFAULT_CATEGORIES) {
+      // Check if category already exists
+      const existing = await database.select().from(categories).where(eq(categories.name, category.name)).limit(1);
+      
+      if (existing.length === 0) {
+        await database.insert(categories).values({
+          name: category.name,
+          slug: category.slug,
+          icon: category.icon,
+          color: category.color,
+          description: category.description,
+          displayOrder: category.displayOrder,
+          isActive: 1,
+          createdAt: now,
+          updatedAt: now,
+        });
+        console.log(`✓ Added category: ${category.name}`);
+      } else {
+        console.log(`- Category already exists: ${category.name}`);
       }
     }
     

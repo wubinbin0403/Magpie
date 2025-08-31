@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '../../utils/api'
+import CategoryIcon from '../../components/CategoryIcon'
 
 interface SystemSettings {
   site: {
@@ -10,9 +11,19 @@ interface SystemSettings {
   }
   content: {
     defaultCategory: string
-    categories: string[]
     itemsPerPage: number
   }
+}
+
+interface Category {
+  id: number
+  name: string
+  slug: string
+  icon: string
+  color?: string
+  description?: string
+  displayOrder: number
+  isActive: number
 }
 
 export default function SystemSettings() {
@@ -24,12 +35,12 @@ export default function SystemSettings() {
     },
     content: {
       defaultCategory: '其他',
-      categories: ['技术', '产品', '设计', '工具', '其他'],
       itemsPerPage: 20
     }
   })
-  const [newCategory, setNewCategory] = useState('')
-  const [editingCategory, setEditingCategory] = useState<{ index: number, value: string } | null>(null)
+  const [categories, setCategories] = useState<Category[]>([])
+  const [newCategory, setNewCategory] = useState({ name: '', icon: 'folder', color: '#6B7280', description: '' })
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null)
   
   const queryClient = useQueryClient()
 
@@ -42,12 +53,30 @@ export default function SystemSettings() {
     }
   })
 
+  // Fetch categories
+  const { data: categoriesData } = useQuery({
+    queryKey: ['admin-categories'],
+    queryFn: async () => {
+      const response = await api.getCategories()
+      return response
+    }
+  })
+
   // Update local settings when API data is loaded
   useEffect(() => {
     if (settingsData) {
       setSettings(settingsData)
     }
   }, [settingsData])
+
+  // Update categories when API data is loaded
+  useEffect(() => {
+    if (Array.isArray(categoriesData)) {
+      setCategories(categoriesData)
+    } else if (categoriesData?.success && categoriesData?.data) {
+      setCategories(categoriesData.data)
+    }
+  }, [categoriesData])
 
   // Update settings mutation
   const updateSettingsMutation = useMutation({
@@ -57,70 +86,107 @@ export default function SystemSettings() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['system-settings'] })
-      // Show success toast
-      const toast = document.createElement('div')
-      toast.className = 'toast toast-top toast-end'
-      toast.innerHTML = `
-        <div class="alert alert-success">
-          <span>设置保存成功！</span>
-        </div>
-      `
-      document.body.appendChild(toast)
-      setTimeout(() => document.body.removeChild(toast), 3000)
+      showToast('设置保存成功！', 'success')
     }
   })
+
+  // Create category mutation
+  const createCategoryMutation = useMutation({
+    mutationFn: async (categoryData: { name: string; icon?: string; color?: string; description?: string }) => {
+      const response = await api.createCategory(categoryData.name, categoryData.description, categoryData.icon, categoryData.color)
+      return response.data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-categories'] })
+      queryClient.invalidateQueries({ queryKey: ['categories'] })
+      setNewCategory({ name: '', icon: 'folder', color: '#6B7280', description: '' })
+      showToast('分类创建成功！', 'success')
+    }
+  })
+
+  // Update category mutation
+  const updateCategoryMutation = useMutation({
+    mutationFn: async ({ id, updates }: { id: number; updates: Partial<Category> }) => {
+      const response = await api.updateCategory(id, updates)
+      return response.data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-categories'] })
+      queryClient.invalidateQueries({ queryKey: ['categories'] })
+      setEditingCategory(null)
+      showToast('分类更新成功！', 'success')
+    }
+  })
+
+  // Delete category mutation
+  const deleteCategoryMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const response = await api.deleteCategory(id)
+      return response.data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-categories'] })
+      queryClient.invalidateQueries({ queryKey: ['categories'] })
+      showToast('分类删除成功！', 'success')
+    }
+  })
+
+  // Helper function for showing toasts
+  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+    const toast = document.createElement('div')
+    toast.className = 'toast toast-top toast-end'
+    toast.innerHTML = `
+      <div class="alert alert-${type}">
+        <span>${message}</span>
+      </div>
+    `
+    document.body.appendChild(toast)
+    setTimeout(() => document.body.removeChild(toast), 3000)
+  }
 
   const handleSave = () => {
     updateSettingsMutation.mutate(settings)
   }
 
   const handleAddCategory = () => {
-    if (newCategory.trim() && !settings.content.categories.includes(newCategory.trim())) {
-      setSettings(prev => ({
-        ...prev,
-        content: {
-          ...prev.content,
-          categories: [...prev.content.categories, newCategory.trim()]
-        }
-      }))
-      setNewCategory('')
+    if (newCategory.name.trim() && !categories.some(cat => cat.name === newCategory.name.trim())) {
+      createCategoryMutation.mutate({
+        name: newCategory.name.trim(),
+        description: newCategory.description.trim() || undefined
+      })
     }
   }
 
-  const handleDeleteCategory = (index: number) => {
-    const categoryToDelete = settings.content.categories[index]
-    
-    if (categoryToDelete === settings.content.defaultCategory) {
+  const handleDeleteCategory = (category: Category) => {
+    if (category.name === settings.content.defaultCategory) {
       alert('无法删除默认分类。请先设置其他默认分类。')
       return
     }
     
-    if (confirm(`确定要删除 "${categoryToDelete}" 吗？此操作无法撤销。`)) {
-      setSettings(prev => ({
-        ...prev,
-        content: {
-          ...prev.content,
-          categories: prev.content.categories.filter((_, i) => i !== index)
-        }
-      }))
+    if (confirm(`确定要删除分类 "${category.name}" 吗？此操作无法撤销。`)) {
+      deleteCategoryMutation.mutate(category.id)
     }
   }
 
-  const handleEditCategory = (index: number, newValue: string) => {
-    if (newValue.trim()) {
-      setSettings(prev => ({
-        ...prev,
-        content: {
-          ...prev.content,
-          categories: prev.content.categories.map((cat, i) => 
-            i === index ? newValue.trim() : cat
-          ),
-          defaultCategory: prev.content.defaultCategory === prev.content.categories[index] 
-            ? newValue.trim() 
-            : prev.content.defaultCategory
+  const handleUpdateCategory = (category: Category) => {
+    if (editingCategory && editingCategory.id === category.id) {
+      updateCategoryMutation.mutate({
+        id: category.id,
+        updates: {
+          name: editingCategory.name.trim(),
+          description: editingCategory.description?.trim() || null,
+          icon: editingCategory.icon,
+          color: editingCategory.color
         }
-      }))
+      })
     }
+  }
+
+  const handleStartEditing = (category: Category) => {
+    setEditingCategory({ ...category })
+  }
+
+  const handleCancelEditing = () => {
     setEditingCategory(null)
   }
 
@@ -259,8 +325,8 @@ export default function SystemSettings() {
                 content: { ...prev.content, defaultCategory: e.target.value }
               }))}
             >
-              {settings.content.categories.map(category => (
-                <option key={category} value={category}>{category}</option>
+              {categories.filter(cat => cat.isActive).map(category => (
+                <option key={category.id} value={category.name}>{category.name}</option>
               ))}
             </select>
             <label className="label">
@@ -273,81 +339,227 @@ export default function SystemSettings() {
           {/* Categories Management */}
           <div className="form-control">
             <label className="label">
-              <span className="label-text font-medium">分类管理</span>
+              <span className="label-text font-medium flex items-center gap-2">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                </svg>
+                分类管理
+              </span>
             </label>
             
             {/* Existing Categories */}
-            <div className="space-y-2 mb-4">
-              {settings.content.categories.map((category, index) => (
-                <div key={index} className="flex items-center gap-2 p-3 bg-base-200/30 rounded-lg">
-                  {editingCategory?.index === index ? (
-                    <input
-                      type="text"
-                      className="input input-sm input-bordered flex-1"
-                      value={editingCategory.value}
-                      onChange={(e) => setEditingCategory({index, value: e.target.value})}
-                      onBlur={() => handleEditCategory(index, editingCategory.value)}
-                      onKeyPress={(e) => {
-                        if (e.key === 'Enter') {
-                          handleEditCategory(index, editingCategory.value)
-                        }
-                      }}
-                      autoFocus
-                    />
-                  ) : (
-                    <span className="flex-1 font-medium">
-                      • {category}
-                      {category === settings.content.defaultCategory && (
-                        <span className="badge badge-primary badge-xs ml-2">默认</span>
+            <div className="space-y-3 mb-6">
+              {categories
+                .sort((a, b) => a.displayOrder - b.displayOrder)
+                .map((category) => (
+                  <div key={category.id} className="flex items-center gap-3 p-4 bg-base-200/30 rounded-xl border border-base-300/20">
+                    {/* Category Icon */}
+                    <div className="flex-shrink-0">
+                      <div 
+                        className="w-10 h-10 rounded-lg flex items-center justify-center"
+                        style={{ backgroundColor: category.color + '15', color: category.color }}
+                      >
+                        <CategoryIcon icon={category.icon} className="w-5 h-5" />
+                      </div>
+                    </div>
+                    
+                    {/* Category Info */}
+                    {editingCategory?.id === category.id ? (
+                      <div className="flex-1 space-y-3">
+                        <input
+                          type="text"
+                          className="input input-sm input-bordered w-full"
+                          value={editingCategory.name}
+                          onChange={(e) => setEditingCategory(prev => prev ? { ...prev, name: e.target.value } : null)}
+                          placeholder="分类名称"
+                        />
+                        <input
+                          type="text"
+                          className="input input-sm input-bordered w-full"
+                          value={editingCategory.description || ''}
+                          onChange={(e) => setEditingCategory(prev => prev ? { ...prev, description: e.target.value } : null)}
+                          placeholder="分类描述（可选）"
+                        />
+                        
+                        {/* Icon Selector */}
+                        <div className="space-y-2">
+                          <label className="text-xs font-medium text-base-content/70">图标选择</label>
+                          <div className="grid grid-cols-8 gap-2">
+                            {['code', 'cube', 'palette', 'wrench', 'folder', 'game-controller', 'book', 'video', 'music', 'photo', 'document', 'globe', 'chat', 'shopping', 'academic'].map((iconName) => (
+                              <button
+                                key={iconName}
+                                type="button"
+                                className={`btn btn-xs p-2 ${editingCategory.icon === iconName ? 'btn-primary' : 'btn-ghost'}`}
+                                onClick={() => setEditingCategory(prev => prev ? { ...prev, icon: iconName } : null)}
+                              >
+                                <CategoryIcon icon={iconName} className="w-4 h-4" />
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        
+                        {/* Color Selector */}
+                        <div className="space-y-2">
+                          <label className="text-xs font-medium text-base-content/70">颜色选择</label>
+                          <div className="flex gap-2 flex-wrap">
+                            {['#3B82F6', '#8B5CF6', '#10B981', '#F59E0B', '#EC4899', '#EF4444', '#6B7280', '#14B8A6', '#F97316', '#8B5CF6'].map((color) => (
+                              <button
+                                key={color}
+                                type="button"
+                                className={`w-6 h-6 rounded-full border-2 ${editingCategory.color === color ? 'border-base-content' : 'border-base-300'}`}
+                                style={{ backgroundColor: color }}
+                                onClick={() => setEditingCategory(prev => prev ? { ...prev, color } : null)}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex-1">
+                        <div className="font-medium text-base-content flex items-center gap-2">
+                          {category.name}
+                          {category.name === settings.content.defaultCategory && (
+                            <span className="badge badge-primary badge-xs">默认</span>
+                          )}
+                        </div>
+                        {category.description && (
+                          <div className="text-sm text-base-content/60 mt-1">
+                            {category.description}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    
+                    {/* Action Buttons */}
+                    <div className="flex-shrink-0 flex gap-1">
+                      {editingCategory?.id === category.id ? (
+                        <>
+                          <button
+                            className="btn btn-success btn-xs"
+                            onClick={() => handleUpdateCategory(category)}
+                            disabled={updateCategoryMutation.isPending}
+                          >
+                            保存
+                          </button>
+                          <button
+                            className="btn btn-ghost btn-xs"
+                            onClick={handleCancelEditing}
+                          >
+                            取消
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            className="btn btn-ghost btn-xs"
+                            onClick={() => handleStartEditing(category)}
+                          >
+                            编辑
+                          </button>
+                          <button
+                            className="btn btn-error btn-outline btn-xs"
+                            onClick={() => handleDeleteCategory(category)}
+                            disabled={category.name === settings.content.defaultCategory || deleteCategoryMutation.isPending}
+                          >
+                            删除
+                          </button>
+                        </>
                       )}
-                    </span>
-                  )}
-                  
-                  <div className="flex gap-1">
-                    <button
-                      className="btn btn-ghost btn-xs"
-                      onClick={() => setEditingCategory({index, value: category})}
-                    >
-                      编辑
-                    </button>
-                    <button
-                      className="btn btn-error btn-outline btn-xs"
-                      onClick={() => handleDeleteCategory(index)}
-                      disabled={category === settings.content.defaultCategory}
-                    >
-                      删除
-                    </button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
             </div>
 
             {/* Add New Category */}
-            <div className="flex gap-2">
-              <input
-                type="text"
-                className="input input-bordered flex-1"
-                placeholder="新分类名称"
-                value={newCategory}
-                onChange={(e) => setNewCategory(e.target.value)}
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter') {
-                    handleAddCategory()
-                  }
-                }}
-              />
-              <button
-                className="btn btn-primary"
-                onClick={handleAddCategory}
-                disabled={!newCategory.trim() || settings.content.categories.includes(newCategory.trim())}
-              >
-                <span className="flex items-center gap-2">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                  添加
-                </span>
-              </button>
+            <div className="bg-base-100 p-4 rounded-xl border-2 border-dashed border-base-300">
+              <div className="space-y-4">
+                <div className="flex gap-3 items-start">
+                  {/* Preview */}
+                  <div className="flex-shrink-0 pt-2">
+                    <div 
+                      className="w-10 h-10 rounded-lg flex items-center justify-center"
+                      style={{ backgroundColor: newCategory.color + '15', color: newCategory.color }}
+                    >
+                      <CategoryIcon icon={newCategory.icon} className="w-5 h-5" />
+                    </div>
+                  </div>
+                  
+                  {/* Form */}
+                  <div className="flex-1 space-y-3">
+                    <div className="flex gap-3">
+                      <input
+                        type="text"
+                        className="input input-bordered flex-1"
+                        placeholder="分类名称"
+                        value={newCategory.name}
+                        onChange={(e) => setNewCategory(prev => ({ ...prev, name: e.target.value }))}
+                        onKeyPress={(e) => {
+                          if (e.key === 'Enter') {
+                            handleAddCategory()
+                          }
+                        }}
+                      />
+                      <button
+                        className={`btn btn-primary ${createCategoryMutation.isPending ? 'loading' : ''}`}
+                        onClick={handleAddCategory}
+                        disabled={!newCategory.name.trim() || categories.some(cat => cat.name === newCategory.name.trim()) || createCategoryMutation.isPending}
+                      >
+                        {createCategoryMutation.isPending ? (
+                          '添加中...'
+                        ) : (
+                          <span className="flex items-center gap-2">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                            </svg>
+                            添加分类
+                          </span>
+                        )}
+                      </button>
+                    </div>
+                    
+                    <input
+                      type="text"
+                      className="input input-bordered w-full"
+                      placeholder="分类描述（可选）"
+                      value={newCategory.description}
+                      onChange={(e) => setNewCategory(prev => ({ ...prev, description: e.target.value }))}
+                    />
+                    
+                    {/* Icon Selector */}
+                    <div className="space-y-2">
+                      <label className="text-xs font-medium text-base-content/70">图标选择</label>
+                      <div className="grid grid-cols-8 gap-2">
+                        {['code', 'cube', 'palette', 'wrench', 'folder', 'game-controller', 'book', 'video', 'music', 'photo', 'document', 'globe', 'chat', 'shopping', 'academic'].map((iconName) => (
+                          <button
+                            key={iconName}
+                            type="button"
+                            className={`btn btn-xs p-2 ${newCategory.icon === iconName ? 'btn-primary' : 'btn-ghost'}`}
+                            onClick={() => setNewCategory(prev => ({ ...prev, icon: iconName }))}
+                          >
+                            <CategoryIcon icon={iconName} className="w-4 h-4" />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    {/* Color Selector */}
+                    <div className="space-y-2">
+                      <label className="text-xs font-medium text-base-content/70">颜色选择</label>
+                      <div className="flex gap-2 flex-wrap">
+                        {['#3B82F6', '#8B5CF6', '#10B981', '#F59E0B', '#EC4899', '#EF4444', '#6B7280', '#14B8A6', '#F97316', '#A855F7'].map((color) => (
+                          <button
+                            key={color}
+                            type="button"
+                            className={`w-6 h-6 rounded-full border-2 ${newCategory.color === color ? 'border-base-content' : 'border-base-300'}`}
+                            style={{ backgroundColor: color }}
+                            onClick={() => setNewCategory(prev => ({ ...prev, color }))}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 

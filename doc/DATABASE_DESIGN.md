@@ -280,13 +280,64 @@ CREATE TABLE search_logs (
 );
 ```
 
-### 7. categories（分类表）- 可选
+### 7. categories（分类表）
 
-如果需要更复杂的分类管理，可以单独建表。目前暂时使用 settings 表的 JSON 配置。
+存储分类信息，支持图标、颜色、排序等扩展功能。
 
 ```sql
--- 暂时不实现，使用 settings 表的 categories 配置
--- 未来如果需要分类层级、描述等复杂功能时再考虑
+CREATE TABLE categories (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  
+  -- 基本信息
+  name TEXT UNIQUE NOT NULL,          -- 分类名称
+  slug TEXT UNIQUE,                    -- URL友好的标识符（可选）
+  
+  -- 显示配置
+  icon TEXT DEFAULT 'folder',         -- 预设图标名称
+  color TEXT,                          -- 主题色（十六进制颜色值）
+  description TEXT,                    -- 分类描述
+  
+  -- 排序和状态
+  display_order INTEGER DEFAULT 0,     -- 显示顺序（数值越小越靠前）
+  is_active INTEGER DEFAULT 1,         -- 是否启用（0=禁用，1=启用）
+  
+  -- 时间戳
+  createdAt INTEGER NOT NULL,
+  updatedAt INTEGER,
+  
+  -- 约束
+  CHECK (is_active IN (0, 1)),
+  CHECK (createdAt > 0)
+);
+```
+
+**预设图标列表：**
+支持以下预设图标名称（基于Heroicons）：
+- `code` - 代码图标（技术类）
+- `cube` - 立方体图标（产品类）
+- `palette` - 调色板图标（设计类）
+- `wrench` - 扳手图标（工具类）
+- `folder` - 文件夹图标（默认/其他）
+- `game-controller` - 游戏手柄图标（游戏类）
+- `book` - 书本图标（阅读类）
+- `video` - 视频图标（媒体类）
+- `music` - 音乐图标（音频类）
+- `photo` - 照片图标（图片类）
+- `document` - 文档图标（文档类）
+- `globe` - 地球图标（网络类）
+- `chat` - 聊天图标（社交类）
+- `shopping` - 购物图标（电商类）
+- `academic` - 学术帽图标（教育类）
+
+**初始数据：**
+```sql
+-- 插入默认分类
+INSERT INTO categories (name, slug, icon, color, display_order, createdAt) VALUES 
+  ('技术', 'tech', 'code', '#3B82F6', 1, strftime('%s', 'now')),
+  ('设计', 'design', 'palette', '#8B5CF6', 2, strftime('%s', 'now')),
+  ('产品', 'product', 'cube', '#10B981', 3, strftime('%s', 'now')),
+  ('工具', 'tools', 'wrench', '#F59E0B', 4, strftime('%s', 'now')),
+  ('其他', 'other', 'folder', '#6B7280', 99, strftime('%s', 'now'));
 ```
 
 ## 🔍 全文搜索支持
@@ -363,6 +414,11 @@ CREATE INDEX idx_logs_token_id ON operation_logs(tokenId);
 CREATE INDEX idx_search_query ON search_logs(query);
 CREATE INDEX idx_search_created_at ON search_logs(createdAt DESC);
 CREATE INDEX idx_search_no_results ON search_logs(noResultsFound);
+
+-- categories 表索引
+CREATE INDEX idx_categories_display_order ON categories(display_order);
+CREATE INDEX idx_categories_is_active ON categories(is_active);
+CREATE INDEX idx_categories_slug ON categories(slug);
 ```
 
 ## 📊 实时统计查询
@@ -490,6 +546,7 @@ INSERT INTO settings VALUES ('db_version', '1.0.0', 'string', '数据库版本',
 4. **users 表**：管理员账户，支持基于密码的认证
 5. **operation_logs 表**：操作审计，完整记录系统活动
 6. **search_logs 表**：搜索统计，用于功能优化
+7. **categories 表**：分类管理，支持图标、颜色、排序等扩展功能
 
 ### 核心特性
 1. **用户认证完整**：支持管理员密码登录 + API Token 认证

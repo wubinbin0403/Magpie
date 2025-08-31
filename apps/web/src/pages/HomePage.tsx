@@ -50,10 +50,29 @@ export default function HomePage() {
   const [allLinks, setAllLinks] = useState<Link[]>([])
   const [previousLinks, setPreviousLinks] = useState<Link[]>([])
   const [sidebarData, setSidebarData] = useState<{
-    categories: { name: string; count: number }[]
+    categories: { 
+      id: number
+      name: string
+      slug: string
+      icon: string
+      color?: string
+      description?: string
+      displayOrder: number
+      count: number
+    }[]
     tags: { name: string; count: number }[]
   }>({ categories: [], tags: [] })
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
+
+  // Fetch categories data from new categories API
+  const { data: categoriesData } = useQuery({
+    queryKey: ['categories'],
+    queryFn: async () => {
+      const response = await api.getCategories()
+      return response.data
+    },
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+  })
 
   // Fetch links data - backend will handle limit from settings
   const { data, isLoading, error, refetch } = useQuery<LinksResponse>({
@@ -94,15 +113,32 @@ export default function HomePage() {
     return groups
   }, {} as Record<string, { year: number; month: number; links: Link[] }>)
 
-  // Update sidebar data separately to prevent flickering
+  // Update sidebar data by combining categories from categories API with counts from links API
   useEffect(() => {
-    if (data?.success && data.data.filters) {
+    if (Array.isArray(categoriesData) && data?.success && data.data.filters) {
+      // Merge categories from API with count information from links filters
+      const categoriesWithCounts = categoriesData.map(category => {
+        const categoryFilter = data.data.filters.categories.find(f => f.name === category.name)
+        return {
+          ...category,
+          count: categoryFilter?.count || 0
+        }
+      })
+
       setSidebarData({
-        categories: data.data.filters.categories || [],
+        categories: categoriesWithCounts,
         tags: data.data.filters.tags || []
       })
+    } else if (Array.isArray(categoriesData)) {
+      // If only categories data is available, use it with zero counts
+      const categoriesWithZeroCounts = categoriesData.map(category => ({ ...category, count: 0 }))
+      
+      setSidebarData({
+        categories: categoriesWithZeroCounts,
+        tags: []
+      })
     }
-  }, [data?.success, data?.data.filters])
+  }, [categoriesData, data?.success, data?.data.filters])
 
   // Update links when data changes
   useEffect(() => {
