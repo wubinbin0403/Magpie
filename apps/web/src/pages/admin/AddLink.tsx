@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import api from '../../utils/api'
+import ProcessingAnimation, { ProcessingStage } from '../../components/ProcessingAnimation'
 
 interface AddLinkForm {
   url: string
@@ -39,6 +40,16 @@ export default function AddLink() {
     type: 'success' | 'error' | 'info'
     text: string
   } | null>(null)
+  const [messageAnimating, setMessageAnimating] = useState(false)
+  
+  // SSE processing states
+  const [currentProcessing, setCurrentProcessing] = useState<{
+    stage: ProcessingStage
+    message: string
+    progress?: number
+    data?: any
+  } | null>(null)
+  const eventSourceRef = useRef<EventSource | null>(null)
 
   const queryClient = useQueryClient()
 
@@ -53,13 +64,26 @@ export default function AddLink() {
 
   const categories = categoriesData || []
 
-  // Auto-clear messages after 5 seconds
+  // Auto-clear messages after 5 seconds with animation
   useEffect(() => {
     if (message) {
-      const timer = setTimeout(() => {
+      // Start animation immediately when message appears
+      setMessageAnimating(true)
+      
+      // Start fade out after 4.5 seconds
+      const fadeOutTimer = setTimeout(() => {
+        setMessageAnimating(false)
+      }, 4500)
+      
+      // Remove message completely after animation
+      const removeTimer = setTimeout(() => {
         setMessage(null)
       }, 5000)
-      return () => clearTimeout(timer)
+      
+      return () => {
+        clearTimeout(fadeOutTimer)
+        clearTimeout(removeTimer)
+      }
     }
   }, [message])
 
@@ -152,6 +176,13 @@ export default function AddLink() {
       }
     },
     onSuccess: (result) => {
+      // Complete the processing animation
+      setCurrentProcessing({
+        stage: 'completed',
+        message: '链接处理完成！',
+        progress: 100
+      })
+      
       queryClient.invalidateQueries({ queryKey: ['pending-links'] })
       queryClient.invalidateQueries({ queryKey: ['admin-stats-summary'] })
       // Reset form
@@ -168,14 +199,33 @@ export default function AddLink() {
           type: 'info',
           text: '链接已成功添加，请在下方确认后发布。'
         })
+        // Set pending link ID for editing
+        if (result.data?.id) {
+          setPendingLinkId(result.data.id)
+        }
       }
+      
+      // Keep completed state visible - don't auto-clear
+      // Will be cleared when user starts next analysis
     },
     onError: (error: any) => {
+      // Show error in animation
+      setCurrentProcessing({
+        stage: 'error',
+        message: '处理失败',
+        progress: 0
+      })
+      
       console.error('Failed to add link:', error)
       setMessage({
         type: 'error',
         text: error.message || '添加链接失败，请检查URL是否有效或稍后重试。'
       })
+      
+      // Clear processing after delay
+      setTimeout(() => {
+        setCurrentProcessing(null)
+      }, 5000)
     }
   })
 
@@ -198,6 +248,13 @@ export default function AddLink() {
       })
     },
     onSuccess: () => {
+      // Show completion animation
+      setCurrentProcessing({
+        stage: 'completed',
+        message: '链接已成功发布！',
+        progress: 100
+      })
+      
       // Reset all states
       setPendingLinkId(null)
       setIsEditing(false)
@@ -217,6 +274,9 @@ export default function AddLink() {
         type: 'success',
         text: '链接已成功发布！您可以继续添加新的链接。'
       })
+      
+      // Keep completed state visible - don't auto-clear
+      // Will be cleared when user starts next analysis
     },
     onError: (error: any) => {
       console.error('Failed to confirm link:', error)
@@ -231,8 +291,68 @@ export default function AddLink() {
     e.preventDefault()
     if (!form.url.trim()) return
     
-    addLinkMutation.mutate(form)
+    // Use SSE for real-time updates
+    handleSubmitWithSSE()
   }
+  
+  // Temporary demo implementation with simulated stages
+  const handleSubmitWithSSE = () => {
+    // Clear any existing processing state when starting new analysis
+    setCurrentProcessing(null)
+    
+    // Start processing animation after a brief delay to show the clear
+    setTimeout(() => {
+      setCurrentProcessing({
+        stage: 'idle',
+        message: '准备开始处理...',
+        progress: 0
+      })
+    }, 100)
+    
+    // Simulate processing stages
+    setTimeout(() => {
+      setCurrentProcessing({
+        stage: 'fetching',
+        message: '正在连接到目标网站...',
+        progress: 20
+      })
+    }, 500)
+    
+    setTimeout(() => {
+      setCurrentProcessing({
+        stage: 'fetching',
+        message: '正在获取网页内容...',
+        progress: 60
+      })
+    }, 2000)
+    
+    setTimeout(() => {
+      setCurrentProcessing({
+        stage: 'analyzing',
+        message: '正在进行AI智能分析...',
+        progress: 80
+      })
+    }, 4000)
+    
+    // Use real API call
+    setTimeout(() => {
+      addLinkMutation.mutate(form)
+      setCurrentProcessing({
+        stage: 'analyzing',
+        message: '正在生成智能摘要...',
+        progress: 95
+      })
+    }, 6000)
+  }
+  
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close()
+      }
+    }
+  }, [])
 
 
   const clearProcessing = () => {
@@ -367,36 +487,29 @@ export default function AddLink() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Message Alert */}
+    <>
+      {/* Message Alert - Portal-style fixed position toast */}
       {message && (
-        <div className={`alert ${
-          message.type === 'success' ? 'alert-success' : 
-          message.type === 'error' ? 'alert-error' : 
-          'alert-info'
-        }`}>
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            {message.type === 'success' ? (
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            ) : message.type === 'error' ? (
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            ) : (
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            )}
-          </svg>
-          <div className="flex-1">
-            <div className="text-sm font-medium">{message.text}</div>
+        <div 
+          className="fixed top-4 right-4 z-50 transition-all duration-300 ease-in-out"
+          style={{
+            transform: messageAnimating ? 'translateY(0)' : 'translateY(-20px)',
+            opacity: messageAnimating ? 1 : 0,
+          }}
+        >
+          <div className={`alert ${
+            message.type === 'success' ? 'alert-success' : 
+            message.type === 'error' ? 'alert-error' : 
+            'alert-info'
+          } shadow-lg`}>
+            <div>
+              <span>{message.text}</span>
+            </div>
           </div>
-          <button 
-            className="btn btn-ghost btn-sm"
-            onClick={() => setMessage(null)}
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
         </div>
       )}
+      
+      <div className="space-y-6">
 
       {/* Page Header */}
       <div className="flex items-center justify-between">
@@ -406,18 +519,20 @@ export default function AddLink() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Add Link Form */}
-        <div className="card bg-base-100 shadow-sm">
-          <div className="card-header p-6 pb-0">
-            <h2 className="text-xl font-semibold text-base-content flex items-center gap-2">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              添加新链接
-            </h2>
-          </div>
-          <div className="card-body p-6 pt-4">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        {/* Main Column - Takes 2/3 width on XL screens */}
+        <div className="xl:col-span-2 space-y-6">
+          {/* Add Link Form - No border */}
+          <div className="bg-base-100">
+            <div className="p-6 pb-0">
+              <h2 className="text-xl font-semibold text-base-content flex items-center gap-2">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                添加新链接
+              </h2>
+            </div>
+            <div className="p-6 pt-4">
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* URL Input */}
               <div className="form-control">
@@ -505,21 +620,21 @@ export default function AddLink() {
               <div className="flex gap-2">
                 <button
                   type="submit"
-                  className={`btn btn-primary w-full ${addLinkMutation.isPending ? 'loading' : ''}`}
-                  disabled={addLinkMutation.isPending || !form.url.trim()}
+                  className="btn btn-primary w-full"
+                  disabled={addLinkMutation.isPending || (currentProcessing !== null && currentProcessing.stage !== 'completed') || !form.url.trim()}
                 >
-                  {addLinkMutation.isPending ? (
-                    <span className="flex items-center gap-2">
-                      <span className="loading loading-spinner loading-sm"></span>
-                      正在处理...
-                    </span>
+                  {addLinkMutation.isPending || (currentProcessing !== null && currentProcessing.stage !== 'completed') ? (
+                    <>
+                      <span className="loading loading-spinner loading-xs"></span>
+                      <span>正在处理...</span>
+                    </>
                   ) : (
-                    <span className="flex items-center gap-2">
+                    <>
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                       </svg>
-                      添加链接
-                    </span>
+                      <span>添加链接</span>
+                    </>
                   )}
                 </button>
               </div>
@@ -527,31 +642,25 @@ export default function AddLink() {
           </div>
         </div>
 
-        {/* Processing Status */}
-        <div className="card bg-base-100 shadow-sm">
-          <div className="card-header p-6 pb-0 flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-base-content flex items-center gap-2">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-              处理状态
-            </h2>
-            {processingItems.length > 0 && (
-              <button
-                className="btn btn-ghost btn-sm"
-                onClick={clearProcessing}
-              >
-                <span className="flex items-center gap-2">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                  清空
-                </span>
-              </button>
-            )}
-          </div>
-          <div className="card-body p-6 pt-4">
-            {processingItems.length === 0 ? (
+        {/* Processing Status - Show animation when processing */}
+        {currentProcessing ? (
+          <ProcessingAnimation 
+            stage={currentProcessing.stage}
+            message={currentProcessing.message}
+            progress={currentProcessing.progress}
+            error={currentProcessing.stage === 'error' ? currentProcessing.message : undefined}
+          />
+        ) : (
+          <div className="bg-base-100">
+            <div className="p-6 pb-0">
+              <h2 className="text-xl font-semibold text-base-content flex items-center gap-2">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+                处理状态
+              </h2>
+            </div>
+            <div className="p-6 pt-4">
               <div className="text-center py-8 text-base-content/50">
                 <svg className="w-12 h-12 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 8h6m-6 4h6" />
@@ -559,53 +668,14 @@ export default function AddLink() {
                 <p>还没有处理项</p>
                 <p className="text-xs mt-1">添加链接以查看处理状态</p>
               </div>
-            ) : (
-              <div className="space-y-4">
-                {processingItems.slice().reverse().map((item) => (
-                  <div key={item.id} className="border border-base-300/20 rounded-lg p-4">
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <span className={`${getStatusColor(item.status)}`}>
-                          {getStatusIcon(item.status)}
-                        </span>
-                        <span className="text-sm font-medium">
-                          {item.title || '正在处理...'}
-                        </span>
-                      </div>
-                      {item.status === 'failed' && (
-                        <button
-                          className="btn btn-ghost btn-xs"
-                          onClick={() => retryProcessing(item.id)}
-                        >
-                          重试
-                        </button>
-                      )}
-                    </div>
-                    
-                    <div className="text-xs text-base-content/60 mb-2 truncate">
-                      {item.url}
-                    </div>
-                    
-                    <div className={`text-sm ${getStatusColor(item.status)}`}>
-                      {item.message}
-                    </div>
-                    
-                    {item.error && (
-                      <div className="text-xs text-red-600 mt-1">
-                        错误：{item.error}
-                      </div>
-                    )}
-                    
-                    {item.status === 'processing' && (
-                      <div className="mt-2">
-                        <progress className="progress progress-primary w-full h-2"></progress>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
+            </div>
           </div>
+        )}
+        </div>
+
+        {/* Side Column - Takes 1/3 width on XL screens */}
+        <div className="xl:col-span-1 space-y-6">
+          {/* Placeholder - will be used for additional info or quick actions */}
         </div>
       </div>
 
@@ -848,6 +918,7 @@ export default function AddLink() {
         </div>
       )}
 
-    </div>
+      </div>
+    </>
   )
 }

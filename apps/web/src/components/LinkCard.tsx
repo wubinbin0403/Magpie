@@ -24,6 +24,7 @@ export default function LinkCard({ link, onTitleClick, onTagClick, selectedTags 
   const [domainCount, setDomainCount] = useState<number | null>(null)
   const [showTooltip, setShowTooltip] = useState(false)
   const [showDateTooltip, setShowDateTooltip] = useState(false)
+  const [showTagsTooltip, setShowTagsTooltip] = useState(false)
 
   // Fetch domain count on hover using new dedicated API
   const fetchDomainCount = async () => {
@@ -44,13 +45,26 @@ export default function LinkCard({ link, onTitleClick, onTagClick, selectedTags 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
     const now = new Date()
-    const diffTime = Math.abs(now.getTime() - date.getTime())
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
     
-    if (diffDays === 1) return 'Yesterday'
-    if (diffDays < 7) return `${diffDays} days ago`
-    if (diffDays < 30) return `${Math.ceil(diffDays / 7)} weeks ago`
-    if (diffDays < 365) return `${Math.ceil(diffDays / 30)} months ago`
+    // 计算日期差异（只考虑日期，不考虑时间）
+    const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+    const nowOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const diffTime = nowOnly.getTime() - dateOnly.getTime()
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
+    
+    if (diffDays === 0) {
+      // 今天：显示小时前
+      const hoursDiff = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60))
+      if (hoursDiff === 0) {
+        const minutesDiff = Math.floor((now.getTime() - date.getTime()) / (1000 * 60))
+        return minutesDiff <= 0 ? '刚刚' : `${minutesDiff}分钟前`
+      }
+      return `${hoursDiff}小时前`
+    }
+    if (diffDays === 1) return '昨天'
+    if (diffDays < 7) return `${diffDays}天前`
+    if (diffDays < 30) return `${Math.ceil(diffDays / 7)}周前`
+    if (diffDays < 365) return `${Math.ceil(diffDays / 30)}个月前`
     
     return date.toLocaleDateString('zh-CN', {
       year: 'numeric',
@@ -95,7 +109,7 @@ export default function LinkCard({ link, onTitleClick, onTagClick, selectedTags 
         {/* Header with title and date */}
         <div className="flex items-start justify-between gap-4 mb-3">
           <h2 
-            className="text-lg font-semibold line-clamp-2 flex-1 cursor-pointer hover:underline"
+            className="text-lg font-semibold line-clamp-2 cursor-pointer hover:underline max-w-[80%] lg:max-w-[61.8%]"
             style={{ color: '#06161a' }}
             title={link.title}
             onClick={onTitleClick}
@@ -163,7 +177,7 @@ export default function LinkCard({ link, onTitleClick, onTagClick, selectedTags 
 
         {/* Description */}
         {link.description && (
-          <p className="text-base-content/80 text-sm leading-relaxed mb-4 line-clamp-3">
+          <p className="text-base-content/80 text-sm leading-relaxed mb-4 line-clamp-3 max-w-[80%] lg:max-w-[61.8%]">
             {link.description}
           </p>
         )}
@@ -173,7 +187,7 @@ export default function LinkCard({ link, onTitleClick, onTagClick, selectedTags 
           {/* Category */}
           <button
             onClick={handleCategoryClick}
-            className="inline-flex items-center px-2 py-1 bg-accent/20 hover:bg-accent/30 text-secondary text-xs font-medium rounded transition-colors"
+            className="inline-flex items-center px-2 py-1 bg-accent/20 hover:bg-accent/30 text-secondary text-xs font-medium rounded transition-colors border border-transparent"
           >
             <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14-7H5m14 14H5" />
@@ -182,24 +196,53 @@ export default function LinkCard({ link, onTitleClick, onTagClick, selectedTags 
           </button>
 
           {/* Tags */}
-          {link.tags.slice(0, 3).map((tag) => (
+          {link.tags.slice(0, 5).map((tag) => (
             <button
               key={tag}
               onClick={(e) => handleTagClick(e, tag)}
-              className={`inline-flex items-center px-2 py-1 text-xs rounded transition-colors ${
+              className={`inline-flex items-center px-2 py-1 text-xs rounded transition-colors border ${
                 selectedTags.includes(tag)
-                  ? 'bg-primary/30 text-primary font-semibold border border-primary/50'
-                  : 'bg-primary/10 hover:bg-primary/20 text-primary'
+                  ? 'bg-primary/30 text-primary font-semibold border-primary/50'
+                  : 'bg-primary/10 hover:bg-primary/20 text-primary border-transparent'
               }`}
             >
               #{tag}
             </button>
           ))}
           
-          {link.tags.length > 3 && (
-            <span className="text-xs text-base-content/40">
-              +{link.tags.length - 3} more
-            </span>
+          {link.tags.length > 5 && (
+            <div 
+              className="relative"
+              onMouseEnter={() => setShowTagsTooltip(true)}
+              onMouseLeave={() => setShowTagsTooltip(false)}
+            >
+              <span className="text-xs text-base-content/40 cursor-pointer hover:text-base-content/60 transition-colors">
+                +{link.tags.length - 5} more
+              </span>
+              
+              {/* Tags Tooltip */}
+              {showTagsTooltip && (
+                <div className="absolute bottom-full left-0 mb-2 px-3 py-2 bg-gray-800 text-white text-xs rounded-lg whitespace-nowrap z-20 shadow-lg">
+                  <div className="flex flex-wrap gap-1">
+                    {link.tags.slice(5).map((tag) => (
+                      <button
+                        key={tag}
+                        onClick={(e) => handleTagClick(e, tag)}
+                        className={`inline-flex items-center px-2 py-1 text-xs rounded transition-colors border ${
+                          selectedTags.includes(tag)
+                            ? 'bg-primary/80 text-white font-semibold border-primary'
+                            : 'bg-gray-600 hover:bg-gray-500 text-white border-transparent'
+                        }`}
+                      >
+                        #{tag}
+                      </button>
+                    ))}
+                  </div>
+                  {/* Arrow */}
+                  <div className="absolute top-full left-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-gray-800"></div>
+                </div>
+              )}
+            </div>
           )}
         </div>
       </div>
