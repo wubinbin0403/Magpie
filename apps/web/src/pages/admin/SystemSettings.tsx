@@ -734,18 +734,21 @@ export default function SystemSettings() {
 
       {/* Edit Category Modal */}
       {editingCategory && (
-        <div className="modal modal-open">
-          <div className="modal-box max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col bg-magpie-50 border-2 border-magpie-100/30">
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          {/* Backdrop with blur effect */}
+          <div 
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm transition-all duration-300"
+            onClick={() => setEditingCategory(null)}
+          />
+          
+          {/* Modal container */}
+          <div className="flex min-h-full items-center justify-center p-4">
+            <div className="relative w-full max-w-2xl transform overflow-hidden rounded-2xl bg-magpie-50 shadow-2xl transition-all duration-300 max-h-[90vh] flex flex-col">
             {/* Modal Header */}
             <div className="flex items-center justify-between p-6 pb-4 border-b border-magpie-100/20">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-magpie-200 rounded-lg flex items-center justify-center">
-                  <CategoryIcon icon={editingCategory.icon || 'folder'} className="w-5 h-5 text-white" />
-                </div>
-                <h3 className="font-bold text-xl text-magpie-400">
-                  {editingCategory.id === 0 ? '添加新分类' : '编辑分类'}
-                </h3>
-              </div>
+              <h3 className="font-bold text-xl text-magpie-400">
+                {editingCategory.id === 0 ? '添加新分类' : '编辑分类'}
+              </h3>
               <button
                 className="btn btn-sm btn-circle btn-ghost hover:bg-magpie-100/20"
                 onClick={() => setEditingCategory(null)}
@@ -754,7 +757,7 @@ export default function SystemSettings() {
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-6 space-y-5">
+            <div className="flex-1 overflow-y-auto p-6 pb-24 space-y-5">
               {/* Compact Preview */}
               <div className="bg-white/60 p-4 rounded-lg border border-magpie-100/30">
                 <h4 className="font-medium mb-3 text-sm text-magpie-300 flex items-center gap-2">
@@ -767,9 +770,9 @@ export default function SystemSettings() {
                 <div className="inline-block">
                   <div className="group relative p-3 rounded-lg border border-magpie-100/40 hover:border-magpie-100/60 transition-all duration-300 hover:bg-magpie-100/10 min-w-[120px]">
                     {/* Background icon */}
-                    <div className="absolute top-0.5 left-0.5 w-8 h-8 flex items-center justify-center">
+                    <div className="absolute top-0.5 left-0.5 w-12 h-12 flex items-center justify-center">
                       <div className="text-gray-400/20 group-hover:text-magpie-200/22 transition-all duration-300">
-                        <CategoryIcon icon={editingCategory.icon || 'folder'} className="w-6 h-6" />
+                        <CategoryIcon icon={editingCategory.icon || 'folder'} className="w-10 h-10" />
                       </div>
                     </div>
                     
@@ -914,11 +917,11 @@ export default function SystemSettings() {
                 </div>
               </div>
             </div>
-
-            {/* Modal Actions */}
-            <div className="flex justify-end gap-3 p-6 pt-4 border-t border-magpie-100/20 bg-white/40">
+            
+            {/* Modal Actions - Full width at bottom */}
+            <div className="absolute bottom-0 left-0 right-0 flex justify-end gap-3 p-6 border-t border-magpie-100/20 bg-white/60 backdrop-blur-sm rounded-b-2xl">
               <button
-                className="btn btn-outline border-magpie-100 text-magpie-300 hover:bg-magpie-100/20 hover:border-magpie-200"
+                className="btn btn-outline border-magpie-100 text-magpie-300 hover:bg-magpie-100/20 hover:border-magpie-200 hover:text-magpie-400"
                 onClick={() => setEditingCategory(null)}
               >
                 取消
@@ -945,6 +948,7 @@ export default function SystemSettings() {
               >
                 {editingCategory.id === 0 ? '添加分类' : '保存更改'}
               </button>
+            </div>
             </div>
           </div>
         </div>
