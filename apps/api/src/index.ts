@@ -15,6 +15,7 @@ import statsRouter from './routes/public/stats.js'
 import domainsRouter from './routes/public/domains.js'
 import publicCategoriesRouter from './routes/public/categories.js'
 import addLinkRouter from './routes/auth/add-link.js'
+import addLinkStreamRouter from './routes/auth/add-link-stream.js'
 import pendingLinkRouter from './routes/auth/pending-link.js'
 import confirmLinkRouter from './routes/auth/confirm-link.js'
 import deleteLinkRouter from './routes/auth/delete-link.js'
@@ -64,6 +65,7 @@ app.route('/api/categories', publicCategoriesRouter)
 
 // Authentication required routes
 app.route('/api/links', addLinkRouter)      // POST /api/links
+app.route('/api/links/add', addLinkStreamRouter) // POST /api/links/add/stream - SSE endpoint
 app.route('/api/links', pendingLinkRouter)  // GET /api/links/:id/pending
 app.route('/api/links', confirmLinkRouter)  // POST /api/links/:id/confirm
 app.route('/api/links', deleteLinkRouter)   // DELETE /api/links/:id
