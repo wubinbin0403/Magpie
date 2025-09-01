@@ -100,6 +100,44 @@ const DEFAULT_CATEGORIES = [
 
 // Sample links for development environment
 const SAMPLE_LINKS = [
+  // Pending links for testing admin confirmation flow
+  {
+    url: 'https://astro.build/blog/astro-4.5/',
+    domain: 'astro.build', 
+    title: 'Astro 4.5: Dev Audit UI & Performance Improvements',
+    originalDescription: 'Astro 4.5 introduces a new dev audit UI, performance improvements, and better developer experience.',
+    aiSummary: 'Astro 4.5发布，新增开发审计UI、性能改进和更好的开发体验，提升静态站点生成器的易用性。',
+    aiCategory: '技术',
+    aiTags: '["Astro", "静态站点", "开发工具"]',
+    finalCategory: '',
+    finalTags: '',
+    status: 'pending'
+  },
+  {
+    url: 'https://www.mongodb.com/blog/post/mongodb-7.0-available',
+    domain: 'mongodb.com',
+    title: 'MongoDB 7.0: Vector Search & Time Series Collections',
+    originalDescription: 'MongoDB 7.0 introduces native vector search capabilities and enhanced time series collections for modern applications.',
+    aiSummary: 'MongoDB 7.0推出原生向量搜索和增强时间序列集合，为现代AI应用提供强大的数据库支持。',
+    aiCategory: '技术', 
+    aiTags: '["MongoDB", "数据库", "向量搜索", "AI"]',
+    finalCategory: '',
+    finalTags: '',
+    status: 'pending'
+  },
+  {
+    url: 'https://lottiefiles.com/blog/introducing-lottie-interactivity',
+    domain: 'lottiefiles.com',
+    title: 'Interactive Lottie Animations for Web',
+    originalDescription: 'Create interactive Lottie animations with click, hover, and scroll triggers for engaging web experiences.',
+    aiSummary: 'LottieFiles推出交互式Lottie动画功能，支持点击、悬停和滚动触发，打造更吸引人的网页体验。',
+    aiCategory: '设计',
+    aiTags: '["Lottie", "动画", "交互设计", "Web"]',
+    finalCategory: '',
+    finalTags: '',
+    status: 'pending'
+  },
+  // Published links
   {
     url: 'https://react.dev/blog/2024/04/25/react-19',
     domain: 'react.dev',

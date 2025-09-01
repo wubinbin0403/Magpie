@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import api from '../../utils/api'
 
 interface PendingLink {
   id: number
@@ -9,112 +10,55 @@ interface PendingLink {
   originalDescription: string
   aiSummary: string
   aiCategory: string
-  aiTags: string[]
-  createdAt: string
+  aiTags: string | string[] // API可能返回JSON字符串或数组
+  createdAt: number // API返回的是timestamp
   status: 'pending'
 }
 
-// Mock data for demonstration
-const mockPendingLinks: PendingLink[] = [
-  {
-    id: 1,
-    url: 'https://react.dev/blog/2024/04/25/react-19',
-    title: 'React 19 最新特性详解',
-    domain: 'react.dev',
-    originalDescription: 'React 19 introduces several new features and improvements...',
-    aiSummary: 'React 19引入了并发特性和新的Hook，提供更好的性能和开发者体验，包括自动批处理、并发渲染等重要改进',
-    aiCategory: '技术',
-    aiTags: ['React', '前端', 'JavaScript'],
-    createdAt: '2024-08-30T15:30:00Z',
-    status: 'pending'
-  },
-  {
-    id: 2,
-    url: 'https://vue-next.com/guide/performance',
-    title: 'Vue.js 性能优化实战',
-    domain: 'vue-next.com',
-    originalDescription: 'A comprehensive guide to Vue.js performance optimization...',
-    aiSummary: '详细介绍Vue 3.4的性能改进，包括编译时优化、运行时优化和最佳实践，帮助开发者构建高性能应用',
-    aiCategory: '技术',
-    aiTags: ['Vue', '前端', '性能优化'],
-    createdAt: '2024-08-30T14:20:00Z',
-    status: 'pending'
-  },
-  {
-    id: 3,
-    url: 'https://design-system.com/principles',
-    title: '设计系统最佳实践',
-    domain: 'design-system.com',
-    originalDescription: 'Building scalable design systems with modern tools...',
-    aiSummary: '构建可扩展设计系统的核心原则，涵盖组件库设计、设计token管理和团队协作最佳实践',
-    aiCategory: '设计',
-    aiTags: ['设计系统', 'UI/UX', '组件库'],
-    createdAt: '2024-08-30T12:15:00Z',
-    status: 'pending'
-  },
-  {
-    id: 4,
-    url: 'https://tailwindcss.com/blog/tailwindcss-v4-alpha',
-    title: 'Tailwind CSS 4.0 发布',
-    domain: 'tailwindcss.com',
-    originalDescription: 'Tailwind CSS v4.0 brings significant performance improvements...',
-    aiSummary: 'Tailwind CSS 4.0带来重大性能提升，新的编译引擎和更好的开发体验，支持现代CSS特性',
-    aiCategory: '技术',
-    aiTags: ['CSS', '前端', 'Tailwind'],
-    createdAt: '2024-08-29T16:45:00Z',
-    status: 'pending'
-  },
-  {
-    id: 5,
-    url: 'https://figma.com/plugin-docs/intro',
-    title: 'Figma 插件开发入门',
-    domain: 'figma.com',
-    originalDescription: 'Learn how to build Figma plugins from scratch...',
-    aiSummary: 'Figma插件开发完整指南，从基础API到高级功能实现，包括UI组件、数据处理和发布流程',
-    aiCategory: '工具',
-    aiTags: ['Figma', '插件开发', '设计工具'],
-    createdAt: '2024-08-29T10:30:00Z',
-    status: 'pending'
-  }
-]
 
 export default function PendingLinks() {
   const [selectedIds, setSelectedIds] = useState<number[]>([])
   const queryClient = useQueryClient()
 
   // Fetch pending links
-  const { data: pendingLinks = [], isLoading, error } = useQuery<PendingLink[]>({
+  const { data: pendingLinksData, isLoading, error } = useQuery({
     queryKey: ['pending-links'],
     queryFn: async () => {
-      // Mock API call
-      await new Promise(resolve => setTimeout(resolve, 500))
-      return mockPendingLinks
+      const response = await api.getPendingLinks()
+      return response.data
     }
   })
 
+  // Process the data to ensure proper format
+  const pendingLinks: PendingLink[] = (pendingLinksData?.links || []).map((link: any) => ({
+    ...link,
+    aiTags: typeof link.aiTags === 'string' ? 
+      (link.aiTags.trim() ? JSON.parse(link.aiTags) : []) : 
+      (link.aiTags || [])
+  }))
+
   // Confirm link mutation
   const confirmMutation = useMutation({
-    mutationFn: async (_ids: number[]) => {
-      // Mock API call
-      await new Promise(resolve => setTimeout(resolve, 800))
-      return { success: true }
+    mutationFn: async (ids: number[]) => {
+      const response = await api.batchPendingLinks(ids, 'confirm')
+      return response.data
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pending-links'] })
-      queryClient.invalidateQueries({ queryKey: ['admin-stats'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-stats-summary'] })
       setSelectedIds([])
     }
   })
 
   // Delete link mutation
   const deleteMutation = useMutation({
-    mutationFn: async (_ids: number[]) => {
-      await new Promise(resolve => setTimeout(resolve, 500))
-      return { success: true }
+    mutationFn: async (ids: number[]) => {
+      const response = await api.batchPendingLinks(ids, 'delete')
+      return response.data
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pending-links'] })
-      queryClient.invalidateQueries({ queryKey: ['admin-stats'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-stats-summary'] })
       setSelectedIds([])
     }
   })
@@ -145,8 +89,8 @@ export default function PendingLinks() {
     }
   }
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
+  const formatDate = (timestamp: number) => {
+    const date = new Date(timestamp * 1000) // Convert Unix timestamp to milliseconds
     return date.toLocaleString('zh-CN', {
       year: 'numeric',
       month: '2-digit',
