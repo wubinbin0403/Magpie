@@ -213,6 +213,40 @@ describe('Admin Categories API', () => {
       expect(body.success).toBe(false)
       // zValidator may return different error formats, just check it's a validation error
     })
+
+    it('should enforce maximum category limit of 7', async () => {
+      // Add 4 more categories to reach the limit (we already have 3)
+      const newCategories = ['生活', '娱乐', '学习', '资讯']
+      
+      for (const name of newCategories) {
+        const res = await app.request('/', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${adminToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ name }),
+        })
+        
+        expect(res.status).toBe(201)
+      }
+      
+      // Now we have 7 categories total, trying to add 8th should fail
+      const res = await app.request('/', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${adminToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ name: '第八个分类' }),
+      })
+      
+      expect(res.status).toBe(400)
+      const body = await res.json()
+      expect(body.success).toBe(false)
+      expect(body.error.code).toBe('CATEGORY_LIMIT_REACHED')
+      expect(body.error.message).toContain('Maximum number of categories (7)')
+    })
   })
 
   describe('PUT /:id', () => {

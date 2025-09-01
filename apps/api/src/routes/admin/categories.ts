@@ -112,6 +112,15 @@ function createAdminCategoriesRouter(database = db) {
       const data = c.req.valid('json')
       const now = Math.floor(Date.now() / 1000)
       
+      // Check if category limit is reached (max 7 categories)
+      const existingCategories = await database
+        .select({ count: sql<number>`count(*)` })
+        .from(categories)
+      
+      if (existingCategories[0]?.count && existingCategories[0].count >= 7) {
+        return sendError(c, 'CATEGORY_LIMIT_REACHED', 'Maximum number of categories (7) has been reached', undefined, 400)
+      }
+      
       // Generate slug if not provided
       if (!data.slug) {
         // Better slug generation that handles Chinese characters

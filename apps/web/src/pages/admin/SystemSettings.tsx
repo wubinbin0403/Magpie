@@ -319,16 +319,33 @@ export default function SystemSettings() {
   // Helper function for showing toasts
   const showToast = useCallback((message: string, type: 'success' | 'error' = 'success') => {
     const toast = document.createElement('div')
-    toast.className = 'toast toast-top toast-end'
+    toast.className = 'fixed top-24 left-1/2 transform -translate-x-1/2 z-[9999] animate-in fade-in slide-in-from-top-4 duration-300'
+    
+    const iconSvg = type === 'success' 
+      ? '<svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>'
+      : '<svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>'
+    
+    const bgColor = type === 'success' ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'
+    
     toast.innerHTML = `
-      <div class="alert alert-${type}">
-        <span>${message}</span>
+      <div class="flex items-center gap-3 px-4 py-3 ${bgColor} border rounded-xl shadow-lg backdrop-blur-sm max-w-md">
+        <div class="flex-shrink-0">
+          ${iconSvg}
+        </div>
+        <span class="font-medium text-sm">${message}</span>
       </div>
     `
     document.body.appendChild(toast)
+    
+    // Auto remove after 3 seconds with fade out
     setTimeout(() => {
       if (document.body.contains(toast)) {
-        document.body.removeChild(toast)
+        toast.className += ' animate-out fade-out slide-out-to-top-4 duration-300'
+        setTimeout(() => {
+          if (document.body.contains(toast)) {
+            document.body.removeChild(toast)
+          }
+        }, 300)
       }
     }, 3000)
   }, [])
@@ -665,28 +682,47 @@ export default function SystemSettings() {
             </DndContext>
 
             {/* Add New Category Button */}
-            <button
-              className="group relative p-4 rounded-xl border-2 border-dashed border-base-300 hover:border-primary/50 transition-all duration-300 w-full flex flex-col items-center justify-center min-h-[120px] hover:bg-base-200/30"
-              onClick={() => setEditingCategory({
-                id: 0,
-                name: '',
-                slug: '',
-                icon: 'folder',
-                description: '',
-                displayOrder: categories.length > 0 ? Math.max(...categories.map(c => c.displayOrder), 0) + 1 : 0,
-                isActive: 1,
-                tempIsDefault: false
-              } as any)}
-            >
-              <div className="w-12 h-12 rounded-full border-2 border-dashed border-base-300 group-hover:border-primary/50 flex items-center justify-center mb-2 transition-colors duration-300">
-                <svg className="w-6 h-6 text-base-content/50 group-hover:text-primary/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
+            {categories.length >= 7 ? (
+              <div className="relative p-4 rounded-xl border-2 border-dashed border-base-300/50 bg-base-200/10 w-full flex flex-col items-center justify-center min-h-[120px] cursor-not-allowed">
+                <div className="w-12 h-12 rounded-full border-2 border-dashed border-base-300/50 flex items-center justify-center mb-2">
+                  <svg className="w-6 h-6 text-base-content/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                  </svg>
+                </div>
+                <span className="text-sm font-medium text-base-content/50">
+                  已达到分类上限（最多7个）
+                </span>
+                <span className="text-xs text-base-content/40 mt-1">
+                  请删除现有分类后再添加新分类
+                </span>
               </div>
-              <span className="text-sm font-medium text-base-content/70 group-hover:text-primary/70 transition-colors duration-300">
-                添加分类
-              </span>
-            </button>
+            ) : (
+              <button
+                className="group relative p-4 rounded-xl border-2 border-dashed border-base-300 hover:border-primary/50 transition-all duration-300 w-full flex flex-col items-center justify-center min-h-[120px] hover:bg-base-200/30"
+                onClick={() => setEditingCategory({
+                  id: 0,
+                  name: '',
+                  slug: '',
+                  icon: 'folder',
+                  description: '',
+                  displayOrder: categories.length > 0 ? Math.max(...categories.map(c => c.displayOrder), 0) + 1 : 0,
+                  isActive: 1,
+                  tempIsDefault: false
+                } as any)}
+              >
+                <div className="w-12 h-12 rounded-full border-2 border-dashed border-base-300 group-hover:border-primary/50 flex items-center justify-center mb-2 transition-colors duration-300">
+                  <svg className="w-6 h-6 text-base-content/50 group-hover:text-primary/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                </div>
+                <span className="text-sm font-medium text-base-content/70 group-hover:text-primary/70 transition-colors duration-300">
+                  添加分类
+                </span>
+                <span className="text-xs text-base-content/50 mt-1">
+                  {7 - categories.length} 个可用名额
+                </span>
+              </button>
+            )}
           </div>
 
           {/* Items Per Page */}
