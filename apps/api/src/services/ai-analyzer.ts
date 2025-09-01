@@ -32,7 +32,7 @@ const DEFAULT_CATEGORIES = [
 ]
 
 // Default AI prompt template (optimized for Chinese content with dynamic categories)
-const DEFAULT_PROMPT_TEMPLATE = `请分析以下网页内容，并以JSON格式提供结构化摘要。
+const DEFAULT_PROMPT_TEMPLATE = `你是一个专业的内容分析助手。请分析以下网页内容并返回JSON格式的结构化摘要。
 
 内容信息：
 - URL: {url}
@@ -41,23 +41,25 @@ const DEFAULT_PROMPT_TEMPLATE = `请分析以下网页内容，并以JSON格式�
 - 原始描述: {description}
 - 主要内容: {content}
 
-请按以下JSON格式提供分析结果：
+**重要：你必须严格按照以下JSON格式返回结果，不要添加任何其他文本、解释或格式：**
+
 {
   "summary": "简洁明了的2-3句话摘要，使用与原内容相同的语言",
   "category": "从以下分类中选择最合适的一个：{categories}",
   "tags": ["3-5个相关标签的字符串数组"],
   "language": "检测到的语言代码(zh, en, ja等)",
   "sentiment": "positive, neutral, 或 negative",
-  "readingTime": "预估阅读时间(分钟数，整数)"
+  "readingTime": 预估阅读时间(分钟数，整数)
 }
 
-分析要求：
+**分析要求：**
 - 摘要要简洁且信息丰富，突出核心观点
 - 严格从给定的分类列表中选择最合适的一个分类
 - 标签应该具体且相关，有助于内容检索
 - 准确检测内容的主要语言
 - 根据内容长度提供合理的阅读时间估算(按每分钟200-300字计算)
-- 仅返回有效的JSON格式，不要添加其他文本`
+
+**请只返回JSON对象，不要包含任何其他文本。**`
 
 export class AIAnalyzer {
   private client: OpenAI
@@ -88,10 +90,14 @@ export class AIAnalyzer {
       // Prepare content for AI analysis
       const prompt = this.buildPrompt(content)
       
-      // Call OpenAI API
+      // Call OpenAI API with system message for better JSON compliance
       const response = await this.client.chat.completions.create({
         model: this.options.model,
         messages: [
+          {
+            role: 'system',
+            content: 'You are a professional content analyzer. You must always respond with valid JSON format only. Never include explanations, markdown formatting, or any text outside the JSON object.'
+          },
           {
             role: 'user',
             content: prompt
@@ -99,6 +105,7 @@ export class AIAnalyzer {
         ],
         temperature: this.options.temperature,
         max_tokens: this.options.maxTokens,
+        response_format: { type: 'json_object' } // Force JSON response if supported
       })
 
       const aiResponse = response.choices[0]?.message?.content?.trim()
@@ -162,18 +169,48 @@ export class AIAnalyzer {
   }
 
   private extractAnalysisFromText(text: string, content: ScrapedContent): AIAnalysisResult {
-    // Try to extract JSON from text that might have extra content
+    // First, try to extract JSON from text
     const jsonMatch = text.match(/\{[\s\S]*\}/)
     
     if (jsonMatch) {
       try {
-        return JSON.parse(jsonMatch[0])
-      } catch {
-        // Continue to fallback
+        const parsed = JSON.parse(jsonMatch[0])
+        console.log('Successfully extracted JSON from AI response:', parsed)
+        return parsed
+      } catch (e) {
+        console.warn('JSON extraction failed, JSON text was:', jsonMatch[0])
       }
     }
     
-    // If JSON extraction fails, generate fallback
+    // Try to extract JSON from code blocks (```json ... ```)
+    const codeBlockMatch = text.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/)
+    if (codeBlockMatch) {
+      try {
+        const parsed = JSON.parse(codeBlockMatch[1])
+        console.log('Successfully extracted JSON from code block:', parsed)
+        return parsed
+      } catch (e) {
+        console.warn('Code block JSON extraction failed, JSON text was:', codeBlockMatch[1])
+      }
+    }
+    
+    // If we have plain text that looks like a summary, try to create a basic analysis
+    if (text && !text.includes('{') && text.length > 10) {
+      console.log('AI returned plain text instead of JSON, creating fallback analysis from text:', text.substring(0, 100))
+      
+      // Use the AI response as the summary and generate other fields
+      return {
+        summary: text.substring(0, 200), // Use AI text as summary
+        category: this.guessCategoryFromContent(content.title, content.description + ' ' + text),
+        tags: this.extractBasicTags(content.title, content.description + ' ' + text),
+        language: this.detectLanguage(text),
+        sentiment: 'neutral',
+        readingTime: Math.max(1, Math.ceil(content.wordCount / 225))
+      }
+    }
+    
+    console.warn('Could not extract any useful analysis from AI response, using fallback')
+    // If everything fails, generate fallback
     return this.generateFallbackAnalysis(content)
   }
 

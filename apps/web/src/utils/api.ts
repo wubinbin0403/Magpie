@@ -20,6 +20,7 @@ class ApiClient {
       ...restOptions,
       headers: {
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
         ...(authToken && { Authorization: `Bearer ${authToken}` }),
         ...headers,
       },
@@ -178,6 +179,24 @@ class ApiClient {
     const queryString = new URLSearchParams(params as any).toString()
     return this.request(`/links/add?${queryString}`)
   }
+
+  // Add link with JSON response (for frontend use)
+  async addLinkJson(url: string, options?: { 
+    skipConfirm?: boolean; 
+    category?: string; 
+    tags?: string 
+  }) {
+    return this.request('/links', {
+      method: 'POST',
+      body: JSON.stringify({ 
+        url, 
+        skipConfirm: options?.skipConfirm || false,
+        category: options?.category,
+        tags: options?.tags
+      }),
+    })
+  }
+
 
   async getPendingLink(id: number) {
     return this.request(`/links/${id}/pending`)

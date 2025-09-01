@@ -5,10 +5,42 @@ import { links } from '../../db/schema.js'
 import { eq } from 'drizzle-orm'
 import { sendSuccess, sendError, notFound } from '../../utils/response.js'
 import { idParamSchema, confirmLinkSchema } from '../../utils/validation.js'
-import { requireApiToken, logOperation } from '../../middleware/auth.js'
+import { requireApiTokenOrAdminSession, logOperation } from '../../middleware/auth.js'
 import { triggerStaticGeneration } from '../../services/static-generator.js'
 import type { ConfirmLinkResponse } from '../../types/api.js'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
+
+// Helper function to get unified auth data
+function getAuthData(c: any) {
+  const authType = c.get('authType')
+  const tokenData = c.get('tokenData')
+  const userData = c.get('userData')
+  const clientIp = c.get('clientIp')
+  
+  if (authType === 'api_token') {
+    return {
+      userId: undefined, // API tokens don't have user association
+      tokenId: tokenData?.id,
+      clientIp,
+      authType: 'api_token'
+    }
+  } else if (authType === 'admin_session' || authType === 'admin_jwt') {
+    return {
+      userId: userData?.id,
+      tokenId: undefined,
+      clientIp,
+      authType: authType
+    }
+  }
+  
+  // Fallback for backward compatibility
+  return {
+    userId: tokenData ? undefined : userData?.id,
+    tokenId: tokenData?.id,
+    clientIp,
+    authType: tokenData ? 'api_token' : 'admin_session'
+  }
+}
 
 // Create confirm link router with optional database dependency injection
 function createConfirmLinkRouter(database = db) {
@@ -26,14 +58,13 @@ function createConfirmLinkRouter(database = db) {
   })
 
   // POST /api/links/:id/confirm - Confirm and publish link (authenticated)
-  app.post('/:id/confirm', requireApiToken(database), zValidator('param', idParamSchema), zValidator('json', confirmLinkSchema), async (c) => {
+  app.post('/:id/confirm', requireApiTokenOrAdminSession(database), zValidator('param', idParamSchema), zValidator('json', confirmLinkSchema), async (c) => {
     const startTime = Date.now()
     
     try {
       const { id } = c.req.valid('param')
       const { title, description, category, tags, publish = true } = c.req.valid('json')
-      const tokenData = c.get('tokenData')
-      const clientIp = c.get('clientIp')
+      const authData = getAuthData(c)
 
       // Get link details - only allow pending links
       const linkResult = await database
@@ -56,9 +87,9 @@ function createConfirmLinkRouter(database = db) {
           'links',
           id,
           { reason: 'not_found' },
-          tokenData?.id,
-          undefined,
-          clientIp,
+          authData.tokenId,
+          authData.userId,
+          authData.clientIp,
           c.req.header('user-agent'),
           'failed',
           'Link not found'
@@ -76,9 +107,9 @@ function createConfirmLinkRouter(database = db) {
           'links',
           id,
           { reason: 'invalid_status', status: link.status },
-          tokenData?.id,
-          undefined,
-          clientIp,
+          authData.tokenId,
+          authData.userId,
+          authData.clientIp,
           c.req.header('user-agent'),
           'failed',
           'Link is not in pending status'
@@ -140,9 +171,9 @@ function createConfirmLinkRouter(database = db) {
           publish,
           final_status: publish ? 'published' : 'draft'
         },
-        tokenData?.id,
-        undefined,
-        clientIp,
+        authData.tokenId,
+        authData.userId,
+        authData.clientIp,
         c.req.header('user-agent'),
         'success',
         undefined,
@@ -169,17 +200,16 @@ function createConfirmLinkRouter(database = db) {
 
     } catch (error) {
       const duration = Date.now() - startTime
-      const tokenData = c.get('tokenData')
-      const clientIp = c.get('clientIp')
+      const authData = getAuthData(c)
       
       await logOperation(
         'link_confirm',
         'links',
         undefined,
         { error: String(error) },
-        tokenData?.id,
-        undefined,
-        clientIp,
+        authData.tokenId,
+        authData.userId,
+        authData.clientIp,
         c.req.header('user-agent'),
         'failed',
         String(error),

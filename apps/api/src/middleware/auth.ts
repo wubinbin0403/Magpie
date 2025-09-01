@@ -5,6 +5,7 @@ import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import { eq, and } from 'drizzle-orm';
 import crypto from 'crypto';
 import type { ApiToken, User } from '../db/schema.js';
+import { verifyAdminJWT } from '../utils/auth.js';
 
 // Auth verification result types
 export interface ApiTokenVerification {
@@ -256,6 +257,89 @@ export function requireSessionToken() {
     c.set('userData', verification.userData);
     
     await next();
+  };
+}
+
+/**
+ * Hono middleware for dual authentication (API token OR admin JWT OR admin session)
+ * Tries API token first, then JWT token, then session token
+ */
+export function requireApiTokenOrAdminSession(database: BetterSQLite3Database<any> = db) {
+  return async (c: Context, next: Next) => {
+    const authHeader = c.req.header('authorization');
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return c.json({
+        success: false,
+        error: 'AUTH_REQUIRED',
+        message: 'Authorization header with Bearer token required'
+      }, 401);
+    }
+
+    const token = authHeader.slice(7); // Remove 'Bearer '
+    const clientIp = c.req.header('x-forwarded-for') || c.req.header('x-real-ip') || 'unknown';
+    
+    // First try API token verification (mgp_xxxx format)
+    if (token.startsWith('mgp_')) {
+      const verification = await verifyApiToken(token, clientIp, database);
+      
+      if (verification.valid) {
+        // API token is valid
+        c.set('tokenData', verification.tokenData);
+        c.set('clientIp', clientIp);
+        c.set('authType', 'api_token');
+        await next();
+        return;
+      }
+    }
+    
+    // Try session token (session_xxxx format)
+    else if (token.startsWith('session_')) {
+      const verification = await verifySessionToken(token, database);
+      
+      if (verification.valid) {
+        // Session token is valid - check if user is admin
+        if (verification.userData?.role !== 'admin') {
+          return c.json({
+            success: false,
+            error: 'FORBIDDEN',
+            message: 'Admin access required'
+          }, 403);
+        }
+        
+        // Admin session is valid
+        c.set('userData', verification.userData);
+        c.set('clientIp', clientIp);
+        c.set('authType', 'admin_session');
+        await next();
+        return;
+      }
+    }
+    
+    // Try JWT token (for admin users)
+    else {
+      const jwtPayload = verifyAdminJWT(token);
+      
+      if (jwtPayload && jwtPayload.role === 'admin') {
+        // JWT is valid and user is admin
+        c.set('userData', {
+          id: jwtPayload.userId,
+          username: jwtPayload.username,
+          role: jwtPayload.role
+        });
+        c.set('clientIp', clientIp);
+        c.set('authType', 'admin_jwt');
+        await next();
+        return;
+      }
+    }
+    
+    // All authentication methods failed
+    return c.json({
+      success: false,
+      error: 'AUTH_INVALID',
+      message: 'Invalid or expired token'
+    }, 401);
   };
 }
 

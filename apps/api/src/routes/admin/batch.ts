@@ -73,10 +73,23 @@ function createAdminBatchRouter(database = db) {
                 link.aiCategory || 
                 ''
                 
-              const finalTags = JSON.stringify(params?.tags || 
-                (link.userTags ? JSON.parse(link.userTags) : []) ||
-                (link.aiTags ? JSON.parse(link.aiTags) : []) ||
-                [])
+              // Determine final tags with proper priority: params -> user -> ai -> empty
+              let tagsToUse: string[] = []
+              if (params?.tags && params.tags.length > 0) {
+                tagsToUse = params.tags
+              } else if (link.userTags) {
+                const userTags = JSON.parse(link.userTags)
+                if (userTags && userTags.length > 0) {
+                  tagsToUse = userTags
+                }
+              }
+              if (tagsToUse.length === 0 && link.aiTags) {
+                const aiTags = JSON.parse(link.aiTags)
+                if (aiTags && aiTags.length > 0) {
+                  tagsToUse = aiTags
+                }
+              }
+              const finalTags = JSON.stringify(tagsToUse)
 
               // Update to published status
               await database

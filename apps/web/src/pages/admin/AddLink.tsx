@@ -1,5 +1,6 @@
-import { useState } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useState, useEffect } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import api from '../../utils/api'
 
 interface AddLinkForm {
   url: string
@@ -17,9 +18,6 @@ interface ProcessingStatus {
   error?: string
 }
 
-// Mock categories for the dropdown
-const mockCategories = ['技术', '产品', '设计', '工具']
-
 export default function AddLink() {
   const [form, setForm] = useState<AddLinkForm>({
     url: '',
@@ -29,8 +27,52 @@ export default function AddLink() {
   })
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [processingItems, setProcessingItems] = useState<ProcessingStatus[]>([])
+  const [pendingLinkId, setPendingLinkId] = useState<number | null>(null)
+  const [isEditing, setIsEditing] = useState(false)
+  const [editForm, setEditForm] = useState({
+    title: '',
+    description: '',
+    category: '',
+    tags: [] as string[]
+  })
+  const [message, setMessage] = useState<{
+    type: 'success' | 'error' | 'info'
+    text: string
+  } | null>(null)
 
   const queryClient = useQueryClient()
+
+  // Fetch categories
+  const { data: categoriesData, isLoading: categoriesLoading } = useQuery({
+    queryKey: ['categories'],
+    queryFn: async () => {
+      const response = await api.getCategories()
+      return response.data
+    }
+  })
+
+  const categories = categoriesData || []
+
+  // Auto-clear messages after 5 seconds
+  useEffect(() => {
+    if (message) {
+      const timer = setTimeout(() => {
+        setMessage(null)
+      }, 5000)
+      return () => clearTimeout(timer)
+    }
+  }, [message])
+
+  // Fetch pending link details when we have a pending link ID
+  const { data: pendingLinkData, isLoading: pendingLinkLoading } = useQuery({
+    queryKey: ['pending-link', pendingLinkId],
+    queryFn: async () => {
+      if (!pendingLinkId) return null
+      const response = await api.getPendingLink(pendingLinkId)
+      return response.data
+    },
+    enabled: !!pendingLinkId
+  })
 
   // Add link mutation
   const addLinkMutation = useMutation({
@@ -46,62 +88,142 @@ export default function AddLink() {
       }])
 
       try {
-        // Simulate processing steps
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        
+        // Update processing status
         setProcessingItems(prev => prev.map(item => 
           item.id === processingId 
             ? { ...item, message: '正在获取内容...', status: 'processing' }
             : item
         ))
 
-        await new Promise(resolve => setTimeout(resolve, 1500))
+        // Call real API
+        const response = await api.addLinkJson(linkData.url, {
+          skipConfirm: linkData.skipConfirm,
+          category: linkData.presetCategory || undefined,
+          tags: linkData.presetTags || undefined
+        })
+
+        const result = response.data
+
+        // Update status based on response
+        if (linkData.skipConfirm && result.status === 'published') {
+          // Link was published immediately
+          setProcessingItems(prev => prev.map(item => 
+            item.id === processingId 
+              ? { 
+                  ...item, 
+                  status: 'success',
+                  message: '发布成功！',
+                  title: result.title
+                }
+              : item
+          ))
+        } else if (result.id && result.status === 'pending') {
+          // Link needs confirmation - set the pending link ID to trigger fetching details
+          setPendingLinkId(result.id)
+          
+          setProcessingItems(prev => prev.map(item => 
+            item.id === processingId 
+              ? { 
+                  ...item, 
+                  status: 'success',
+                  message: '处理成功，准备确认',
+                  title: '待确认'
+                }
+              : item
+          ))
+        }
+
+        return result
+      } catch (error: any) {
+        // Handle API errors
+        const errorMessage = error.message || '处理失败'
         
-        setProcessingItems(prev => prev.map(item => 
-          item.id === processingId 
-            ? { ...item, message: 'AI 正在分析...', status: 'processing' }
-            : item
-        ))
-
-        await new Promise(resolve => setTimeout(resolve, 2000))
-
-        // Mock success
-        const mockTitle = linkData.url.includes('react') ? 'React 开发指南' :
-                         linkData.url.includes('vue') ? 'Vue.js 实战教程' :
-                         linkData.url.includes('design') ? '设计系统构建' :
-                         'Web 开发最佳实践'
-
-        setProcessingItems(prev => prev.map(item => 
-          item.id === processingId 
-            ? { 
-                ...item, 
-                status: 'success',
-                message: linkData.skipConfirm ? '发布成功！' : '准备审核',
-                title: mockTitle
-              }
-            : item
-        ))
-
-        return { success: true, id: processingId, title: mockTitle }
-      } catch (error) {
         setProcessingItems(prev => prev.map(item => 
           item.id === processingId 
             ? { 
                 ...item, 
                 status: 'failed',
                 message: '处理失败',
-                error: '网络错误或无效的URL'
+                error: errorMessage
               }
             : item
         ))
         throw error
       }
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['pending-links'] })
-      queryClient.invalidateQueries({ queryKey: ['admin-stats'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-stats-summary'] })
       // Reset form
       setForm({ url: '', skipConfirm: false, presetCategory: '', presetTags: '' })
+      
+      // Show success message
+      if (result.data?.status === 'published') {
+        setMessage({
+          type: 'success',
+          text: '链接已成功添加并发布！'
+        })
+      } else {
+        setMessage({
+          type: 'info',
+          text: '链接已成功添加，请在下方确认后发布。'
+        })
+      }
+    },
+    onError: (error: any) => {
+      console.error('Failed to add link:', error)
+      setMessage({
+        type: 'error',
+        text: error.message || '添加链接失败，请检查URL是否有效或稍后重试。'
+      })
+    }
+  })
+
+  // Confirm link mutation
+  const confirmLinkMutation = useMutation({
+    mutationFn: async (confirmData: {
+      id: number
+      title?: string
+      description: string
+      category: string
+      tags: string[]
+      publish?: boolean
+    }) => {
+      return await api.confirmLink(confirmData.id, {
+        title: confirmData.title,
+        description: confirmData.description,
+        category: confirmData.category,
+        tags: confirmData.tags,
+        publish: confirmData.publish !== false
+      })
+    },
+    onSuccess: () => {
+      // Reset all states
+      setPendingLinkId(null)
+      setIsEditing(false)
+      setEditForm({
+        title: '',
+        description: '',
+        category: '',
+        tags: []
+      })
+      
+      // Invalidate queries
+      queryClient.invalidateQueries({ queryKey: ['pending-links'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-stats-summary'] })
+      
+      // Show success message
+      setMessage({
+        type: 'success',
+        text: '链接已成功发布！您可以继续添加新的链接。'
+      })
+    },
+    onError: (error: any) => {
+      console.error('Failed to confirm link:', error)
+      setMessage({
+        type: 'error',
+        text: error.message || '发布链接失败，请稍后重试。'
+      })
     }
   })
 
@@ -112,10 +234,6 @@ export default function AddLink() {
     addLinkMutation.mutate(form)
   }
 
-  const handleBatchImport = () => {
-    // TODO: Implement batch import functionality
-    alert('批量导入功能即将推出！')
-  }
 
   const clearProcessing = () => {
     setProcessingItems([])
@@ -131,6 +249,99 @@ export default function AddLink() {
         presetTags: form.presetTags
       })
     }
+  }
+
+  // Handle edit mode
+  const handleStartEdit = () => {
+    if (pendingLinkData) {
+      setEditForm({
+        title: pendingLinkData.title,
+        description: pendingLinkData.aiSummary,
+        category: pendingLinkData.aiCategory,
+        tags: [...pendingLinkData.aiTags]
+      })
+      setIsEditing(true)
+    }
+  }
+
+  const handleCancelEdit = () => {
+    setIsEditing(false)
+    setEditForm({
+      title: '',
+      description: '',
+      category: '',
+      tags: []
+    })
+  }
+
+  // Handle tags input
+  const handleTagsChange = (tagsString: string) => {
+    const tags = tagsString
+      .split(',')
+      .map(tag => tag.trim())
+      .filter(tag => tag.length > 0)
+    
+    setEditForm(prev => ({ ...prev, tags }))
+  }
+
+  const getTagsString = () => {
+    return editForm.tags.join(', ')
+  }
+
+  // Form validation
+  const validateEditForm = (): string[] => {
+    const errors: string[] = []
+    
+    if (!editForm.title?.trim()) {
+      errors.push('标题不能为空')
+    }
+    
+    if (!editForm.description?.trim()) {
+      errors.push('描述不能为空')
+    }
+    
+    if (!editForm.category) {
+      errors.push('请选择分类')
+    }
+    
+    return errors
+  }
+
+  // Handle confirm actions
+  const handleConfirmWithEdits = () => {
+    if (!pendingLinkId || !pendingLinkData) return
+    
+    // Validate form
+    const errors = validateEditForm()
+    if (errors.length > 0) {
+      setMessage({
+        type: 'error',
+        text: `请完善信息：${errors.join('，')}`
+      })
+      return
+    }
+    
+    confirmLinkMutation.mutate({
+      id: pendingLinkId,
+      title: editForm.title || pendingLinkData.title,
+      description: editForm.description || pendingLinkData.aiSummary,
+      category: editForm.category || pendingLinkData.aiCategory,
+      tags: editForm.tags.length > 0 ? editForm.tags : pendingLinkData.aiTags,
+      publish: true
+    })
+  }
+
+  const handleDirectConfirm = () => {
+    if (!pendingLinkId || !pendingLinkData) return
+    
+    confirmLinkMutation.mutate({
+      id: pendingLinkId,
+      title: pendingLinkData.title,
+      description: pendingLinkData.aiSummary,
+      category: pendingLinkData.aiCategory,
+      tags: pendingLinkData.aiTags,
+      publish: true
+    })
   }
 
   const getStatusColor = (status: ProcessingStatus['status']) => {
@@ -157,6 +368,36 @@ export default function AddLink() {
 
   return (
     <div className="space-y-6">
+      {/* Message Alert */}
+      {message && (
+        <div className={`alert ${
+          message.type === 'success' ? 'alert-success' : 
+          message.type === 'error' ? 'alert-error' : 
+          'alert-info'
+        }`}>
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            {message.type === 'success' ? (
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            ) : message.type === 'error' ? (
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            ) : (
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            )}
+          </svg>
+          <div className="flex-1">
+            <div className="text-sm font-medium">{message.text}</div>
+          </div>
+          <button 
+            className="btn btn-ghost btn-sm"
+            onClick={() => setMessage(null)}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
+
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -230,10 +471,11 @@ export default function AddLink() {
                       className="select select-bordered"
                       value={form.presetCategory}
                       onChange={(e) => setForm(prev => ({ ...prev, presetCategory: e.target.value }))}
+                      disabled={categoriesLoading}
                     >
                       <option value="">自动检测</option>
-                      {mockCategories.map(category => (
-                        <option key={category} value={category}>{category}</option>
+                      {categories.map((category: any) => (
+                        <option key={category.id} value={category.name}>{category.name}</option>
                       ))}
                     </select>
                   </div>
@@ -259,11 +501,11 @@ export default function AddLink() {
                 </div>
               )}
 
-              {/* Submit Buttons */}
+              {/* Submit Button */}
               <div className="flex gap-2">
                 <button
                   type="submit"
-                  className={`btn btn-primary flex-1 ${addLinkMutation.isPending ? 'loading' : ''}`}
+                  className={`btn btn-primary w-full ${addLinkMutation.isPending ? 'loading' : ''}`}
                   disabled={addLinkMutation.isPending || !form.url.trim()}
                 >
                   {addLinkMutation.isPending ? (
@@ -279,18 +521,6 @@ export default function AddLink() {
                       添加链接
                     </span>
                   )}
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-outline"
-                  onClick={handleBatchImport}
-                >
-                  <span className="flex items-center gap-2">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 8h6m-6 4h6" />
-                    </svg>
-                    批量导入
-                  </span>
                 </button>
               </div>
             </form>
@@ -379,64 +609,245 @@ export default function AddLink() {
         </div>
       </div>
 
-      {/* Recent Activity Preview */}
-      <div className="card bg-base-100 shadow-sm">
-        <div className="card-header p-6 pb-0 flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-base-content flex items-center gap-2">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-            </svg>
-            最近链接
-          </h2>
-          <button className="btn btn-ghost btn-sm">
-            <span className="flex items-center gap-2">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+      {/* AI Analysis Results - shown when we have pending link data */}
+      {pendingLinkData && (
+        <div className="card bg-base-100 shadow-sm">
+          <div className="card-header p-6 pb-0">
+            <h2 className="text-xl font-semibold text-base-content flex items-center gap-2">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
               </svg>
-              查看全部
-            </span>
-          </button>
-        </div>
-        <div className="card-body p-6 pt-4">
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between items-center py-2">
-              <span>• Tailwind CSS 4.0 发布</span>
-              <div className="flex items-center gap-2">
-                <span className="badge badge-outline badge-xs">技术</span>
-                <span className="text-base-content/50">昨天</span>
+              AI 分析结果
+            </h2>
+            <p className="text-sm text-base-content/60 mt-1">
+              查看 AI 为您生成的内容建议，您可以进行编辑后确认发布
+            </p>
+          </div>
+          <div className="card-body p-6 pt-4">
+            {pendingLinkLoading ? (
+              <div className="animate-pulse">
+                <div className="h-4 bg-base-300 rounded w-3/4 mb-4"></div>
+                <div className="h-4 bg-base-300 rounded w-1/2 mb-4"></div>
+                <div className="h-20 bg-base-300 rounded mb-4"></div>
               </div>
-            </div>
-            <div className="flex justify-between items-center py-2">
-              <span>• 设计系统构建指南</span>
-              <div className="flex items-center gap-2">
-                <span className="badge badge-outline badge-xs">设计</span>
-                <span className="text-base-content/50">昨天</span>
+            ) : (
+              <div className="space-y-6">
+                {/* Link Info */}
+                <div className="border border-base-300/20 rounded-lg p-4 bg-base-200/30">
+                  <h3 className="font-semibold text-base-content mb-2">{pendingLinkData.title}</h3>
+                  <p className="text-sm text-base-content/60 mb-2">{pendingLinkData.url}</p>
+                  <p className="text-sm text-base-content/70">{pendingLinkData.domain}</p>
+                  <p className="text-xs text-base-content/50 mt-2">
+                    创建时间: {new Date(pendingLinkData.createdAt).toLocaleString('zh-CN')}
+                  </p>
+                </div>
+
+                {/* AI Suggestions */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {/* AI Summary */}
+                  <div className="space-y-3">
+                    <h4 className="font-medium text-base-content flex items-center gap-2">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
+                      </svg>
+                      AI 摘要
+                    </h4>
+                    <div className="p-3 bg-blue-50/50 border border-blue-200/50 rounded-lg">
+                      <p className="text-sm text-base-content">{pendingLinkData.aiSummary}</p>
+                    </div>
+                  </div>
+
+                  {/* AI Category and Tags */}
+                  <div className="space-y-3">
+                    <h4 className="font-medium text-base-content flex items-center gap-2">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.99 1.99 0 013 12V7a4 4 0 014-4z" />
+                      </svg>
+                      AI 分类和标签
+                    </h4>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-base-content/70">分类：</span>
+                        <span className="badge badge-primary badge-outline">{pendingLinkData.aiCategory}</span>
+                      </div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-medium text-base-content/70">标签：</span>
+                        {pendingLinkData.aiTags.map((tag: string, index: number) => (
+                          <span key={index} className="badge badge-ghost badge-sm">#{tag}</span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Original Description (if available) */}
+                {pendingLinkData.originalDescription && (
+                  <div className="space-y-2">
+                    <h4 className="font-medium text-base-content flex items-center gap-2">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      原始描述
+                    </h4>
+                    <div className="p-3 bg-base-200/30 rounded-lg">
+                      <p className="text-sm text-base-content/80">{pendingLinkData.originalDescription}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Edit Form - shown when editing */}
+                {isEditing && (
+                  <div className="space-y-4 p-4 bg-base-200/30 rounded-lg border border-base-300/20">
+                    <h4 className="font-medium text-base-content">编辑链接信息</h4>
+                    
+                    {/* Title */}
+                    <div className="form-control">
+                      <label className="label">
+                        <span className="label-text">标题</span>
+                      </label>
+                      <input
+                        type="text"
+                        className="input input-bordered"
+                        value={editForm.title}
+                        onChange={(e) => setEditForm(prev => ({ ...prev, title: e.target.value }))}
+                        placeholder="链接标题"
+                      />
+                    </div>
+
+                    {/* Description */}
+                    <div className="form-control">
+                      <label className="label">
+                        <span className="label-text">描述</span>
+                      </label>
+                      <textarea
+                        className="textarea textarea-bordered h-24"
+                        value={editForm.description}
+                        onChange={(e) => setEditForm(prev => ({ ...prev, description: e.target.value }))}
+                        placeholder="链接描述或摘要"
+                      />
+                    </div>
+
+                    {/* Category */}
+                    <div className="form-control">
+                      <label className="label">
+                        <span className="label-text">分类</span>
+                      </label>
+                      <select
+                        className="select select-bordered"
+                        value={editForm.category}
+                        onChange={(e) => setEditForm(prev => ({ ...prev, category: e.target.value }))}
+                      >
+                        <option value="">选择分类</option>
+                        {categories.map((category: any) => (
+                          <option key={category.id} value={category.name}>{category.name}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Tags */}
+                    <div className="form-control">
+                      <label className="label">
+                        <span className="label-text">标签</span>
+                      </label>
+                      <input
+                        type="text"
+                        className="input input-bordered"
+                        value={getTagsString()}
+                        onChange={(e) => handleTagsChange(e.target.value)}
+                        placeholder="标签1, 标签2, 标签3"
+                      />
+                      <label className="label">
+                        <span className="label-text-alt text-base-content/50">
+                          多个标签用逗号分隔
+                        </span>
+                      </label>
+                    </div>
+                  </div>
+                )}
+
+                {/* Action buttons */}
+                <div className="flex gap-2 pt-4 border-t border-base-300/20">
+                  {isEditing ? (
+                    <>
+                      <button 
+                        className={`btn btn-primary ${confirmLinkMutation.isPending ? 'loading' : ''}`}
+                        onClick={handleConfirmWithEdits}
+                        disabled={confirmLinkMutation.isPending}
+                      >
+                        {confirmLinkMutation.isPending ? (
+                          <span className="flex items-center gap-2">
+                            <span className="loading loading-spinner loading-sm"></span>
+                            发布中...
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-2">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                            确认发布
+                          </span>
+                        )}
+                      </button>
+                      <button 
+                        className="btn btn-ghost"
+                        onClick={handleCancelEdit}
+                        disabled={confirmLinkMutation.isPending}
+                      >
+                        取消编辑
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button 
+                        className="btn btn-primary"
+                        onClick={handleStartEdit}
+                        disabled={confirmLinkMutation.isPending}
+                      >
+                        <span className="flex items-center gap-2">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                          </svg>
+                          编辑并确认
+                        </span>
+                      </button>
+                      <button 
+                        className={`btn btn-success btn-outline ${confirmLinkMutation.isPending ? 'loading' : ''}`}
+                        onClick={handleDirectConfirm}
+                        disabled={confirmLinkMutation.isPending}
+                      >
+                        {confirmLinkMutation.isPending ? (
+                          <span className="flex items-center gap-2">
+                            <span className="loading loading-spinner loading-sm"></span>
+                            发布中...
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-2">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            直接确认
+                          </span>
+                        )}
+                      </button>
+                      <button 
+                        className="btn btn-ghost"
+                        onClick={() => {
+                          setPendingLinkId(null)
+                          setIsEditing(false)
+                        }}
+                        disabled={confirmLinkMutation.isPending}
+                      >
+                        取消
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
-            </div>
-            <div className="flex justify-between items-center py-2">
-              <span>• JavaScript 性能优化技巧</span>
-              <div className="flex items-center gap-2">
-                <span className="badge badge-outline badge-xs">技术</span>
-                <span className="text-base-content/50">2天前</span>
-              </div>
-            </div>
-            <div className="flex justify-between items-center py-2">
-              <span>• Figma 插件开发入门</span>
-              <div className="flex items-center gap-2">
-                <span className="badge badge-outline badge-xs">工具</span>
-                <span className="text-base-content/50">3天前</span>
-              </div>
-            </div>
-            <div className="flex justify-between items-center py-2">
-              <span>• React Server Components 实践</span>
-              <div className="flex items-center gap-2">
-                <span className="badge badge-outline badge-xs">技术</span>
-                <span className="text-base-content/50">3天前</span>
-              </div>
-            </div>
+            )}
           </div>
         </div>
-      </div>
+      )}
+
     </div>
   )
 }

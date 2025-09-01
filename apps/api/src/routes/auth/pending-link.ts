@@ -5,9 +5,41 @@ import { links } from '../../db/schema.js'
 import { eq } from 'drizzle-orm'
 import { sendSuccess, sendError, notFound } from '../../utils/response.js'
 import { idParamSchema } from '../../utils/validation.js'
-import { requireApiToken, logOperation } from '../../middleware/auth.js'
+import { requireApiTokenOrAdminSession, logOperation } from '../../middleware/auth.js'
 import type { PendingLinkResponse } from '../../types/api.js'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
+
+// Helper function to get unified auth data
+function getAuthData(c: any) {
+  const authType = c.get('authType')
+  const tokenData = c.get('tokenData')
+  const userData = c.get('userData')
+  const clientIp = c.get('clientIp')
+  
+  if (authType === 'api_token') {
+    return {
+      userId: undefined, // API tokens don't have user association
+      tokenId: tokenData?.id,
+      clientIp,
+      authType: 'api_token'
+    }
+  } else if (authType === 'admin_session' || authType === 'admin_jwt') {
+    return {
+      userId: userData?.id,
+      tokenId: undefined,
+      clientIp,
+      authType: authType
+    }
+  }
+  
+  // Fallback for backward compatibility
+  return {
+    userId: tokenData ? undefined : userData?.id,
+    tokenId: tokenData?.id,
+    clientIp,
+    authType: tokenData ? 'api_token' : 'admin_session'
+  }
+}
 
 // Create pending link router with optional database dependency injection
 function createPendingLinkRouter(database = db) {
@@ -25,13 +57,12 @@ app.onError((err, c) => {
 })
 
 // GET /api/links/:id/pending - Get pending link details (authenticated)
-app.get('/:id/pending', requireApiToken(database), zValidator('param', idParamSchema), async (c) => {
+app.get('/:id/pending', requireApiTokenOrAdminSession(database), zValidator('param', idParamSchema), async (c) => {
   const startTime = Date.now()
   
   try {
     const { id } = c.req.valid('param')
-    const tokenData = c.get('tokenData')
-    const clientIp = c.get('clientIp')
+    const authData = getAuthData(c)
 
     // Get link details - only allow access to pending links
     const linkResult = await database
@@ -60,9 +91,9 @@ app.get('/:id/pending', requireApiToken(database), zValidator('param', idParamSc
         'links',
         id,
         { reason: 'not_found' },
-        tokenData?.id,
-        undefined,
-        clientIp,
+        authData.tokenId,
+        authData.userId,
+        authData.clientIp,
         c.req.header('user-agent'),
         'failed',
         'Link not found'
@@ -80,9 +111,9 @@ app.get('/:id/pending', requireApiToken(database), zValidator('param', idParamSc
         'links',
         id,
         { reason: 'invalid_status', status: link.status },
-        tokenData?.id,
-        undefined,
-        clientIp,
+        authData.tokenId,
+        authData.userId,
+        authData.clientIp,
         c.req.header('user-agent'),
         'failed',
         'Link is not in pending status'
@@ -123,9 +154,9 @@ app.get('/:id/pending', requireApiToken(database), zValidator('param', idParamSc
       'links',
       id,
       { type: 'pending', url: link.url },
-      tokenData?.id,
-      undefined,
-      clientIp,
+      authData.tokenId,
+      authData.userId,
+      authData.clientIp,
       c.req.header('user-agent'),
       'success',
       undefined,
@@ -136,17 +167,16 @@ app.get('/:id/pending', requireApiToken(database), zValidator('param', idParamSc
 
   } catch (error) {
     const duration = Date.now() - startTime
-    const tokenData = c.get('tokenData')
-    const clientIp = c.get('clientIp')
+    const authData = getAuthData(c)
     
     await logOperation(
       'link_view',
       'links',
       undefined,
       { error: String(error) },
-      tokenData?.id,
-      undefined,
-      clientIp,
+      authData.tokenId,
+      authData.userId,
+      authData.clientIp,
       c.req.header('user-agent'),
       'failed',
       String(error),
