@@ -7,6 +7,7 @@ import AdminOverview from './admin/AdminOverview'
 import PendingLinks from './admin/PendingLinks'
 import AddLink from './admin/AddLink'
 import SystemSettings from './admin/SystemSettings'
+import AISettings from './admin/AISettings'
 
 // Mock user data - in real app this would come from auth context
 const mockUser = {
@@ -85,7 +86,7 @@ export default function AdminPage() {
               {/* Settings routes */}
               <Route path="/system" element={<SystemSettings />} />
               <Route path="/tokens" element={<div>API 令牌页面（即将推出）</div>} />
-              <Route path="/ai-settings" element={<div>AI 设置页面（即将推出）</div>} />
+              <Route path="/ai-settings" element={<AISettings />} />
               <Route path="/categories" element={<div>分类页面（即将推出）</div>} />
               
               {/* Tools routes */}

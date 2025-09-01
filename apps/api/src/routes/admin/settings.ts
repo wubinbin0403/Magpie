@@ -122,7 +122,7 @@ function createAdminSettingsRouter(database = db) {
           aboutUrl: settingsMap.get('about_url') || '',
         },
         ai: {
-          apiKey: maskApiKey(settingsMap.get('openai_api_key') || ''),
+          apiKey: settingsMap.get('openai_api_key') || '',
           baseUrl: settingsMap.get('openai_base_url') || 'https://api.openai.com/v1',
           model: settingsMap.get('ai_model') || 'gpt-3.5-turbo',
           temperature: parseFloat(settingsMap.get('ai_temperature') || '0.7'),
@@ -226,16 +226,40 @@ function createAdminSettingsRouter(database = db) {
     try {
       const startTime = Date.now()
       
-      // Get AI settings
-      const allSettings = await getSettings(database)
+      // Check if we have test config in request body
+      let testConfig = null
+      try {
+        const body = await c.req.json()
+        testConfig = body?.testConfig
+      } catch {
+        // No body or invalid JSON, use saved settings
+      }
+      
+      let aiSettings
+      if (testConfig) {
+        // Use test config from request
+        aiSettings = {
+          openai_api_key: testConfig.apiKey,
+          openai_base_url: testConfig.baseUrl || 'https://api.openai.com/v1',
+          ai_model: testConfig.model || 'gpt-3.5-turbo',
+          ai_temperature: testConfig.temperature || 0.7,
+          ai_max_tokens: 1000,
+          ai_timeout: 30000,
+          ai_prompt_template: testConfig.summaryPrompt || '',
+          categories: '[]' // Use empty array for test
+        }
+      } else {
+        // Use saved settings from database
+        aiSettings = await getSettings(database)
+      }
 
-      if (!allSettings.openai_api_key) {
+      if (!aiSettings.openai_api_key) {
         return sendError(c, 'AI_SERVICE_ERROR', 'AI API key not configured', undefined, 400)
       }
 
       // Test AI connection and analysis
       try {
-        const aiAnalyzer = await createAIAnalyzer(allSettings)
+        const aiAnalyzer = await createAIAnalyzer(aiSettings)
         
         // Test connection
         const connected = await aiAnalyzer.testConnection()
@@ -260,8 +284,8 @@ function createAdminSettingsRouter(database = db) {
 
         const testResult = {
           connected: true,
-          model: allSettings.ai_model || 'gpt-3.5-turbo',
-          baseUrl: allSettings.openai_base_url || 'https://api.openai.com/v1',
+          model: aiSettings.ai_model || 'gpt-3.5-turbo',
+          baseUrl: aiSettings.openai_base_url || 'https://api.openai.com/v1',
           responseTime,
           testAnalysis: {
             summary: analysisResult.summary,
@@ -280,8 +304,8 @@ function createAdminSettingsRouter(database = db) {
         
         return sendError(c, 'AI_SERVICE_ERROR', `AI service test failed: ${String(aiError)}`, {
           responseTime,
-          model: allSettings.ai_model || 'gpt-3.5-turbo',
-          baseUrl: allSettings.openai_base_url || 'https://api.openai.com/v1'
+          model: aiSettings.ai_model || 'gpt-3.5-turbo',
+          baseUrl: aiSettings.openai_base_url || 'https://api.openai.com/v1'
         }, 500)
       }
     } catch (error) {

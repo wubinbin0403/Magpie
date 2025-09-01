@@ -307,6 +307,7 @@ export default function SystemSettings() {
     }
   })
   
+  
   // Reorder categories mutation - don't auto-invalidate to avoid state conflicts
   const reorderCategoriesMutation = useMutation({
     mutationFn: async (categoryIds: number[]) => {
@@ -353,6 +354,7 @@ export default function SystemSettings() {
   const handleSave = useCallback(() => {
     updateSettingsMutation.mutate(settings)
   }, [updateSettingsMutation, settings])
+
 
   const handleAddCategory = useCallback(async () => {
     if (!editingCategory || !editingCategory.name.trim()) return
@@ -626,6 +628,7 @@ export default function SystemSettings() {
           </div>
         </div>
       </div>
+
 
       {/* Content Settings */}
       <div className="card bg-base-100 shadow-sm">

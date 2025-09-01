@@ -114,9 +114,17 @@ class ApiClient {
     })
   }
 
-  async testAiConnection() {
+  async testAiConnection(testConfig?: {
+    apiKey: string
+    baseUrl: string
+    model: string
+    temperature: number
+    summaryPrompt?: string
+    categoryPrompt?: string
+  }) {
     return this.request('/admin/settings/ai/test', {
       method: 'POST',
+      body: testConfig ? JSON.stringify({ testConfig }) : undefined,
     })
   }
 
