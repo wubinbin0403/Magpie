@@ -378,7 +378,39 @@ interface ConfirmLinkResponse {
 }
 ```
 
-### 4. 删除链接
+### 4. 流式添加链接（实时状态更新）
+```typescript
+POST /api/links/add/stream
+```
+
+**请求体：**
+```typescript
+interface AddLinkStreamRequest {
+  url: string;             // 必需，要添加的 URL
+  skipConfirm?: boolean;   // 是否跳过确认，默认 false
+  category?: string;       // 预设分类
+  tags?: string;          // 预设标签，逗号分隔
+}
+```
+
+**响应格式（Server-Sent Events）：**
+```typescript
+interface StatusMessage {
+  stage: 'fetching' | 'analyzing' | 'completed' | 'error';
+  message: string;
+  progress?: number;       // 0-100
+  data?: any;             // 阶段性数据
+  error?: string;         // 错误信息
+}
+```
+
+**实时状态流程：**
+1. `fetching` - 正在获取网页内容 (progress: 10-50)
+2. `analyzing` - 正在进行AI分析 (progress: 60-90)  
+3. `completed` - 处理完成 (progress: 100)
+4. `error` - 处理失败
+
+### 5. 删除链接
 ```typescript
 DELETE /api/links/:id
 ```
@@ -391,7 +423,7 @@ interface DeleteLinkResponse {
 }
 ```
 
-### 5. 编辑链接
+### 6. 编辑链接
 ```typescript
 PUT /api/links/:id
 ```
@@ -563,7 +595,7 @@ interface SettingsResponse {
       baseUrl: string;
       model: string;
       temperature: number;
-      userInstructions: string;  // 用户补充指令，注入到默认模板
+      userInstructions: string;  // 用户补充指令，注入到固定AI模板
     };
     content: {
       defaultCategory: string;
@@ -592,7 +624,7 @@ interface UpdateSettingsRequest {
     baseUrl?: string;
     model?: string;
     temperature?: number;
-    userInstructions?: string;  // 用户补充指令
+    userInstructions?: string;  // 用户补充指令，注入到固定AI模板
   };
   content?: {
     defaultCategory?: string;
