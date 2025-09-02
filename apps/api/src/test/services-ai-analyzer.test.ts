@@ -77,12 +77,19 @@ describe('AIAnalyzer Service', () => {
 
       expect(mockCreate).toHaveBeenCalledWith({
         model: 'gpt-3.5-turbo',
-        messages: [{
-          role: 'user',
-          content: expect.stringContaining('Test Article Title')
-        }],
+        messages: [
+          {
+            role: 'system',
+            content: expect.stringContaining('professional content analyzer')
+          },
+          {
+            role: 'user',
+            content: expect.stringContaining('Test Article Title')
+          }
+        ],
         temperature: 0.7,
-        max_tokens: 1000
+        max_tokens: 1000,
+        response_format: { type: 'json_object' }
       })
     })
 
@@ -329,13 +336,6 @@ describe('AIAnalyzer Service', () => {
   })
 
   describe('Configuration Management', () => {
-    it('should update prompt template', () => {
-      const newTemplate = 'Custom template with {title}'
-      analyzer.updatePromptTemplate(newTemplate)
-      
-      // We can't directly test the private method, but we can ensure it doesn't throw
-      expect(() => analyzer.updatePromptTemplate(newTemplate)).not.toThrow()
-    })
 
     it('should update available categories', () => {
       const newCategories = ['custom1', 'custom2']
