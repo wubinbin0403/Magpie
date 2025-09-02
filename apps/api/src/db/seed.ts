@@ -19,23 +19,8 @@ const DEFAULT_SETTINGS = [
   { key: 'ai_model', value: 'gpt-3.5-turbo', type: 'string', description: 'AI模型名称' },
   { key: 'ai_temperature', value: '0.7', type: 'number', description: 'AI温度参数' },
   
-  // Prompt templates
-  { 
-    key: 'ai_summary_prompt', 
-    value: '请分析以下网页内容，生成50字以内的中文摘要：\n\n标题：{title}\nURL：{url}\n内容：{content}\n\n要求：\n1. 简洁明了，突出核心观点\n2. 50字以内\n3. 使用中文', 
-    type: 'string', 
-    description: 'AI摘要生成提示词' 
-  },
-  { 
-    key: 'ai_category_prompt', 
-    value: '基于内容，从以下分类中选择最合适的1个：{categories}\n\n如果都不合适，可以建议新分类。', 
-    type: 'string', 
-    description: 'AI分类提示词' 
-  },
-  
   // Content settings
   { key: 'default_category', value: '其他', type: 'string', description: '默认分类' },
-  { key: 'categories', value: '["技术", "设计", "产品", "工具", "其他"]', type: 'json', description: '可用分类列表' },
   { key: 'items_per_page', value: '20', type: 'number', description: '每页显示数量' },
   
   // System configuration

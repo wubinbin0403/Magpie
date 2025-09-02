@@ -35,14 +35,18 @@ export class WebScraper {
 
   async scrape(url: string): Promise<ScrapedContent> {
     try {
+      console.log(`[WEB-SCRAPER] Starting scrape for URL: ${url}`)
+      
       // Validate URL
       const urlObj = new URL(url)
       
       // Determine content type from URL
       const contentType = this.determineContentType(url)
+      console.log(`[WEB-SCRAPER] Detected content type: ${contentType}`)
       
       // Fetch the webpage
       const html = await this.fetchHtml(url)
+      console.log(`[WEB-SCRAPER] Fetched HTML: ${html.length} characters`)
       
       // Parse with Cheerio
       const $ = cheerio.load(html)
@@ -50,11 +54,24 @@ export class WebScraper {
       // Extract content based on type
       const content = await this.extractContent($, contentType, url)
       
-      return {
+      const result = {
         url,
         contentType,
         ...content
       }
+      
+      // Log detailed extraction results
+      console.log(`[WEB-SCRAPER] Extraction completed:`)
+      console.log(`[WEB-SCRAPER] - Title: "${result.title}" (${result.title?.length || 0} chars)`)
+      console.log(`[WEB-SCRAPER] - Description: "${result.description?.substring(0, 100)}..." (${result.description?.length || 0} chars)`)
+      console.log(`[WEB-SCRAPER] - Content preview: "${result.content?.substring(0, 200)}..." (${result.content?.length || 0} chars)`)
+      console.log(`[WEB-SCRAPER] - Word count: ${result.wordCount}`)
+      console.log(`[WEB-SCRAPER] - Language: ${result.language || 'not detected'}`)
+      console.log(`[WEB-SCRAPER] - Author: ${result.author || 'not found'}`)
+      console.log(`[WEB-SCRAPER] - Site name: ${result.siteName || 'not found'}`)
+      console.log(`[WEB-SCRAPER] - Tags: ${result.tags?.join(', ') || 'none'}`)
+      
+      return result
       
     } catch (error) {
       console.error(`Error scraping ${url}:`, error)
@@ -254,6 +271,8 @@ export class WebScraper {
     // Remove unwanted elements
     $('script, style, nav, header, footer, aside, .sidebar, .navigation, .menu, .ads, .advertisement').remove()
     
+    console.log('[WEB-SCRAPER] Attempting to extract main content...')
+    
     // Try common content selectors (in order of preference)
     const contentSelectors = [
       'article',
@@ -268,23 +287,36 @@ export class WebScraper {
       'main',
       '.container .content',
       '#content',
-      '#main'
+      '#main',
+      // Add some common blog/article selectors
+      '.article',
+      '.blog-post',
+      '.tutorial-content',
+      '[role="main"]',
+      '.page-content'
     ]
     
     for (const selector of contentSelectors) {
       const element = $(selector).first()
       if (element.length > 0) {
         const text = element.text().trim()
+        console.log(`[WEB-SCRAPER] Tried selector "${selector}": found ${text.length} chars`)
         if (text.length > 200) { // Only use if substantial content
+          console.log(`[WEB-SCRAPER] Using content from selector: ${selector}`)
           return text
         }
+      } else {
+        console.log(`[WEB-SCRAPER] Selector "${selector}": not found`)
       }
     }
     
     // Fallback: extract from body, removing common non-content elements
+    console.log('[WEB-SCRAPER] Using fallback: extracting from body')
     const bodyClone = $('body').clone()
     bodyClone.find('script, style, nav, header, footer, aside, .sidebar, .navigation, .menu, .ads, .advertisement, .comments, .social-share').remove()
-    return bodyClone.text().trim()
+    const bodyText = bodyClone.text().trim()
+    console.log(`[WEB-SCRAPER] Body fallback extracted: ${bodyText.length} chars`)
+    return bodyText
   }
 
   private extractAuthor($: cheerio.CheerioAPI): string | undefined {

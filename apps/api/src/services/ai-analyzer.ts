@@ -32,7 +32,7 @@ const DEFAULT_CATEGORIES = [
 ]
 
 // Default AI prompt template (optimized for Chinese content with dynamic categories)
-const DEFAULT_PROMPT_TEMPLATE = `你是一个专业的内容分析助手。请分析以下网页内容并返回JSON格式的结构化摘要。
+const DEFAULT_PROMPT_TEMPLATE = `你是一个专业的内容分析助手，可以阅读并理解网络内容，包括博客文章，各类新闻，视频，PDF或图片等。请分析以下网页内容并返回JSON格式的结构化摘要。
 
 内容信息：
 - URL: {url}
@@ -44,7 +44,7 @@ const DEFAULT_PROMPT_TEMPLATE = `你是一个专业的内容分析助手。请�
 **重要：你必须严格按照以下JSON格式返回结果，不要添加任何其他文本、解释或格式：**
 
 {
-  "summary": "简洁明了的2-3句话摘要，使用与原内容相同的语言",
+  "summary": "简洁明了的3-4句话摘要，除非指定了其他语言，否则使用中文",
   "category": "从以下分类中选择最合适的一个：{categories}",
   "tags": ["3-5个相关标签的字符串数组"],
   "language": "检测到的语言代码(zh, en, ja等)",
@@ -53,21 +53,26 @@ const DEFAULT_PROMPT_TEMPLATE = `你是一个专业的内容分析助手。请�
 }
 
 **分析要求：**
-- 摘要要简洁且信息丰富，突出核心观点
+- 摘要要简洁且信息丰富，突出核心观点，可以带有一些戏谑性或者吸引人的幽默表达
 - 严格从给定的分类列表中选择最合适的一个分类
 - 标签应该具体且相关，有助于内容检索
 - 准确检测内容的主要语言
 - 根据内容长度提供合理的阅读时间估算(按每分钟200-300字计算)
 
-**请只返回JSON对象，不要包含任何其他文本。**`
+**请只返回JSON对象，不要包含任何其他文本。**
+
+此外，用户还需要你注意遵守以下规则。如果这些要求和上述规则有严重冲突，请优先遵守上面的规则；否则，请尽量满足用户的要求：
+
+{user_instructions}
+`
 
 export class AIAnalyzer {
   private client: OpenAI
   private options: Required<Omit<AIAnalyzerOptions, 'apiKey' | 'baseURL'>>
-  private promptTemplate: string
+  private userInstructions: string
   private availableCategories: string[]
 
-  constructor(options: AIAnalyzerOptions, promptTemplate?: string, categories?: string[]) {
+  constructor(options: AIAnalyzerOptions, userInstructions?: string, categories?: string[]) {
     this.client = new OpenAI({
       apiKey: options.apiKey,
       baseURL: options.baseURL,
@@ -81,14 +86,33 @@ export class AIAnalyzer {
       timeout: options.timeout || DEFAULT_OPTIONS.timeout
     }
 
-    this.promptTemplate = promptTemplate || DEFAULT_PROMPT_TEMPLATE
+    this.userInstructions = userInstructions || ''
     this.availableCategories = categories || DEFAULT_CATEGORIES
+    
+    // Debug: Log basic configuration
+    console.log('[AI-ANALYZER] Initialized with user instructions:', !!userInstructions)
+    console.log('[AI-ANALYZER] User instructions preview:', this.userInstructions.substring(0, 100))
   }
 
   async analyze(content: ScrapedContent): Promise<AIAnalysisResult> {
     try {
       // Prepare content for AI analysis
       const prompt = this.buildPrompt(content)
+      
+      // Debug: Log analysis request and full prompt
+      console.log('[AI-ANALYZER] Starting analysis for URL:', content.url)
+      console.log('[AI-ANALYZER] Input data received:')
+      console.log(`[AI-ANALYZER] - Title: "${content.title}" (${content.title?.length || 0} chars)`)
+      console.log(`[AI-ANALYZER] - Description: "${content.description?.substring(0, 150)}..." (${content.description?.length || 0} chars)`)
+      console.log(`[AI-ANALYZER] - Content: "${content.content?.substring(0, 300)}..." (${content.content?.length || 0} chars)`)
+      console.log(`[AI-ANALYZER] - Word count: ${content.wordCount}`)
+      console.log(`[AI-ANALYZER] - Content type: ${content.contentType}`)
+      console.log(`[AI-ANALYZER] - Language detected: ${content.language || 'none'}`)
+      
+      console.log('[AI-ANALYZER] Generated full prompt to send to AI:')
+      console.log('='.repeat(80))
+      console.log(prompt)
+      console.log('='.repeat(80))
       
       // Call OpenAI API with system message for better JSON compliance
       const response = await this.client.chat.completions.create({
@@ -110,6 +134,11 @@ export class AIAnalyzer {
 
       const aiResponse = response.choices[0]?.message?.content?.trim()
       
+      console.log('[AI-ANALYZER] Raw AI response received:')
+      console.log('-'.repeat(60))
+      console.log(aiResponse || '(empty response)')
+      console.log('-'.repeat(60))
+      
       if (!aiResponse) {
         throw new Error('Empty response from AI service')
       }
@@ -124,7 +153,17 @@ export class AIAnalyzer {
       }
 
       // Validate and sanitize the result
-      return this.validateAndSanitize(analysisResult, content)
+      const finalResult = this.validateAndSanitize(analysisResult, content)
+      
+      console.log('[AI-ANALYZER] Final analysis result:')
+      console.log(`[AI-ANALYZER] - Summary: "${finalResult.summary}"`)
+      console.log(`[AI-ANALYZER] - Category: "${finalResult.category}"`)
+      console.log(`[AI-ANALYZER] - Tags: [${finalResult.tags.join(', ')}]`)
+      console.log(`[AI-ANALYZER] - Language: ${finalResult.language}`)
+      console.log(`[AI-ANALYZER] - Sentiment: ${finalResult.sentiment}`)
+      console.log(`[AI-ANALYZER] - Reading time: ${finalResult.readingTime} minutes`)
+      
+      return finalResult
 
     } catch (error) {
       console.error('AI analysis failed:', error)
@@ -135,17 +174,20 @@ export class AIAnalyzer {
   }
 
   private buildPrompt(content: ScrapedContent): string {
-    // Replace template variables
-    return this.promptTemplate
+    // Replace template variables in the default template
+    return DEFAULT_PROMPT_TEMPLATE
       .replace('{url}', content.url)
       .replace('{title}', content.title || 'No title')
       .replace('{contentType}', content.contentType)
       .replace('{description}', content.description || 'No description')
       .replace('{content}', this.truncateContent(content.content))
       .replace('{categories}', this.availableCategories.join('、'))
+      .replace('{user_instructions}', this.userInstructions || '无特殊要求')
   }
 
-  private truncateContent(text: string, maxLength: number = 3000): string {
+  private truncateContent(text: string, maxLength: number = 8000): string {
+    console.log(`[AI-ANALYZER] Content truncation: ${text.length} chars -> ${Math.min(text.length, maxLength)} chars (limit: ${maxLength})`)
+    
     if (text.length <= maxLength) {
       return text
     }
@@ -409,8 +451,8 @@ export class AIAnalyzer {
   }
 
   // Update configuration
-  updatePromptTemplate(template: string): void {
-    this.promptTemplate = template
+  updateUserInstructions(instructions: string): void {
+    this.userInstructions = instructions
   }
 
   updateCategories(categories: string[]): void {
@@ -437,6 +479,11 @@ export class AIAnalyzer {
 
 // Export factory function for creating analyzer with settings
 export async function createAIAnalyzer(settings: Record<string, any>): Promise<AIAnalyzer> {
+  // Debug: Log basic configuration (without sensitive data)
+  console.log('[AI-ANALYZER-FACTORY] Creating AI Analyzer')
+  console.log('[AI-ANALYZER-FACTORY] - API key configured:', !!settings.openai_api_key)
+  console.log('[AI-ANALYZER-FACTORY] - User instructions present:', !!settings.ai_user_instructions)
+
   const options: AIAnalyzerOptions = {
     apiKey: settings.openai_api_key || '',
     baseURL: settings.openai_base_url || 'https://api.openai.com/v1',
@@ -450,9 +497,11 @@ export async function createAIAnalyzer(settings: Record<string, any>): Promise<A
     throw new Error('OpenAI API key is required')
   }
 
-  const promptTemplate = settings.ai_prompt_template || undefined
+  const userInstructions = settings.ai_user_instructions || ''
   const categories = Array.isArray(settings.categories) ? settings.categories : 
                     (settings.categories ? JSON.parse(settings.categories) : undefined)
 
-  return new AIAnalyzer(options, promptTemplate, categories)
+  console.log('[AI-ANALYZER-FACTORY] - User instructions:', userInstructions ? `"${userInstructions.substring(0, 50)}..."` : '(empty)')
+
+  return new AIAnalyzer(options, userInstructions, categories)
 }

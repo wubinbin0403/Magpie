@@ -5,9 +5,35 @@
     <link>http://localhost:3001</link>
     <description>A lightweight link collection and display system</description>
     <language>zh-CN</language>
-    <lastBuildDate>Mon, 01 Sep 2025 13:24:48 GMT</lastBuildDate>
+    <lastBuildDate>Mon, 01 Sep 2025 15:52:06 GMT</lastBuildDate>
     <atom:link href="http://localhost:3001/feed.xml" rel="self" type="application/rss+xml"/>
     <generator>Magpie Static Generator</generator>
+    <item>
+      <title>Foundation Models：苹果设备端模型的边界探索</title>
+      <link>https://onevcat.com/2025/06/foundation-models/</link>
+      <description>WWDC25で登場したAppleのオンデバイス推論フレームワーク「Foundation Models」を徹底解剖。3Bパラメータ×2bit量子化で省メモリ、4kトークンの厳格コンテキスト、複数セッション同時起動は激重、Tool Callingは隠れた名機能――β1でも実用に耐える意外な安定感と、知らずにハマる落とし穴を一挙公開。</description>
+      <category>技术</category>
+      <pubDate>Mon, 01 Sep 2025 15:52:06 GMT</pubDate>
+      <guid isPermaLink="false">http://localhost:3001/link/77</guid>
+      <category>foundationmodels</category>
+      <category>ios26</category>
+      <category>ondeviceai</category>
+      <category>wwdc25</category>
+      <category>swift</category>
+    </item>
+    <item>
+      <title>OneV’s Den</title>
+      <link>https://onevcat.com</link>
+      <description>博客作者王巍（onevcat）记录并分享iOS/Swift开发经验、AI技术观察及个人思考，最新文章深入探讨了Claude Code使用心得、苹果端侧模型边界、MCP协议、DeepSeek现象及Swift并发与所有权演进等议题。</description>
+      <category>游戏</category>
+      <pubDate>Mon, 01 Sep 2025 13:57:19 GMT</pubDate>
+      <guid isPermaLink="false">http://localhost:3001/link/53</guid>
+      <category>swift</category>
+      <category>ios开发</category>
+      <category>大模型</category>
+      <category>ai工具</category>
+      <category>并发编程</category>
+    </item>
     <item>
       <title>OneV’s Den</title>
       <link>https://onevcat.com</link>

@@ -563,8 +563,7 @@ interface SettingsResponse {
       baseUrl: string;
       model: string;
       temperature: number;
-      summaryPrompt: string;
-      categoryPrompt: string;
+      userInstructions: string;  // 用户补充指令，注入到默认模板
     };
     content: {
       defaultCategory: string;
@@ -593,8 +592,7 @@ interface UpdateSettingsRequest {
     baseUrl?: string;
     model?: string;
     temperature?: number;
-    summaryPrompt?: string;
-    categoryPrompt?: string;
+    userInstructions?: string;  // 用户补充指令
   };
   content?: {
     defaultCategory?: string;

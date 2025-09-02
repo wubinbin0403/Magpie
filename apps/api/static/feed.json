@@ -7,6 +7,50 @@
   "language": "zh-CN",
   "items": [
     {
+      "id": "http://localhost:3001/link/77",
+      "url": "https://onevcat.com/2025/06/foundation-models/",
+      "title": "Foundation Models：苹果设备端模型的边界探索",
+      "content_text": "WWDC25で登場したAppleのオンデバイス推論フレームワーク「Foundation Models」を徹底解剖。3Bパラメータ×2bit量子化で省メモリ、4kトークンの厳格コンテキスト、複数セッション同時起動は激重、Tool Callingは隠れた名機能――β1でも実用に耐える意外な安定感と、知らずにハマる落とし穴を一挙公開。",
+      "summary": "WWDC25で登場したAppleのオンデバイス推論フレームワーク「Foundation Models」を徹底解剖。3Bパラメータ×2bit量子化で省メモリ、4kトークンの厳格コンテキスト、複数セッション同時起動は激重、Tool Callingは隠れた名機能――β1でも実用に耐える意外な安定感と、知らずにハマる落とし穴を一挙公開。",
+      "date_published": "2025-09-01T15:52:06.000Z",
+      "tags": [
+        "技术",
+        "foundationmodels",
+        "ios26",
+        "ondeviceai",
+        "wwdc25",
+        "swift"
+      ],
+      "external_url": "https://onevcat.com/2025/06/foundation-models/",
+      "_magpie": {
+        "category": "技术",
+        "click_count": 0,
+        "internal_link": "http://localhost:3001/link/77"
+      }
+    },
+    {
+      "id": "http://localhost:3001/link/53",
+      "url": "https://onevcat.com",
+      "title": "OneV’s Den",
+      "content_text": "博客作者王巍（onevcat）记录并分享iOS/Swift开发经验、AI技术观察及个人思考，最新文章深入探讨了Claude Code使用心得、苹果端侧模型边界、MCP协议、DeepSeek现象及Swift并发与所有权演进等议题。",
+      "summary": "博客作者王巍（onevcat）记录并分享iOS/Swift开发经验、AI技术观察及个人思考，最新文章深入探讨了Claude Code使用心得、苹果端侧模型边界、MCP协议、DeepSeek现象及Swift并发与所有权演进等议题。",
+      "date_published": "2025-09-01T13:57:19.000Z",
+      "tags": [
+        "游戏",
+        "swift",
+        "ios开发",
+        "大模型",
+        "ai工具",
+        "并发编程"
+      ],
+      "external_url": "https://onevcat.com",
+      "_magpie": {
+        "category": "游戏",
+        "click_count": 0,
+        "internal_link": "http://localhost:3001/link/53"
+      }
+    },
+    {
       "id": "http://localhost:3001/link/52",
       "url": "https://onevcat.com",
       "title": "OneV’s Den",

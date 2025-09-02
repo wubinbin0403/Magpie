@@ -118,9 +118,8 @@ INSERT INTO settings VALUES ('openai_base_url', 'https://api.openai.com/v1', 'st
 INSERT INTO settings VALUES ('ai_model', 'gpt-3.5-turbo', 'string', 'AI模型名称', strftime('%s', 'now'), strftime('%s', 'now'));
 INSERT INTO settings VALUES ('ai_temperature', '0.7', 'number', 'AI温度参数', strftime('%s', 'now'), strftime('%s', 'now'));
 
--- Prompt 模板
-INSERT INTO settings VALUES ('ai_summary_prompt', '请分析以下网页内容，生成50字以内的中文摘要：\n\n标题：{title}\nURL：{url}\n内容：{content}\n\n要求：\n1. 简洁明了，突出核心观点\n2. 50字以内\n3. 使用中文', 'string', 'AI摘要生成提示词', strftime('%s', 'now'), strftime('%s', 'now'));
-INSERT INTO settings VALUES ('ai_category_prompt', '基于内容，从以下分类中选择最合适的1个：{categories}\n\n如果都不合适，可以建议新分类。', 'string', 'AI分类提示词', strftime('%s', 'now'), strftime('%s', 'now'));
+-- AI 提示词配置（新系统）
+INSERT INTO settings VALUES ('ai_user_instructions', '', 'string', '用户补充指令（注入到默认模板的{user_instructions}占位符）', strftime('%s', 'now'), strftime('%s', 'now'));
 
 -- 内容设置
 INSERT INTO settings VALUES ('default_category', '其他', 'string', '默认分类', strftime('%s', 'now'), strftime('%s', 'now'));

@@ -7,8 +7,7 @@ interface AISettings {
   baseUrl: string
   model: string
   temperature: number
-  summaryPrompt: string
-  categoryPrompt: string
+  userInstructions: string
 }
 
 export default function AISettings() {
@@ -17,23 +16,15 @@ export default function AISettings() {
     baseUrl: 'https://api.openai.com/v1',
     model: 'gpt-3.5-turbo',
     temperature: 0.7,
-    summaryPrompt: '',
-    categoryPrompt: ''
+    userInstructions: ''
   })
   const [lastTestResult, setLastTestResult] = useState<any>(null)
   const [apiKeyTouched, setApiKeyTouched] = useState(false)
   const [originalApiKey, setOriginalApiKey] = useState('')
 
-  // Format API Key for display (show first few and last few characters)
-  const formatApiKeyForDisplay = (apiKey: string): string => {
-    if (!apiKey) return ''
-    if (apiKey.length <= 8) return '*'.repeat(apiKey.length)
-    
-    const start = apiKey.slice(0, 3) // Show first 3 characters (like "sk-")
-    const end = apiKey.slice(-3)     // Show last 3 characters
-    const middle = '*'.repeat(Math.max(0, Math.min(apiKey.length - 6, 40))) // Middle stars, max 40
-    
-    return `${start}${middle}${end}`
+  // Check if API key is configured (but hidden)
+  const isApiKeyConfigured = (apiKey: string): boolean => {
+    return apiKey === '***HIDDEN***'
   }
 
   // Fetch system settings
@@ -49,8 +40,14 @@ export default function AISettings() {
   useEffect(() => {
     if (settingsData?.ai) {
       setSettings(settingsData.ai)
-      setOriginalApiKey(settingsData.ai.apiKey || '')
-      setApiKeyTouched(false)
+      // Don't set the hidden token as originalApiKey
+      if (isApiKeyConfigured(settingsData.ai.apiKey)) {
+        setOriginalApiKey('***CONFIGURED***') // Internal flag
+        setApiKeyTouched(false)
+      } else {
+        setOriginalApiKey(settingsData.ai.apiKey || '')
+        setApiKeyTouched(false)
+      }
     }
   }, [settingsData])
 
@@ -61,7 +58,10 @@ export default function AISettings() {
       return response.data
     },
     onSuccess: () => {
-      setOriginalApiKey(settings.apiKey)
+      // If user entered a new API key, mark it as configured
+      if (apiKeyTouched && settings.apiKey.trim()) {
+        setOriginalApiKey('***CONFIGURED***')
+      }
       setApiKeyTouched(false)
       showToast('AI设置保存成功！', 'success')
     }
@@ -70,11 +70,14 @@ export default function AISettings() {
   // Test AI connection mutation  
   const testAIMutation = useMutation({
     mutationFn: async () => {
-      // Always use originalApiKey if user hasn't modified the API key
-      // Use settings.apiKey only if user has actually edited it
+      // If user hasn't touched API key and it's configured, require them to enter it
+      if (!apiKeyTouched && originalApiKey === '***CONFIGURED***') {
+        throw new Error('请重新输入API Key以进行测试')
+      }
+      
       const apiKeyToUse = apiKeyTouched ? settings.apiKey : originalApiKey
       
-      if (!apiKeyToUse) {
+      if (!apiKeyToUse || apiKeyToUse === '***CONFIGURED***') {
         throw new Error('API Key未配置')
       }
       
@@ -83,8 +86,7 @@ export default function AISettings() {
         baseUrl: settings.baseUrl,
         model: settings.model,
         temperature: settings.temperature,
-        summaryPrompt: settings.summaryPrompt,
-        categoryPrompt: settings.categoryPrompt
+        userInstructions: settings.userInstructions
       }
       const response = await api.testAiConnection(testConfig)
       return response
@@ -138,12 +140,18 @@ export default function AISettings() {
   }, [])
 
   const handleSave = useCallback(() => {
+    // Only include API key if user has actually entered one
     const settingsToSave = {
-      ...settings,
-      apiKey: apiKeyTouched ? settings.apiKey : originalApiKey
+      baseUrl: settings.baseUrl,
+      model: settings.model,
+      temperature: settings.temperature,
+      userInstructions: settings.userInstructions,
+      // Only include API key if user has actually entered a real one
+      ...(apiKeyTouched && settings.apiKey && !settings.apiKey.includes('***') 
+         ? { apiKey: settings.apiKey } : {})
     }
     updateSettingsMutation.mutate({ ai: settingsToSave })
-  }, [updateSettingsMutation, settings, apiKeyTouched, originalApiKey])
+  }, [updateSettingsMutation, settings, apiKeyTouched])
 
   const handleTestAI = useCallback(() => {
     testAIMutation.mutate()
@@ -174,7 +182,7 @@ export default function AISettings() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-base-content">AI 服务设置</h1>
-          <p className="text-base-content/60 mt-1">配置 AI 分析服务和自定义提示词</p>
+          <p className="text-base-content/60 mt-1">配置 AI 分析服务和用户补充指令</p>
         </div>
         <div className="flex items-center gap-2">
           <button 
@@ -239,7 +247,7 @@ export default function AISettings() {
                 <input
                   type="text"
                   className="input input-bordered w-full"
-                  value={apiKeyTouched ? settings.apiKey : (originalApiKey ? formatApiKeyForDisplay(originalApiKey) : '')}
+                  value={apiKeyTouched ? settings.apiKey : (originalApiKey === '***CONFIGURED***' ? '' : originalApiKey)}
                   onChange={(e) => {
                     setApiKeyTouched(true)
                     setSettings(prev => ({
@@ -247,22 +255,13 @@ export default function AISettings() {
                       apiKey: e.target.value
                     }))
                   }}
-                  onFocus={() => {
-                    if (!apiKeyTouched && originalApiKey) {
-                      setApiKeyTouched(true)
-                      setSettings(prev => ({
-                        ...prev,
-                        apiKey: originalApiKey
-                      }))
-                    }
-                  }}
-                  placeholder={originalApiKey ? "点击编辑已保存的API Key" : "sk-..."}
+                  placeholder={originalApiKey === '***CONFIGURED***' ? "API Key已配置，重新输入以修改" : (originalApiKey ? "点击编辑已保存的API Key" : "sk-...")}
                 />
               </div>
               <button 
                 className="btn btn-outline"
                 onClick={handleTestAI}
-                disabled={testAIMutation.isPending || !(apiKeyTouched ? settings.apiKey.trim() : originalApiKey.trim())}
+                disabled={testAIMutation.isPending || !(apiKeyTouched ? settings.apiKey.trim() : (originalApiKey !== '***CONFIGURED***' && originalApiKey.trim()))}
               >
                 {testAIMutation.isPending ? (
                   <span className="flex items-center gap-2">
@@ -280,6 +279,16 @@ export default function AISettings() {
               </button>
             </div>
             
+            {/* API Key Status */}
+            {originalApiKey === '***CONFIGURED***' && !apiKeyTouched && (
+              <div className="flex items-center gap-2 text-sm mt-2 text-info">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>API Key已配置。要进行测试或修改，请重新输入。</span>
+              </div>
+            )}
+
             {/* Test Result */}
             {lastTestResult && (
               <div className={`flex items-center gap-2 text-sm mt-2 ${lastTestResult.success ? 'text-success' : 'text-error'}`}>
@@ -352,68 +361,77 @@ export default function AISettings() {
         </div>
       </div>
 
-      {/* AI Prompt Template Configuration */}
+      {/* AI User Instructions Configuration */}
       <div className="card bg-base-100 shadow-sm">
         <div className="card-header p-6 pb-0">
           <h2 className="text-xl font-semibold text-base-content flex items-center gap-2">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
             </svg>
-            AI Prompt 模板配置
+            AI 用户补充指令
           </h2>
         </div>
         <div className="card-body p-6 pt-4 space-y-4">
-          {/* Summary Prompt */}
-          <div className="form-control">
-            <label className="label">
-              <span className="label-text font-medium">摘要生成 Prompt</span>
-              <span className="label-text-alt text-base-content/60">用于生成内容摘要的提示词模板</span>
-            </label>
-            <textarea
-              className="textarea textarea-bordered h-32"
-              value={settings.summaryPrompt}
-              onChange={(e) => setSettings(prev => ({
-                ...prev,
-                summaryPrompt: e.target.value
-              }))}
-              placeholder={`请分析以下网页内容，生成50字以内的中文摘要：
-
-标题：{title}
-URL：{url}
-内容：{content}
-
-要求：
-1. 简洁明了，突出核心观点
-2. 50字以内
-3. 使用中文
-
-（留空使用默认模板）`}
-            />
+          <div className="alert alert-info">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <div className="text-sm">
+              <p><strong>重要说明：</strong> 系统使用内置的优化提示词模板来确保稳定性和准确性。</p>
+              <p>你只能添加补充指令来定制 AI 的行为，而不能修改完整的提示词。</p>
+            </div>
           </div>
 
-          {/* Category Prompt */}
+          {/* User Instructions */}
           <div className="form-control">
             <label className="label">
-              <span className="label-text font-medium">分类提示词</span>
-              <span className="label-text-alt text-base-content/60">用于内容分类的提示词模板</span>
+              <span className="label-text font-medium">用户补充指令</span>
+              <span className="label-text-alt text-base-content/60">这些指令将注入到默认模板中指导AI行为</span>
             </label>
             <textarea
               className="textarea textarea-bordered h-32"
-              value={settings.categoryPrompt}
+              value={settings.userInstructions}
               onChange={(e) => setSettings(prev => ({
                 ...prev,
-                categoryPrompt: e.target.value
+                userInstructions: e.target.value
               }))}
-              placeholder={`根据以下网页内容，从指定分类中选择最合适的一个：
+              placeholder={`在这里添加你的补充指令，例如：
 
-标题：{title}
-内容：{content}
-可用分类：{categories}
+- 请使用英文生成摘要
+- 对技术内容添加更多技术标签
+- 摘要风格要更加正式/轻松
+- 特别关注某些类型的内容
 
-要求：只返回分类名称，不要解释
-
-（留空使用默认模板）`}
+（留空表示只使用默认行为）`}
             />
+            <div className="label">
+              <span className="label-text-alt text-base-content/50">
+                这些指令会被添加到系统提示词的末尾，用来补充或微调AI的分析行为
+              </span>
+            </div>
+          </div>
+
+          {/* Default Template Info */}
+          <div className="collapse collapse-arrow bg-base-200">
+            <input type="checkbox" />
+            <div className="collapse-title text-sm font-medium">
+              查看默认模板结构（点击展开）
+            </div>
+            <div className="collapse-content">
+              <div className="text-xs text-base-content/70 space-y-2">
+                <p><strong>默认模板包含以下要素：</strong></p>
+                <ul className="list-disc list-inside ml-4 space-y-1">
+                  <li>专业的内容分析指导</li>
+                  <li>结构化的JSON输出格式</li>
+                  <li>摘要生成规则（3-4句话，信息丰富）</li>
+                  <li>动态分类选择（基于可用分类列表）</li>
+                  <li>标签生成逻辑（3-5个相关标签）</li>
+                  <li>语言检测和情感分析</li>
+                  <li>阅读时间估算</li>
+                </ul>
+                <p className="mt-2"><strong>你的补充指令将在模板末尾生效</strong>，可以覆盖或补充上述行为。</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>

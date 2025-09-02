@@ -21,33 +21,7 @@ const DEFAULT_SETTINGS = {
   // Categories (JSON string) - Chinese-focused
   categories: JSON.stringify(['技术', '设计', '产品', '工具', '其他']),
   
-  // AI prompt template (optimized for Chinese content with dynamic categories)
-  ai_prompt_template: `请分析以下网页内容，并以JSON格式提供结构化摘要。
-
-内容信息：
-- URL: {url}
-- 标题: {title}
-- 内容类型: {contentType}
-- 原始描述: {description}
-- 主要内容: {content}
-
-请按以下JSON格式提供分析结果：
-{
-  "summary": "简洁明了的2-3句话摘要，使用与原内容相同的语言",
-  "category": "从以下分类中选择最合适的一个：{categories}",
-  "tags": ["3-5个相关标签的字符串数组"],
-  "language": "检测到的语言代码(zh, en, ja等)",
-  "sentiment": "positive, neutral, 或 negative",
-  "readingTime": "预估阅读时间(分钟数，整数)"
-}
-
-分析要求：
-- 摘要要简洁且信息丰富，突出核心观点
-- 严格从给定的分类列表中选择最合适的一个分类
-- 标签应该具体且相关，有助于内容检索
-- 准确检测内容的主要语言
-- 根据内容长度提供合理的阅读时间估算(按每分钟200-300字计算)
-- 仅返回有效的JSON格式，不要添加其他文本`
+  ai_user_instructions: ''
 }
 
 // Get all settings as a key-value object

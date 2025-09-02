@@ -7,6 +7,7 @@ import { sendSuccess, sendError } from '../../utils/response.js'
 import { addLinkBodySchema, addLinkQuerySchema, extractDomain } from '../../utils/validation.js'
 import { requireApiTokenOrAdminSession, logOperation } from '../../middleware/auth.js'
 import { webScraper } from '../../services/web-scraper.js'
+import { readabilityScraper } from '../../services/readability-scraper.js'
 import { createAIAnalyzer, type AIAnalysisResult } from '../../services/ai-analyzer.js'
 import { getSettings } from '../../utils/settings.js'
 import type { AddLinkResponse } from '../../types/api.js'
@@ -68,8 +69,15 @@ async function processUrlContent(url: string, database: BetterSQLite3Database<an
   content: any;
   aiAnalysis: AIAnalysisResult;
 }> {
-  // Step 1: Scrape web content
-  const scrapedContent = await webScraper.scrape(url)
+  // Step 1: Scrape web content using Readability (with fallback)
+  console.log('[ADD-LINK] Using Readability scraper for better content extraction')
+  let scrapedContent
+  try {
+    scrapedContent = await readabilityScraper.scrape(url)
+  } catch (readabilityError) {
+    console.warn('[ADD-LINK] Readability scraper failed, falling back to original scraper:', readabilityError)
+    scrapedContent = await webScraper.scrape(url)
+  }
   
   // Step 2: Get AI settings and analyze content
   let aiAnalysis: AIAnalysisResult

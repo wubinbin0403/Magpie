@@ -22,8 +22,7 @@ const updateSettingsSchema = z.object({
     baseUrl: z.string().url().optional(),
     model: z.string().optional(),
     temperature: z.number().min(0).max(2).optional(),
-    summaryPrompt: z.string().optional(),
-    categoryPrompt: z.string().optional(),
+    userInstructions: z.string().optional(),
   }).optional(),
   content: z.object({
     defaultCategory: z.string().optional(),
@@ -49,11 +48,10 @@ function createAdminSettingsRouter(database = db) {
 
   // Helper function to mask API key for display
   function maskApiKey(key: string): string {
-    if (!key || key.length < 8) return key
-    const prefix = key.substring(0, 3)
-    const masked = '*'.repeat(Math.max(0, key.length - 6))
-    const suffix = key.substring(Math.max(0, key.length - 3))
-    return prefix + masked + suffix
+    if (!key) return ''
+    // Always return a standard placeholder for any configured API key
+    // This prevents accidental leakage of key patterns and ensures consistent frontend handling
+    return '***CONFIGURED***'
   }
 
   // Helper function to get setting value by key
@@ -122,12 +120,11 @@ function createAdminSettingsRouter(database = db) {
           aboutUrl: settingsMap.get('about_url') || '',
         },
         ai: {
-          apiKey: settingsMap.get('openai_api_key') || '',
+          apiKey: maskApiKey(settingsMap.get('openai_api_key') || ''),
           baseUrl: settingsMap.get('openai_base_url') || 'https://api.openai.com/v1',
           model: settingsMap.get('ai_model') || 'gpt-3.5-turbo',
           temperature: parseFloat(settingsMap.get('ai_temperature') || '0.7'),
-          summaryPrompt: settingsMap.get('ai_summary_prompt') || '',
-          categoryPrompt: settingsMap.get('ai_category_prompt') || '',
+          userInstructions: settingsMap.get('ai_user_instructions') || '',
         },
         content: {
           defaultCategory: settingsMap.get('default_category') || '其他',
@@ -163,7 +160,7 @@ function createAdminSettingsRouter(database = db) {
 
       // Update AI settings
       if (updates.ai) {
-        if (updates.ai.apiKey !== undefined) {
+        if (updates.ai.apiKey !== undefined && updates.ai.apiKey !== '***CONFIGURED***') {
           await setSetting('openai_api_key', updates.ai.apiKey)
         }
         if (updates.ai.baseUrl !== undefined) {
@@ -175,11 +172,8 @@ function createAdminSettingsRouter(database = db) {
         if (updates.ai.temperature !== undefined) {
           await setSetting('ai_temperature', updates.ai.temperature.toString(), 'number')
         }
-        if (updates.ai.summaryPrompt !== undefined) {
-          await setSetting('ai_summary_prompt', updates.ai.summaryPrompt)
-        }
-        if (updates.ai.categoryPrompt !== undefined) {
-          await setSetting('ai_category_prompt', updates.ai.categoryPrompt)
+        if (updates.ai.userInstructions !== undefined) {
+          await setSetting('ai_user_instructions', updates.ai.userInstructions)
         }
       }
 
@@ -226,31 +220,35 @@ function createAdminSettingsRouter(database = db) {
     try {
       const startTime = Date.now()
       
-      // Check if we have test config in request body
+      // Always use saved settings from database for testing
+      // This ensures we test with the real stored API key, not a masked one from frontend
+      const savedSettings = await getSettings(database)
+      
+      // Check if we have test config in request body for other parameters
       let testConfig = null
       try {
         const body = await c.req.json()
         testConfig = body?.testConfig
       } catch {
-        // No body or invalid JSON, use saved settings
+        // No body or invalid JSON, use saved settings only
       }
       
       let aiSettings
-      if (testConfig) {
-        // Use test config from request
+      if (testConfig && testConfig.apiKey && !testConfig.apiKey.includes('***')) {
+        // Only use test config if it contains a real API key (not masked)
         aiSettings = {
           openai_api_key: testConfig.apiKey,
-          openai_base_url: testConfig.baseUrl || 'https://api.openai.com/v1',
-          ai_model: testConfig.model || 'gpt-3.5-turbo',
-          ai_temperature: testConfig.temperature || 0.7,
-          ai_max_tokens: 1000,
-          ai_timeout: 30000,
-          ai_prompt_template: testConfig.summaryPrompt || '',
-          categories: '[]' // Use empty array for test
+          openai_base_url: testConfig.baseUrl || savedSettings.openai_base_url,
+          ai_model: testConfig.model || savedSettings.ai_model,
+          ai_temperature: testConfig.temperature || savedSettings.ai_temperature,
+          ai_max_tokens: savedSettings.ai_max_tokens || 1000,
+          ai_timeout: savedSettings.ai_timeout || 30000,
+          ai_user_instructions: testConfig.userInstructions || savedSettings.ai_user_instructions,
+          categories: savedSettings.categories || '[]'
         }
       } else {
-        // Use saved settings from database
-        aiSettings = await getSettings(database)
+        // Use saved settings from database (preferred approach)
+        aiSettings = savedSettings
       }
 
       if (!aiSettings.openai_api_key) {

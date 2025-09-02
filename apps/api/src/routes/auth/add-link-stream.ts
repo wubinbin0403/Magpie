@@ -7,6 +7,7 @@ import { sendError } from '../../utils/response.js'
 import { addLinkBodySchema, extractDomain } from '../../utils/validation.js'
 import { requireApiTokenOrAdminSession, logOperation } from '../../middleware/auth.js'
 import { webScraper } from '../../services/web-scraper.js'
+import { readabilityScraper } from '../../services/readability-scraper.js'
 import { createAIAnalyzer, type AIAnalysisResult } from '../../services/ai-analyzer.js'
 import { getSettings } from '../../utils/settings.js'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
@@ -84,7 +85,14 @@ function createAddLinkStreamRouter(database = db) {
             } as StatusMessage)
           })
 
-          scrapedContent = await webScraper.scrape(url)
+          // Try Readability scraper first, fallback to original scraper if needed
+          try {
+            console.log('[ADD-LINK-STREAM] Using Readability scraper for better content extraction')
+            scrapedContent = await readabilityScraper.scrape(url)
+          } catch (readabilityError) {
+            console.warn('[ADD-LINK-STREAM] Readability scraper failed, falling back to original scraper:', readabilityError)
+            scrapedContent = await webScraper.scrape(url)
+          }
 
           await stream.writeSSE({
             data: JSON.stringify({
