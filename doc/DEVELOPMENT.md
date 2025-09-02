@@ -176,7 +176,7 @@ CREATE TABLE settings (
 - `api_token` - API 访问令牌
 - `openai_api_key` - OpenAI API 密钥
 - `openai_base_url` - OpenAI API 基础 URL
-- `ai_summary_prompt` - AI 生成提示模板
+- `ai_user_instructions` - 用户补充指令（注入到固定AI模板）
 - `categories` - 可用分类列表（JSON）
 
 ## 🎨 界面设计

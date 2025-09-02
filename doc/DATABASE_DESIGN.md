@@ -118,8 +118,8 @@ INSERT INTO settings VALUES ('openai_base_url', 'https://api.openai.com/v1', 'st
 INSERT INTO settings VALUES ('ai_model', 'gpt-3.5-turbo', 'string', 'AI模型名称', strftime('%s', 'now'), strftime('%s', 'now'));
 INSERT INTO settings VALUES ('ai_temperature', '0.7', 'number', 'AI温度参数', strftime('%s', 'now'), strftime('%s', 'now'));
 
--- AI 提示词配置（新系统）
-INSERT INTO settings VALUES ('ai_user_instructions', '', 'string', '用户补充指令（注入到默认模板的{user_instructions}占位符）', strftime('%s', 'now'), strftime('%s', 'now'));
+-- AI 提示词配置（用户补充指令）
+INSERT INTO settings VALUES ('ai_user_instructions', '', 'string', '用户补充指令（注入到固定AI模板）', strftime('%s', 'now'), strftime('%s', 'now'));
 
 -- 内容设置
 INSERT INTO settings VALUES ('default_category', '其他', 'string', '默认分类', strftime('%s', 'now'), strftime('%s', 'now'));
