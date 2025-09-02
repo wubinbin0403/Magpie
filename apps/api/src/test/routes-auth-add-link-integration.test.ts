@@ -14,6 +14,13 @@ vi.mock('../services/web-scraper.js', () => ({
   }
 }))
 
+// Mock readability scraper
+vi.mock('../services/readability-scraper.js', () => ({
+  readabilityScraper: {
+    scrape: vi.fn()
+  }
+}))
+
 // Mock AI analyzer
 vi.mock('../services/ai-analyzer.js', () => ({
   createAIAnalyzer: vi.fn(),
@@ -24,6 +31,7 @@ describe('Add Link Integration Tests', () => {
   let app: any
   let testToken: string
   let mockWebScraper: any
+  let mockReadabilityScraper: any
   let mockCreateAIAnalyzer: any
 
   beforeEach(async () => {
@@ -34,13 +42,16 @@ describe('Add Link Integration Tests', () => {
     
     // Get mock functions
     const { webScraper } = await import('../services/web-scraper.js')
+    const { readabilityScraper } = await import('../services/readability-scraper.js')
     const { createAIAnalyzer } = await import('../services/ai-analyzer.js')
     
     mockWebScraper = webScraper as any
+    mockReadabilityScraper = readabilityScraper as any
     mockCreateAIAnalyzer = createAIAnalyzer as any
     
     // Reset mocks
     mockWebScraper.scrape.mockReset()
+    mockReadabilityScraper.scrape.mockReset()
     mockCreateAIAnalyzer.mockReset()
     
     // Create test API token
@@ -116,6 +127,7 @@ describe('Add Link Integration Tests', () => {
       }
       
       // Setup mocks
+      mockReadabilityScraper.scrape.mockResolvedValue(mockScrapedContent)
       mockWebScraper.scrape.mockResolvedValue(mockScrapedContent)
       mockCreateAIAnalyzer.mockResolvedValue(mockAnalyzer)
 
@@ -140,8 +152,8 @@ describe('Add Link Integration Tests', () => {
       expect(data.data.category).toBe('tech')
       expect(data.data.tags).toEqual(['javascript', 'programming', 'web-development'])
       
-      // Verify web scraper was called
-      expect(mockWebScraper.scrape).toHaveBeenCalledWith('https://example.com/tech-article')
+      // Verify readability scraper was called first
+      expect(mockReadabilityScraper.scrape).toHaveBeenCalledWith('https://example.com/tech-article')
       
       // Verify AI analyzer was created and used
       expect(mockCreateAIAnalyzer).toHaveBeenCalled()
@@ -162,8 +174,9 @@ describe('Add Link Integration Tests', () => {
       expect(savedLink[0].status).toBe('published')
     })
 
-    it('should handle web scraping failure', async () => {
-      // Mock scraping failure
+    it('should handle web scraping failure gracefully', async () => {
+      // Mock both scrapers failing
+      mockReadabilityScraper.scrape.mockRejectedValue(new Error('Readability failed'))
       mockWebScraper.scrape.mockRejectedValue(new Error('Failed to fetch page'))
 
       const response = await app.request('/', {
@@ -180,13 +193,18 @@ describe('Add Link Integration Tests', () => {
       
       const data = await response.json() as any
 
-      expect(response.status).toBe(500)
-      expect(data.success).toBe(false)
-      expect(data.error.code).toBe('PROCESSING_ERROR')
+      // Should succeed with fallback content
+      expect(response.status).toBe(200)
+      expect(data.success).toBe(true)
+      expect(data.data.status).toBe('published')
+      expect(data.data.scrapingFailed).toBe(true)
       
-      // Verify no link was created
-      const linkCount = await testDrizzle.select().from(links)
-      expect(linkCount).toHaveLength(0)
+      // Verify link was created with fallback content
+      const savedLinks = await testDrizzle.select().from(links)
+      expect(savedLinks).toHaveLength(1)
+      expect(savedLinks[0].title).toContain('invalid url.com')
+      expect(savedLinks[0].aiSummary).toContain('无法自动分析内容')
+      expect(savedLinks[0].aiCategory).toBe('其他')
     })
 
     it('should fallback to basic analysis when AI fails', async () => {
@@ -201,6 +219,7 @@ describe('Add Link Integration Tests', () => {
       }
       
       // Mock successful scraping but AI failure
+      mockReadabilityScraper.scrape.mockResolvedValue(mockScrapedContent)
       mockWebScraper.scrape.mockResolvedValue(mockScrapedContent)
       mockCreateAIAnalyzer.mockRejectedValue(new Error('AI service unavailable'))
 
@@ -252,6 +271,7 @@ describe('Add Link Integration Tests', () => {
         language: 'en'
       }
       
+      mockReadabilityScraper.scrape.mockResolvedValue(mockScrapedContent)
       mockWebScraper.scrape.mockResolvedValue(mockScrapedContent)
 
       const response = await app.request('/', {
@@ -301,6 +321,7 @@ describe('Add Link Integration Tests', () => {
         analyze: vi.fn().mockResolvedValue(mockAIAnalysis)
       }
       
+      mockReadabilityScraper.scrape.mockResolvedValue(mockScrapedContent)
       mockWebScraper.scrape.mockResolvedValue(mockScrapedContent)
       mockCreateAIAnalyzer.mockResolvedValue(mockAnalyzer)
 
