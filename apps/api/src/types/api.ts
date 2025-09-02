@@ -193,6 +193,7 @@ export interface AddLinkResponse {
   category: string;
   tags: string[];
   status: 'published';
+  scrapingFailed?: boolean;
 }
 
 export interface ConfirmLinkResponse {

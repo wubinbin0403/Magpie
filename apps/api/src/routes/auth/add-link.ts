@@ -64,18 +64,78 @@ app.onError((err, c) => {
   return sendError(c, 'INTERNAL_SERVER_ERROR', 'An internal server error occurred', undefined, 500)
 })
 
+// Create fallback content when scraping fails
+function createFallbackContent(url: string): {
+  content: any;
+  aiAnalysis: AIAnalysisResult;
+  scrapingFailed: boolean;
+} {
+  const domain = extractDomain(url)
+  
+  // Generate basic title from URL
+  let titleFromUrl = url
+    .replace(/^https?:\/\//, '')
+    .replace(/^www\./, '')
+    .replace(/\/$/, '')
+    .replace(/[-_]/g, ' ')
+  
+  // Try to get a meaningful title from path
+  const pathParts = titleFromUrl.split('/').pop()
+  if (pathParts && pathParts.length > 3) {
+    titleFromUrl = pathParts.replace(/\.(html|php|aspx?)$/, '').replace(/[-_]/g, ' ')
+  }
+  
+  const fallbackContent = {
+    url,
+    title: titleFromUrl || domain,
+    description: `网页内容抓取失败，请手动输入描述`,
+    content: '',
+    domain,
+    contentType: 'article' as const,
+    wordCount: 0,
+    language: 'zh-CN'
+  }
+  
+  const fallbackAiAnalysis: AIAnalysisResult = {
+    summary: `无法自动分析内容，请手动输入描述和分类`,
+    category: '其他',
+    tags: ['待分类'],
+    language: 'zh-CN',
+    sentiment: 'neutral',
+    readingTime: 1
+  }
+  
+  return {
+    content: fallbackContent,
+    aiAnalysis: fallbackAiAnalysis,
+    scrapingFailed: true
+  }
+}
+
 // Content processing service
 async function processUrlContent(url: string, database: BetterSQLite3Database<any>): Promise<{
   content: any;
   aiAnalysis: AIAnalysisResult;
+  scrapingFailed?: boolean;
 }> {
   // Step 1: Scrape web content using Readability (with fallback)
   let scrapedContent
+  let scrapingFailed = false
+  
   try {
     scrapedContent = await readabilityScraper.scrape(url)
   } catch (readabilityError) {
-    // Readability scraper failed, falling back to original scraper
-    scrapedContent = await webScraper.scrape(url)
+    console.warn('Readability scraper failed, trying web scraper:', readabilityError)
+    try {
+      // Readability scraper failed, falling back to original scraper
+      scrapedContent = await webScraper.scrape(url)
+    } catch (webScraperError) {
+      console.warn('Both scrapers failed:', webScraperError)
+      scrapingFailed = true
+      
+      // Return fallback content instead of throwing error
+      return createFallbackContent(url)
+    }
   }
   
   // Step 2: Get AI settings and analyze content
@@ -106,7 +166,8 @@ async function processUrlContent(url: string, database: BetterSQLite3Database<an
   
   return {
     content: scrapedContent,
-    aiAnalysis
+    aiAnalysis,
+    scrapingFailed
   }
 }
 
@@ -189,23 +250,28 @@ app.get('/add', requireApiTokenOrAdminSession(database), zValidator('query', add
     try {
       processedContent = await processUrlContent(url, database)
     } catch (error) {
+      console.warn('Unexpected error in processUrlContent, using fallback:', error)
+      // Use fallback content as last resort
+      processedContent = createFallbackContent(url)
+    }
+
+    const { content: scrapedContent, aiAnalysis, scrapingFailed } = processedContent
+    
+    // Log if scraping failed for monitoring
+    if (scrapingFailed) {
       await logOperation(
         'link_add',
         'links',
         undefined,
-        { url, reason: 'processing_failed', error: String(error) },
+        { url, reason: 'scraping_failed_fallback_used', warning: 'Content scraping failed, using fallback' },
         authData.tokenId,
         authData.userId,
         authData.clientIp,
         c.req.header('user-agent'),
-        'failed',
-        'Failed to process content'
+        'success', // Still mark as success since we continue the flow
+        'Used fallback content due to scraping failure'
       )
-      
-      return sendError(c, 'PROCESSING_ERROR', 'Failed to process URL content', undefined, 500)
     }
-
-    const { content: scrapedContent, aiAnalysis } = processedContent
 
     // Create final data
     const finalCategory = category || aiAnalysis.category
@@ -293,23 +359,28 @@ app.post('/', requireApiTokenOrAdminSession(database), zValidator('json', addLin
     try {
       processedContent = await processUrlContent(url, database)
     } catch (error) {
+      console.warn('Unexpected error in processUrlContent, using fallback:', error)
+      // Use fallback content as last resort
+      processedContent = createFallbackContent(url)
+    }
+
+    const { content: scrapedContent, aiAnalysis, scrapingFailed } = processedContent
+    
+    // Log if scraping failed for monitoring
+    if (scrapingFailed) {
       await logOperation(
         'link_add',
         'links',
         undefined,
-        { url, reason: 'processing_failed', error: String(error) },
+        { url, reason: 'scraping_failed_fallback_used', warning: 'Content scraping failed, using fallback' },
         authData.tokenId,
         authData.userId,
         authData.clientIp,
         c.req.header('user-agent'),
-        'failed',
-        'Failed to process content'
+        'success', // Still mark as success since we continue the flow
+        'Used fallback content due to scraping failure'
       )
-      
-      return sendError(c, 'PROCESSING_ERROR', 'Failed to process URL content', undefined, 500)
     }
-
-    const { content: scrapedContent, aiAnalysis } = processedContent
 
     const now = Math.floor(Date.now() / 1000)
 
@@ -385,7 +456,8 @@ app.post('/', requireApiTokenOrAdminSession(database), zValidator('json', addLin
         description: linkData.finalDescription!,
         category: linkData.finalCategory!,
         tags: JSON.parse(linkData.finalTags!),
-        status: 'published'
+        status: 'published',
+        scrapingFailed: scrapingFailed
       }
       
       return sendSuccess(c, responseData, 'Link added and published successfully')

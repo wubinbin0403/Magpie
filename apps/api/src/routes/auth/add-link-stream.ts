@@ -76,6 +76,8 @@ function createAddLinkStreamRouter(database = db) {
 
         // Step 1: Scrape web content
         let scrapedContent
+        let scrapingFailed = false
+        
         try {
           await stream.writeSSE({
             data: JSON.stringify({
@@ -90,26 +92,71 @@ function createAddLinkStreamRouter(database = db) {
             // Using Readability scraper for better content extraction
             scrapedContent = await readabilityScraper.scrape(url)
           } catch (readabilityError) {
-            // Readability scraper failed, falling back to original scraper
-            scrapedContent = await webScraper.scrape(url)
+            try {
+              // Readability scraper failed, falling back to original scraper
+              scrapedContent = await webScraper.scrape(url)
+            } catch (webScraperError) {
+              console.warn('Both scrapers failed:', webScraperError)
+              scrapingFailed = true
+              
+              // Create fallback content
+              const domain = extractDomain(url)
+              let titleFromUrl = url
+                .replace(/^https?:\/\//, '')
+                .replace(/^www\./, '')
+                .replace(/\/$/, '')
+                .replace(/[-_]/g, ' ')
+              
+              const pathParts = titleFromUrl.split('/').pop()
+              if (pathParts && pathParts.length > 3) {
+                titleFromUrl = pathParts.replace(/\.(html|php|aspx?)$/, '').replace(/[-_]/g, ' ')
+              }
+              
+              scrapedContent = {
+                url,
+                title: titleFromUrl || domain,
+                description: `网页内容抓取失败，请手动输入描述`,
+                content: '',
+                domain,
+                contentType: 'article' as const,
+                wordCount: 0,
+                language: 'zh-CN'
+              }
+            }
           }
 
-          await stream.writeSSE({
-            data: JSON.stringify({
-              stage: 'fetching',
-              message: '网页内容获取成功',
-              progress: 50,
-              data: {
-                title: scrapedContent.title,
-                wordCount: scrapedContent.wordCount
-              }
-            } as StatusMessage)
-          })
+          if (scrapingFailed) {
+            await stream.writeSSE({
+              data: JSON.stringify({
+                stage: 'fetching',
+                message: '网页内容抓取失败，将使用基础信息继续',
+                progress: 50,
+                data: {
+                  title: scrapedContent.title,
+                  wordCount: scrapedContent.wordCount,
+                  scrapingFailed: true
+                }
+              } as StatusMessage)
+            })
+          } else {
+            await stream.writeSSE({
+              data: JSON.stringify({
+                stage: 'fetching',
+                message: '网页内容获取成功',
+                progress: 50,
+                data: {
+                  title: scrapedContent.title,
+                  wordCount: scrapedContent.wordCount
+                }
+              } as StatusMessage)
+            })
+          }
         } catch (error) {
+          // This should not happen now, but keep as final fallback
           await stream.writeSSE({
             data: JSON.stringify({
               stage: 'error',
-              message: '获取网页内容失败',
+              message: '处理过程中出现严重错误',
               error: String(error)
             } as StatusMessage)
           })
@@ -118,13 +165,13 @@ function createAddLinkStreamRouter(database = db) {
             'link_add',
             'links',
             undefined,
-            { url, reason: 'scraping_failed', error: String(error) },
+            { url, reason: 'unexpected_error', error: String(error) },
             authData.tokenId,
             authData.userId,
             authData.clientIp,
             c.req.header('user-agent'),
             'failed',
-            'Failed to scrape content'
+            'Unexpected error in content processing'
           )
           
           return
@@ -133,66 +180,94 @@ function createAddLinkStreamRouter(database = db) {
         // Step 2: AI Analysis
         let aiAnalysis: AIAnalysisResult
         try {
-          await stream.writeSSE({
-            data: JSON.stringify({
-              stage: 'analyzing',
-              message: '正在进行AI智能分析...',
-              progress: 60
-            } as StatusMessage)
-          })
-
-          const settings = await getSettings(database)
-          
-          if (!settings.openai_api_key) {
-            // Use fallback analysis
+          if (scrapingFailed) {
+            await stream.writeSSE({
+              data: JSON.stringify({
+                stage: 'analyzing',
+                message: '内容抓取失败，跳过AI分析',
+                progress: 60
+              } as StatusMessage)
+            })
+            
+            // Use fallback analysis for failed scraping
             aiAnalysis = {
-              summary: scrapedContent.description || scrapedContent.title.substring(0, 200),
-              category: 'other',
-              tags: ['article'],
-              language: scrapedContent.language,
+              summary: '无法自动分析内容，请手动输入描述和分类',
+              category: '其他',
+              tags: ['待分类'],
+              language: 'zh-CN',
               sentiment: 'neutral',
-              readingTime: Math.max(1, Math.ceil(scrapedContent.wordCount / 225))
+              readingTime: 1
             }
             
             await stream.writeSSE({
               data: JSON.stringify({
                 stage: 'analyzing',
-                message: 'AI服务未配置，使用基础分析',
+                message: '使用基础分析，请在确认页面手动输入信息',
                 progress: 80
               } as StatusMessage)
             })
           } else {
-            const aiAnalyzer = await createAIAnalyzer(settings)
-            
             await stream.writeSSE({
               data: JSON.stringify({
                 stage: 'analyzing',
-                message: '正在生成智能摘要...',
-                progress: 70
+                message: '正在进行AI智能分析...',
+                progress: 60
               } as StatusMessage)
             })
+
+            const settings = await getSettings(database)
             
-            aiAnalysis = await aiAnalyzer.analyze(scrapedContent)
-            
-            await stream.writeSSE({
-              data: JSON.stringify({
-                stage: 'analyzing',
-                message: 'AI分析完成',
-                progress: 90,
-                data: {
-                  summary: aiAnalysis.summary,
-                  category: aiAnalysis.category,
-                  tags: aiAnalysis.tags
-                }
-              } as StatusMessage)
-            })
+            if (!settings.openai_api_key) {
+              // Use fallback analysis
+              aiAnalysis = {
+                summary: scrapedContent.description || scrapedContent.title.substring(0, 200),
+                category: 'other',
+                tags: ['article'],
+                language: scrapedContent.language,
+                sentiment: 'neutral',
+                readingTime: Math.max(1, Math.ceil(scrapedContent.wordCount / 225))
+              }
+              
+              await stream.writeSSE({
+                data: JSON.stringify({
+                  stage: 'analyzing',
+                  message: 'AI服务未配置，使用基础分析',
+                  progress: 80
+                } as StatusMessage)
+              })
+            } else {
+              const aiAnalyzer = await createAIAnalyzer(settings)
+              
+              await stream.writeSSE({
+                data: JSON.stringify({
+                  stage: 'analyzing',
+                  message: '正在生成智能摘要...',
+                  progress: 70
+                } as StatusMessage)
+              })
+              
+              aiAnalysis = await aiAnalyzer.analyze(scrapedContent)
+              
+              await stream.writeSSE({
+                data: JSON.stringify({
+                  stage: 'analyzing',
+                  message: 'AI分析完成',
+                  progress: 90,
+                  data: {
+                    summary: aiAnalysis.summary,
+                    category: aiAnalysis.category,
+                    tags: aiAnalysis.tags
+                  }
+                } as StatusMessage)
+              })
+            }
           }
         } catch (error) {
           console.warn('AI analysis failed, using basic analysis:', error)
           
           // Fallback to basic analysis
           aiAnalysis = {
-            summary: scrapedContent.description || scrapedContent.title.substring(0, 200),
+            summary: scrapedContent.description || scrapedContent.title.substring(0, 200) || '请手动输入描述',
             category: 'other',
             tags: ['article'],
             language: scrapedContent.language,
@@ -273,10 +348,17 @@ function createAddLinkStreamRouter(database = db) {
         )
 
         // Send completion status
+        let completionMessage = skipConfirm ? '链接已成功发布！' : '链接已保存，等待确认'
+        if (scrapingFailed && !skipConfirm) {
+          completionMessage = '链接已保存，请在确认页面手动输入标题、描述和分类'
+        } else if (scrapingFailed && skipConfirm) {
+          completionMessage = '链接已发布，但内容抓取失败，建议稍后编辑补充信息'
+        }
+        
         await stream.writeSSE({
           data: JSON.stringify({
             stage: 'completed',
-            message: skipConfirm ? '链接已成功发布！' : '链接已保存，等待确认',
+            message: completionMessage,
             progress: 100,
             data: {
               id: linkId,
@@ -285,7 +367,8 @@ function createAddLinkStreamRouter(database = db) {
               description: linkData.finalDescription || linkData.aiSummary,
               category: linkData.finalCategory || linkData.aiCategory,
               tags: linkData.finalTags ? JSON.parse(linkData.finalTags) : aiAnalysis.tags,
-              status: linkData.status
+              status: linkData.status,
+              scrapingFailed: scrapingFailed
             }
           } as StatusMessage)
         })
