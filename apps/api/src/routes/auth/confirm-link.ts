@@ -127,11 +127,6 @@ function createConfirmLinkRouter(database = db) {
         userCategory: category || link.aiCategory,
         userTags: tags ? JSON.stringify(tags) : link.aiTags,
         
-        // Set final values
-        finalDescription: description,
-        finalCategory: category || link.aiCategory,
-        finalTags: tags ? JSON.stringify(tags) : link.aiTags,
-        
         updatedAt: now
       }
 

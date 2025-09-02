@@ -29,22 +29,24 @@ app.get('/', async (c) => {
     const publishedLinks = linkStats.find(stat => stat.status === 'published')?.count || 0
     const pendingLinks = linkStats.find(stat => stat.status === 'pending')?.count || 0
 
-    // 获取分类统计
+    // 获取分类统计 (使用动态计算)
     const categoryStats = await db
       .select({
-        category: links.finalCategory,
+        category: sql<string>`COALESCE(${links.userCategory}, ${links.aiCategory})`,
         count: sql<number>`count(*)`
       })
       .from(links)
       .where(eq(links.status, 'published'))
-      .groupBy(links.finalCategory)
-      .having(sql`${links.finalCategory} IS NOT NULL`)
+      .groupBy(sql`COALESCE(${links.userCategory}, ${links.aiCategory})`)
+      .having(sql`COALESCE(${links.userCategory}, ${links.aiCategory}) IS NOT NULL`)
 
     const totalCategories = categoryStats.length
 
-    // 获取标签统计
+    // 获取标签统计 (使用动态计算)
     const tagData = await db
-      .select({ tags: links.finalTags })
+      .select({ 
+        tags: sql<string>`COALESCE(${links.userTags}, ${links.aiTags})` 
+      })
       .from(links)
       .where(eq(links.status, 'published'))
 

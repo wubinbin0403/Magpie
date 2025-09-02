@@ -296,23 +296,14 @@ function createAddLinkStreamRouter(database = db) {
           aiSummary: aiAnalysis.summary,
           aiCategory: aiAnalysis.category,
           aiTags: JSON.stringify(aiAnalysis.tags),
+          aiReadingTime: aiAnalysis.readingTime,
           userDescription: null,
           userCategory: category || null,
           userTags: userTags ? JSON.stringify(userTags) : null,
-          finalDescription: null,
-          finalCategory: null,
-          finalTags: null,
           status: skipConfirm ? 'published' : 'pending',
           publishedAt: skipConfirm ? now : null,
           createdAt: now,
           updatedAt: now
-        }
-
-        // If skipConfirm is true, set final values immediately
-        if (skipConfirm) {
-          linkData.finalDescription = linkData.userDescription || linkData.aiSummary
-          linkData.finalCategory = linkData.userCategory || linkData.aiCategory  
-          linkData.finalTags = linkData.userTags || linkData.aiTags
         }
 
         // Insert into database
@@ -363,9 +354,9 @@ function createAddLinkStreamRouter(database = db) {
               id: linkId,
               url,
               title: scrapedContent.title || '',
-              description: linkData.finalDescription || linkData.aiSummary,
-              category: linkData.finalCategory || linkData.aiCategory,
-              tags: linkData.finalTags ? JSON.parse(linkData.finalTags) : aiAnalysis.tags,
+              description: linkData.userDescription || linkData.aiSummary!,
+              category: linkData.userCategory || linkData.aiCategory!,
+              tags: linkData.userTags ? JSON.parse(linkData.userTags) : JSON.parse(linkData.aiTags!),
               status: linkData.status,
               scrapingFailed: scrapingFailed
             }

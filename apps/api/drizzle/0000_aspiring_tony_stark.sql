@@ -41,27 +41,22 @@ CREATE TABLE `links` (
 	`ai_summary` text,
 	`ai_category` text,
 	`ai_tags` text,
+	`ai_reading_time` integer,
 	`user_description` text,
 	`user_category` text,
 	`user_tags` text,
-	`final_description` text,
-	`final_category` text,
-	`final_tags` text,
 	`status` text DEFAULT 'pending' NOT NULL,
 	`click_count` integer DEFAULT 0 NOT NULL,
 	`created_at` integer NOT NULL,
 	`updated_at` integer,
-	`published_at` integer,
-	`search_text` text
+	`published_at` integer
 );
 --> statement-breakpoint
 CREATE INDEX `idx_links_status` ON `links` (`status`);--> statement-breakpoint
 CREATE INDEX `idx_links_domain` ON `links` (`domain`);--> statement-breakpoint
-CREATE INDEX `idx_links_category` ON `links` (`final_category`);--> statement-breakpoint
 CREATE INDEX `idx_links_published_at` ON `links` (`published_at`);--> statement-breakpoint
 CREATE INDEX `idx_links_created_at` ON `links` (`created_at`);--> statement-breakpoint
 CREATE INDEX `idx_links_status_published_at` ON `links` (`status`,`published_at`);--> statement-breakpoint
-CREATE INDEX `idx_links_status_category_published` ON `links` (`status`,`final_category`,`published_at`);--> statement-breakpoint
 CREATE TABLE `operation_logs` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`action` text NOT NULL,
@@ -133,4 +128,59 @@ CREATE UNIQUE INDEX `users_username_unique` ON `users` (`username`);--> statemen
 CREATE INDEX `idx_users_username` ON `users` (`username`);--> statement-breakpoint
 CREATE INDEX `idx_users_session_token` ON `users` (`session_token`);--> statement-breakpoint
 CREATE INDEX `idx_users_status` ON `users` (`status`);--> statement-breakpoint
-CREATE INDEX `idx_users_last_login` ON `users` (`last_login_at`);
+CREATE INDEX `idx_users_last_login` ON `users` (`last_login_at`);--> statement-breakpoint
+-- FTS5 Full-Text Search Implementation
+CREATE VIRTUAL TABLE `links_fts` USING fts5(
+  title, 
+  description,
+  tags,
+  domain,
+  category,
+  content=links,
+  content_rowid=id
+);--> statement-breakpoint
+-- FTS5 Synchronization Triggers (using dynamic computed fields)
+CREATE TRIGGER `links_fts_insert` AFTER INSERT ON `links` BEGIN
+  INSERT INTO links_fts(rowid, title, description, tags, domain, category)
+  VALUES (
+    NEW.id, 
+    NEW.title, 
+    COALESCE(NEW.user_description, NEW.ai_summary),
+    COALESCE(NEW.user_tags, NEW.ai_tags),
+    NEW.domain,
+    COALESCE(NEW.user_category, NEW.ai_category)
+  );
+END;--> statement-breakpoint
+CREATE TRIGGER `links_fts_delete` AFTER DELETE ON `links` BEGIN
+  INSERT INTO links_fts(links_fts, rowid, title, description, tags, domain, category)
+  VALUES (
+    'delete', 
+    OLD.id, 
+    OLD.title, 
+    COALESCE(OLD.user_description, OLD.ai_summary),
+    COALESCE(OLD.user_tags, OLD.ai_tags),
+    OLD.domain,
+    COALESCE(OLD.user_category, OLD.ai_category)
+  );
+END;--> statement-breakpoint
+CREATE TRIGGER `links_fts_update` AFTER UPDATE ON `links` BEGIN
+  INSERT INTO links_fts(links_fts, rowid, title, description, tags, domain, category)
+  VALUES (
+    'delete', 
+    OLD.id, 
+    OLD.title, 
+    COALESCE(OLD.user_description, OLD.ai_summary),
+    COALESCE(OLD.user_tags, OLD.ai_tags),
+    OLD.domain,
+    COALESCE(OLD.user_category, OLD.ai_category)
+  );
+  INSERT INTO links_fts(rowid, title, description, tags, domain, category)
+  VALUES (
+    NEW.id, 
+    NEW.title, 
+    COALESCE(NEW.user_description, NEW.ai_summary),
+    COALESCE(NEW.user_tags, NEW.ai_tags),
+    NEW.domain,
+    COALESCE(NEW.user_category, NEW.ai_category)
+  );
+END;

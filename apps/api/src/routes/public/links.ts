@@ -2,7 +2,7 @@ import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
 import { db } from '../../db/index.js'
 import { links } from '../../db/schema.js'
-import { eq, desc, asc, like, and, or, count, sql } from 'drizzle-orm'
+import { eq, desc, asc, like, and, or, count, sql, isNull } from 'drizzle-orm'
 import { sendSuccess, sendError, notFound, badRequest } from '../../utils/response.js'
 import { linksQuerySchema, idParamSchema, buildDateFilter } from '../../utils/validation.js'
 import { getSettings } from '../../utils/settings.js'
@@ -49,7 +49,15 @@ app.get('/', zValidator('query', linksQuerySchema), async (c) => {
     let whereConditions: any[] = [eq(links.status, 'published')]
     
     if (category) {
-      whereConditions.push(eq(links.finalCategory, category))
+      whereConditions.push(
+        or(
+          eq(links.userCategory, category),
+          and(
+            isNull(links.userCategory),
+            eq(links.aiCategory, category)
+          )
+        )
+      )
     }
     
     if (domain) {
@@ -60,8 +68,10 @@ app.get('/', zValidator('query', linksQuerySchema), async (c) => {
       whereConditions.push(
         or(
           like(links.title, `%${search}%`),
-          like(links.finalDescription, `%${search}%`),
-          like(links.finalTags, `%${search}%`)
+          like(links.userDescription, `%${search}%`),
+          like(links.aiSummary, `%${search}%`),
+          like(links.userTags, `%${search}%`),
+          like(links.aiTags, `%${search}%`)
         )
       )
     }
@@ -69,7 +79,10 @@ app.get('/', zValidator('query', linksQuerySchema), async (c) => {
     if (tags) {
       const tagList = tags.split(',').map(t => t.trim())
       const tagConditions = tagList.map(tag => 
-        like(links.finalTags, `%${tag}%`)
+        or(
+          like(links.userTags, `%${tag}%`),
+          like(links.aiTags, `%${tag}%`)
+        )
       )
       whereConditions.push(or(...tagConditions))
     }
@@ -111,15 +124,15 @@ app.get('/', zValidator('query', linksQuerySchema), async (c) => {
     
     const total = totalResult[0].count
     
-    // 获取链接列表
+    // 获取链接列表 (使用动态计算替代final字段)
     const linksResult = await database
       .select({
         id: links.id,
         url: links.url,
         title: links.title,
-        description: links.finalDescription,
-        category: links.finalCategory,
-        tags: links.finalTags,
+        description: sql<string>`COALESCE(${links.userDescription}, ${links.aiSummary})`,
+        category: sql<string>`COALESCE(${links.userCategory}, ${links.aiCategory})`,
+        tags: sql<string>`COALESCE(${links.userTags}, ${links.aiTags})`,
         domain: links.domain,
         publishedAt: links.publishedAt,
         createdAt: links.createdAt,
@@ -156,21 +169,23 @@ app.get('/', zValidator('query', linksQuerySchema), async (c) => {
     
     // 获取filters统计数据（移除域名统计，按需加载）
     const [categoryStats, tagData, yearMonthData] = await Promise.all([
-      // 分类统计
+      // 分类统计 (使用动态计算)
       database
         .select({
-          name: links.finalCategory,
+          name: sql<string>`COALESCE(${links.userCategory}, ${links.aiCategory})`,
           count: sql<number>`count(*)`
         })
         .from(links)
         .where(eq(links.status, 'published'))
-        .groupBy(links.finalCategory)
-        .having(sql`${links.finalCategory} IS NOT NULL AND ${links.finalCategory} != ''`)
+        .groupBy(sql`COALESCE(${links.userCategory}, ${links.aiCategory})`)
+        .having(sql`COALESCE(${links.userCategory}, ${links.aiCategory}) IS NOT NULL AND COALESCE(${links.userCategory}, ${links.aiCategory}) != ''`)
         .orderBy(sql`count(*) desc`),
 
-      // 标签数据（需要进一步处理）
+      // 标签数据（需要进一步处理，使用动态计算）
       database
-        .select({ tags: links.finalTags })
+        .select({ 
+          tags: sql<string>`COALESCE(${links.userTags}, ${links.aiTags})` 
+        })
         .from(links)
         .where(eq(links.status, 'published')),
 
@@ -247,9 +262,9 @@ app.get('/:id', zValidator('param', idParamSchema), async (c) => {
         id: links.id,
         url: links.url,
         title: links.title,
-        description: links.finalDescription,
-        category: links.finalCategory,
-        tags: links.finalTags,
+        description: sql<string>`COALESCE(${links.userDescription}, ${links.aiSummary})`,
+        category: sql<string>`COALESCE(${links.userCategory}, ${links.aiCategory})`,
+        tags: sql<string>`COALESCE(${links.userTags}, ${links.aiTags})`,
         domain: links.domain,
         publishedAt: links.publishedAt,
         createdAt: links.createdAt,

@@ -16,16 +16,12 @@ export const links = sqliteTable('links', {
   aiSummary: text('ai_summary'),
   aiCategory: text('ai_category'),
   aiTags: text('ai_tags'), // JSON array
+  aiReadingTime: integer('ai_reading_time'), // AI estimated reading time in minutes
   
   // User confirmed content
   userDescription: text('user_description'),
   userCategory: text('user_category'),
   userTags: text('user_tags'), // JSON array
-  
-  // Final display content (optimized for queries)
-  finalDescription: text('final_description'),
-  finalCategory: text('final_category'),
-  finalTags: text('final_tags'), // JSON array
   
   // Metadata
   status: text('status').default('pending').notNull(), // pending|published|deleted
@@ -35,18 +31,13 @@ export const links = sqliteTable('links', {
   createdAt: integer('created_at').notNull(),
   updatedAt: integer('updated_at'),
   publishedAt: integer('published_at'),
-  
-  // Search optimization
-  searchText: text('search_text'),
 }, (table) => ({
   // Indexes for common queries
   statusIdx: index('idx_links_status').on(table.status),
   domainIdx: index('idx_links_domain').on(table.domain),
-  categoryIdx: index('idx_links_category').on(table.finalCategory),
   publishedAtIdx: index('idx_links_published_at').on(table.publishedAt),
   createdAtIdx: index('idx_links_created_at').on(table.createdAt),
   statusPublishedAtIdx: index('idx_links_status_published_at').on(table.status, table.publishedAt),
-  statusCategoryPublishedIdx: index('idx_links_status_category_published').on(table.status, table.finalCategory, table.publishedAt),
 }));
 
 // Settings table - System configuration

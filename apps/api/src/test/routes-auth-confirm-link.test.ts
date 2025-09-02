@@ -123,9 +123,9 @@ describe('Auth Confirm Link API', () => {
         .limit(1)
 
       expect(dbLink[0].status).toBe('published')
-      expect(dbLink[0].finalDescription).toBe('User confirmed description')
-      expect(dbLink[0].finalCategory).toBe('programming')
-      expect(JSON.parse(dbLink[0].finalTags)).toEqual(['react', 'javascript'])
+      expect(dbLink[0].userDescription).toBe('User confirmed description')
+      expect(dbLink[0].userCategory).toBe('programming')
+      expect(JSON.parse(dbLink[0].userTags)).toEqual(['react', 'javascript'])
       expect(dbLink[0].title).toBe('Updated Title') // Title should be updated
       expect(dbLink[0].publishedAt).toBeTruthy()
     })
@@ -191,9 +191,9 @@ describe('Auth Confirm Link API', () => {
           url: 'https://example.com/published',
           domain: 'example.com',
           title: 'Published Article',
-          finalDescription: 'Final description',
-          finalCategory: 'technology',
-          finalTags: JSON.stringify(['tech']),
+          userDescription: 'Final description',
+          userCategory: 'technology',
+          userTags: JSON.stringify(['tech']),
           status: 'published',
           publishedAt: now,
           createdAt: now,
@@ -300,9 +300,10 @@ describe('Auth Confirm Link API', () => {
         .where(eq(links.id, linkId))
         .limit(1)
 
-      expect(dbLink[0].finalDescription).toBe('User description')
-      expect(dbLink[0].finalCategory).toBe('ai-category') // AI value used
-      expect(JSON.parse(dbLink[0].finalTags)).toEqual(['ai', 'defaults']) // AI values used
+      expect(dbLink[0].userDescription).toBe('User description')
+      expect(dbLink[0].userCategory || dbLink[0].aiCategory).toBe('ai-category') // AI value used
+      const tags = dbLink[0].userTags ? JSON.parse(dbLink[0].userTags) : JSON.parse(dbLink[0].aiTags)
+      expect(tags).toEqual(['ai', 'defaults']) // AI values used
     })
   })
 })

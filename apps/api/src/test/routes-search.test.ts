@@ -36,14 +36,14 @@ const createSearchApp = () => {
       whereConditions.push(
         or(
           like(links.title, `%${q}%`),
-          like(links.finalDescription, `%${q}%`),
-          like(links.finalTags, `%${q}%`),
+          like(sql`COALESCE(${links.userDescription}, ${links.aiSummary})`, `%${q}%`),
+          like(sql`COALESCE(${links.userTags}, ${links.aiTags})`, `%${q}%`),
           like(links.domain, `%${q}%`)
         )
       )
       
       if (category) {
-        whereConditions.push(eq(links.finalCategory, category))
+        whereConditions.push(eq(sql`COALESCE(${links.userCategory}, ${links.aiCategory})`, category))
       }
       
       if (domain) {
@@ -53,7 +53,7 @@ const createSearchApp = () => {
       if (tags) {
         const tagList = tags.split(',').map(t => t.trim())
         const tagConditions = tagList.map(tag => 
-          like(links.finalTags, `%${tag}%`)
+          like(sql`COALESCE(${links.userTags}, ${links.aiTags})`, `%${tag}%`)
         )
         whereConditions.push(or(...tagConditions))
       }
@@ -98,9 +98,9 @@ const createSearchApp = () => {
           id: links.id,
           url: links.url,
           title: links.title,
-          description: links.finalDescription,
-          category: links.finalCategory,
-          tags: links.finalTags,
+          description: sql<string>`COALESCE(${links.userDescription}, ${links.aiSummary})`,
+          category: sql<string>`COALESCE(${links.userCategory}, ${links.aiCategory})`,
+          tags: sql<string>`COALESCE(${links.userTags}, ${links.aiTags})`,
           domain: links.domain,
           publishedAt: links.publishedAt,
           createdAt: links.createdAt,
@@ -211,17 +211,17 @@ const createSearchApp = () => {
         // 从分类中查找建议
         const categorySuggestions = await testDrizzle
           .select({ 
-            category: links.finalCategory,
+            category: sql<string>`COALESCE(${links.userCategory}, ${links.aiCategory})`,
             count: count()
           })
           .from(links)
           .where(
             and(
               eq(links.status, 'published'),
-              like(links.finalCategory, `%${q}%`)
+              like(sql`COALESCE(${links.userCategory}, ${links.aiCategory})`, `%${q}%`)
             )
           )
-          .groupBy(links.finalCategory)
+          .groupBy(sql`COALESCE(${links.userCategory}, ${links.aiCategory})`)
           .limit(limit)
         
         categorySuggestions.forEach(item => {
@@ -238,7 +238,7 @@ const createSearchApp = () => {
       if (!type || type === 'tag') {
         // 从标签中查找建议
         const tagData = await testDrizzle
-          .select({ tags: links.finalTags })
+          .select({ tags: sql<string>`COALESCE(${links.userTags}, ${links.aiTags})` })
           .from(links)
           .where(eq(links.status, 'published'))
 
@@ -326,9 +326,9 @@ describe('Public Search API', () => {
         originalDescription: 'Learn React basics',
         aiSummary: 'React tutorial',
         userDescription: 'Great React tutorial',
-        finalDescription: 'Complete React tutorial for beginners',
-        finalCategory: 'programming',
-        finalTags: '["react", "javascript", "tutorial"]',
+        userDescription: 'Complete React tutorial for beginners',
+        userCategory: 'programming',
+        userTags: '["react", "javascript", "tutorial"]',
         status: 'published',
         publishedAt: now - 3600,
         createdAt: now - 3600
@@ -340,9 +340,9 @@ describe('Public Search API', () => {
         originalDescription: 'Vue.js guide',
         aiSummary: 'Vue guide',
         userDescription: 'Vue.js guide',
-        finalDescription: 'Vue.js framework complete guide',
-        finalCategory: 'programming',
-        finalTags: '["vue", "javascript", "framework"]',
+        userDescription: 'Vue.js framework complete guide',
+        userCategory: 'programming',
+        userTags: '["vue", "javascript", "framework"]',
         status: 'published',
         publishedAt: now - 1800,
         createdAt: now - 1800
@@ -354,9 +354,9 @@ describe('Public Search API', () => {
         originalDescription: 'Design patterns',
         aiSummary: 'Design patterns',
         userDescription: 'Software design patterns',
-        finalDescription: 'Common design patterns in software development',
-        finalCategory: 'architecture',
-        finalTags: '["patterns", "design", "software"]',
+        userDescription: 'Common design patterns in software development',
+        userCategory: 'architecture',
+        userTags: '["patterns", "design", "software"]',
         status: 'published',
         publishedAt: now - 900,
         createdAt: now - 900

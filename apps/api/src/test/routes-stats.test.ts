@@ -35,19 +35,19 @@ const createStatsApp = () => {
       // 获取分类统计
       const categoryStats = await testDrizzle
         .select({
-          category: links.finalCategory,
+          category: sql<string>`COALESCE(${links.userCategory}, ${links.aiCategory})`,
           count: sql<number>`count(*)`
         })
         .from(links)
         .where(eq(links.status, 'published'))
-        .groupBy(links.finalCategory)
-        .having(sql`${links.finalCategory} IS NOT NULL`)
+        .groupBy(sql`COALESCE(${links.userCategory}, ${links.aiCategory})`)
+        .having(sql`COALESCE(${links.userCategory}, ${links.aiCategory}) IS NOT NULL`)
 
       const totalCategories = categoryStats.length
 
       // 获取标签统计 (简化版本 - 统计唯一标签数量)
       const tagData = await testDrizzle
-        .select({ tags: links.finalTags })
+        .select({ tags: sql<string>`COALESCE(${links.userTags}, ${links.aiTags})` })
         .from(links)
         .where(eq(links.status, 'published'))
 
@@ -184,9 +184,9 @@ describe('Public Stats API', () => {
         originalDescription: 'React tutorial',
         aiSummary: 'React tutorial',
         userDescription: 'React tutorial',
-        finalDescription: 'React tutorial for beginners',
-        finalCategory: 'programming',
-        finalTags: '["react", "javascript", "tutorial"]',
+        userDescription: 'React tutorial for beginners',
+        userCategory: 'programming',
+        userTags: '["react", "javascript", "tutorial"]',
         status: 'published',
         publishedAt: now - 3600,
         createdAt: now - 3600
@@ -198,9 +198,9 @@ describe('Public Stats API', () => {
         originalDescription: 'Vue guide',
         aiSummary: 'Vue guide',
         userDescription: 'Vue guide',
-        finalDescription: 'Vue.js complete guide',
-        finalCategory: 'programming',
-        finalTags: '["vue", "javascript", "framework"]',
+        userDescription: 'Vue.js complete guide',
+        userCategory: 'programming',
+        userTags: '["vue", "javascript", "framework"]',
         status: 'published',
         publishedAt: now - 1800,
         createdAt: now - 1800
@@ -212,9 +212,9 @@ describe('Public Stats API', () => {
         originalDescription: 'Design patterns',
         aiSummary: 'Design patterns',
         userDescription: 'Design patterns',
-        finalDescription: 'Software design patterns',
-        finalCategory: 'architecture',
-        finalTags: '["patterns", "design", "software"]',
+        userDescription: 'Software design patterns',
+        userCategory: 'architecture',
+        userTags: '["patterns", "design", "software"]',
         status: 'published',
         publishedAt: now - 900,
         createdAt: now - 900
@@ -227,9 +227,9 @@ describe('Public Stats API', () => {
         originalDescription: 'Old article',
         aiSummary: 'Old article',
         userDescription: 'Old article',
-        finalDescription: 'An old article from last month',
-        finalCategory: 'general',
-        finalTags: '["old", "archive"]',
+        userDescription: 'An old article from last month',
+        userCategory: 'general',
+        userTags: '["old", "archive"]',
         status: 'published',
         publishedAt: lastMonth,
         createdAt: lastMonth
@@ -242,9 +242,9 @@ describe('Public Stats API', () => {
         originalDescription: 'Pending article',
         aiSummary: 'Pending article',
         userDescription: null,
-        finalDescription: null,
-        finalCategory: null,
-        finalTags: null,
+        userDescription: null,
+        userCategory: null,
+        userTags: null,
         status: 'pending',
         publishedAt: null,
         createdAt: now - 300

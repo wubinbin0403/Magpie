@@ -3,7 +3,7 @@ import { zValidator } from '@hono/zod-validator'
 import { z } from 'zod'
 import { db } from '../../db/index.js'
 import { categories } from '../../db/schema.js'
-import { eq, asc, desc, sql } from 'drizzle-orm'
+import { eq, asc, desc, sql, or } from 'drizzle-orm'
 import { sendSuccess, sendError, notFound } from '../../utils/response.js'
 import { requireAdmin } from '../../middleware/admin.js'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
@@ -330,28 +330,23 @@ function createAdminCategoriesRouter(database = db) {
       const { links } = await import('../../db/schema.js')
       const categoryToDelete = existingCategory[0].name
       
-      // Update all links that use this category
+      // Update user category links
       await database
         .update(links)
         .set({
-          finalCategory: defaultCategory,
-          // Also update user category if it matches
-          userCategory: sql`CASE 
-            WHEN ${links.userCategory} = ${categoryToDelete} THEN ${defaultCategory}
-            ELSE ${links.userCategory}
-          END`,
-          // Update AI category if it matches  
-          aiCategory: sql`CASE 
-            WHEN ${links.aiCategory} = ${categoryToDelete} THEN ${defaultCategory}
-            ELSE ${links.aiCategory}
-          END`,
+          userCategory: defaultCategory,
           updatedAt: Math.floor(Date.now() / 1000)
         })
-        .where(sql`
-          ${links.finalCategory} = ${categoryToDelete} OR
-          ${links.userCategory} = ${categoryToDelete} OR  
-          ${links.aiCategory} = ${categoryToDelete}
-        `)
+        .where(eq(links.userCategory, categoryToDelete))
+      
+      // Update AI category links
+      await database
+        .update(links)
+        .set({
+          aiCategory: defaultCategory,
+          updatedAt: Math.floor(Date.now() / 1000)
+        })
+        .where(eq(links.aiCategory, categoryToDelete))
       
       // Now delete the category
       await database

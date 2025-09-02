@@ -122,8 +122,8 @@ describe('Admin Batch Operations API (/api/admin/pending/batch)', () => {
           .limit(1)
 
         expect(dbLink[0].status).toBe('published')
-        expect(dbLink[0].finalCategory).toBe('batch-category')
-        expect(JSON.parse(dbLink[0].finalTags || '[]')).toEqual(['batch-tag1', 'batch-tag2'])
+        expect(dbLink[0].userCategory).toBe('batch-category')
+        expect(JSON.parse(dbLink[0].userTags || '[]')).toEqual(['batch-tag1', 'batch-tag2'])
         expect(dbLink[0].publishedAt).toBeGreaterThanOrEqual(now)
       }
     })

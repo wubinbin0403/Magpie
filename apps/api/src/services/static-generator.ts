@@ -1,6 +1,6 @@
 import { db } from '../db/index.js'
 import { links, settings } from '../db/schema.js'
-import { eq, and, or, desc, isNotNull } from 'drizzle-orm'
+import { eq, and, or, desc, isNotNull, sql } from 'drizzle-orm'
 import { promises as fs } from 'fs'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
@@ -66,9 +66,9 @@ async function getPublishedLinks(database: BetterSQLite3Database<any> = db) {
       id: links.id,
       url: links.url,
       title: links.title,
-      finalDescription: links.finalDescription,
-      finalCategory: links.finalCategory,
-      finalTags: links.finalTags,
+      finalDescription: sql<string>`COALESCE(${links.userDescription}, ${links.aiSummary})`,
+      finalCategory: sql<string>`COALESCE(${links.userCategory}, ${links.aiCategory})`,
+      finalTags: sql<string>`COALESCE(${links.userTags}, ${links.aiTags})`,
       publishedAt: links.publishedAt,
       clickCount: links.clickCount,
     })

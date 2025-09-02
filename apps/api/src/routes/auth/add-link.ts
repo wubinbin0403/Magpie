@@ -273,14 +273,13 @@ app.get('/add', requireApiTokenOrAdminSession(database), zValidator('query', add
       )
     }
 
-    // Create final data
+    // Create final data (for response only, not stored)
     const finalCategory = category || aiAnalysis.category
     const finalTags = tags ? tags.split(',').map(t => t.trim()) : aiAnalysis.tags
     const finalDescription = aiAnalysis.summary
 
     // Create link record
     const now = Math.floor(Date.now() / 1000)
-    const searchText = `${scrapedContent.title} ${finalDescription} ${finalCategory} ${finalTags.join(' ')}`.toLowerCase()
     
     const linkData = {
       url,
@@ -290,13 +289,10 @@ app.get('/add', requireApiTokenOrAdminSession(database), zValidator('query', add
       aiSummary: aiAnalysis.summary,
       aiCategory: aiAnalysis.category,
       aiTags: JSON.stringify(aiAnalysis.tags),
-      finalDescription,
-      finalCategory,
-      finalTags: JSON.stringify(finalTags),
+      aiReadingTime: aiAnalysis.readingTime,
       status: skipConfirm ? 'published' as const : 'pending' as const,
       createdAt: now,
       publishedAt: skipConfirm ? now : undefined,
-      searchText,
     }
 
     const result = await database.insert(links).values(linkData).returning({ id: links.id })
@@ -395,23 +391,14 @@ app.post('/', requireApiTokenOrAdminSession(database), zValidator('json', addLin
       aiSummary: aiAnalysis.summary,
       aiCategory: aiAnalysis.category,
       aiTags: JSON.stringify(aiAnalysis.tags),
+      aiReadingTime: aiAnalysis.readingTime,
       userDescription: null,
       userCategory: category || null,
       userTags: userTags ? JSON.stringify(userTags) : null,
-      finalDescription: null,
-      finalCategory: null,
-      finalTags: null,
       status: skipConfirm ? 'published' : 'pending',
       publishedAt: skipConfirm ? now : null,
       createdAt: now,
       updatedAt: now
-    }
-
-    // If skipConfirm is true, set final values immediately
-    if (skipConfirm) {
-      linkData.finalDescription = linkData.userDescription || linkData.aiSummary
-      linkData.finalCategory = linkData.userCategory || linkData.aiCategory  
-      linkData.finalTags = linkData.userTags || linkData.aiTags
     }
 
     // Insert into database
@@ -446,14 +433,14 @@ app.post('/', requireApiTokenOrAdminSession(database), zValidator('json', addLin
     )
 
     if (skipConfirm) {
-      // Return published link data
+      // Return published link data (using dynamic computation)
       const responseData: AddLinkResponse = {
         id: linkId,
         url,
         title: scrapedContent.title || '',
-        description: linkData.finalDescription!,
-        category: linkData.finalCategory!,
-        tags: JSON.parse(linkData.finalTags!),
+        description: linkData.userDescription || linkData.aiSummary!,
+        category: linkData.userCategory || linkData.aiCategory!,
+        tags: linkData.userTags ? JSON.parse(linkData.userTags) : JSON.parse(linkData.aiTags!),
         status: 'published',
         scrapingFailed: scrapingFailed
       }

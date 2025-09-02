@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "df29bb5c-d1e6-472a-8882-d289a885c19f",
+  "id": "57d1e356-c929-46fd-8cfb-84fc3ead5610",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "api_tokens": {
@@ -286,6 +286,13 @@
           "notNull": false,
           "autoincrement": false
         },
+        "ai_reading_time": {
+          "name": "ai_reading_time",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "user_description": {
           "name": "user_description",
           "type": "text",
@@ -302,27 +309,6 @@
         },
         "user_tags": {
           "name": "user_tags",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "final_description": {
-          "name": "final_description",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "final_category": {
-          "name": "final_category",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "final_tags": {
-          "name": "final_tags",
           "type": "text",
           "primaryKey": false,
           "notNull": false,
@@ -364,13 +350,6 @@
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
-        },
-        "search_text": {
-          "name": "search_text",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
         }
       },
       "indexes": {
@@ -385,13 +364,6 @@
           "name": "idx_links_domain",
           "columns": [
             "domain"
-          ],
-          "isUnique": false
-        },
-        "idx_links_category": {
-          "name": "idx_links_category",
-          "columns": [
-            "final_category"
           ],
           "isUnique": false
         },
@@ -413,15 +385,6 @@
           "name": "idx_links_status_published_at",
           "columns": [
             "status",
-            "published_at"
-          ],
-          "isUnique": false
-        },
-        "idx_links_status_category_published": {
-          "name": "idx_links_status_category_published",
-          "columns": [
-            "status",
-            "final_category",
             "published_at"
           ],
           "isUnique": false

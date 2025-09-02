@@ -406,7 +406,6 @@ describe('Admin Categories API', () => {
           url: 'https://test1.com',
           domain: 'test1.com',
           title: 'Test Link 1',
-          finalCategory: '设计',
           userCategory: '设计',
           aiCategory: '设计',
           status: 'published',
@@ -417,7 +416,6 @@ describe('Admin Categories API', () => {
           url: 'https://test2.com',
           domain: 'test2.com',
           title: 'Test Link 2',
-          finalCategory: '设计',
           userCategory: '设计',
           aiCategory: '技术', // Different AI category
           status: 'published',
@@ -430,7 +428,7 @@ describe('Admin Categories API', () => {
       const linksBeforeDeletion = await testDrizzle
         .select()
         .from(links)
-        .where(eq(links.finalCategory, '设计'))
+        .where(eq(links.userCategory, '设计'))
       expect(linksBeforeDeletion).toHaveLength(2)
 
       // Delete '设计' category (id=2)
@@ -456,14 +454,14 @@ describe('Admin Categories API', () => {
       const movedLinks = await testDrizzle
         .select()
         .from(links)
-        .where(eq(links.finalCategory, '技术'))
+        .where(eq(links.userCategory, '技术'))
       expect(movedLinks.length).toBeGreaterThanOrEqual(2)
 
       // Verify no links remain in the deleted category
       const linksInDeletedCategory = await testDrizzle
         .select()
         .from(links)
-        .where(eq(links.finalCategory, '设计'))
+        .where(eq(links.userCategory, '设计'))
       expect(linksInDeletedCategory).toHaveLength(0)
 
       // Verify user categories were also updated

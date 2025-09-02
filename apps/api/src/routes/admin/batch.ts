@@ -91,17 +91,23 @@ function createAdminBatchRouter(database = db) {
               }
               const finalTags = JSON.stringify(tagsToUse)
 
-              // Update to published status
+              // Update to published status - set user fields if they were provided via params
+              const updateData: any = {
+                status: 'published',
+                publishedAt: now,
+                updatedAt: now,
+              }
+              
+              if (params?.category) {
+                updateData.userCategory = finalCategory
+              }
+              if (params?.tags && params.tags.length > 0) {
+                updateData.userTags = finalTags
+              }
+              
               await database
                 .update(links)
-                .set({
-                  status: 'published',
-                  publishedAt: now,
-                  finalDescription,
-                  finalCategory,
-                  finalTags,
-                  updatedAt: now,
-                })
+                .set(updateData)
                 .where(eq(links.id, id))
 
               results.push({ id, success: true })

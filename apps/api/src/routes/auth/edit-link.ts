@@ -93,22 +93,16 @@ function createEditLinkRouter(database = db) {
           if (updateData.status === 'published') {
             updateFields.publishedAt = now
             
-            // When publishing, set final values based on provided data or existing values
-            updateFields.finalDescription = updateData.description || 
-              link.userDescription || 
-              link.aiSummary || 
-              link.originalDescription || 
-              ''
-              
-            updateFields.finalCategory = updateData.category || 
-              link.userCategory || 
-              link.aiCategory || 
-              ''
-              
-            updateFields.finalTags = JSON.stringify(updateData.tags || 
-              (link.userTags ? JSON.parse(link.userTags) : []) ||
-              (link.aiTags ? JSON.parse(link.aiTags) : []) ||
-              [])
+            // When publishing, set user values if provided
+            if (updateData.description !== undefined) {
+              updateFields.userDescription = updateData.description
+            }
+            if (updateData.category !== undefined) {
+              updateFields.userCategory = updateData.category
+            }
+            if (updateData.tags !== undefined) {
+              updateFields.userTags = JSON.stringify(updateData.tags)
+            }
           }
         }
 
@@ -117,29 +111,15 @@ function createEditLinkRouter(database = db) {
           updateFields.title = updateData.title
         }
 
-        // Handle field updates based on current status
-        if (link.status === 'published' || updateData.status === 'published') {
-          // For published links, update final fields directly
-          if (updateData.description !== undefined) {
-            updateFields.finalDescription = updateData.description
-          }
-          if (updateData.category !== undefined) {
-            updateFields.finalCategory = updateData.category
-          }
-          if (updateData.tags !== undefined) {
-            updateFields.finalTags = JSON.stringify(updateData.tags)
-          }
-        } else {
-          // For non-published links, update user override fields
-          if (updateData.description !== undefined) {
-            updateFields.userDescription = updateData.description
-          }
-          if (updateData.category !== undefined) {
-            updateFields.userCategory = updateData.category
-          }
-          if (updateData.tags !== undefined) {
-            updateFields.userTags = JSON.stringify(updateData.tags)
-          }
+        // Handle field updates - always use user fields
+        if (updateData.description !== undefined) {
+          updateFields.userDescription = updateData.description
+        }
+        if (updateData.category !== undefined) {
+          updateFields.userCategory = updateData.category
+        }
+        if (updateData.tags !== undefined) {
+          updateFields.userTags = JSON.stringify(updateData.tags)
         }
 
         // Update the link

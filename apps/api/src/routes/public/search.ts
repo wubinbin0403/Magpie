@@ -2,7 +2,7 @@ import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
 import { db } from '../../db/index.js'
 import { links } from '../../db/schema.js'
-import { eq, desc, asc, and, or, count, sql } from 'drizzle-orm'
+import { eq, desc, asc, and, or, count, sql, isNull } from 'drizzle-orm'
 import { sendSuccess, sendError } from '../../utils/response.js'
 import { searchQuerySchema, suggestionsQuerySchema, buildSearchDateFilter } from '../../utils/validation.js'
 import type { SearchResponse, SearchResult, Suggestion } from '../../types/api.js'
@@ -36,7 +36,15 @@ app.get('/', zValidator('query', searchQuerySchema), async (c) => {
     let joinConditions: any[] = []
     
     if (category) {
-      joinConditions.push(eq(links.finalCategory, category))
+      joinConditions.push(
+        or(
+          eq(links.userCategory, category),
+          and(
+            isNull(links.userCategory),
+            eq(links.aiCategory, category)
+          )
+        )
+      )
     }
     
     if (domain) {
@@ -65,9 +73,9 @@ app.get('/', zValidator('query', searchQuerySchema), async (c) => {
         id: links.id,
         url: links.url,
         title: links.title,
-        description: links.finalDescription,
-        category: links.finalCategory,
-        tags: links.finalTags,
+        description: sql<string>`COALESCE(${links.userDescription}, ${links.aiSummary})`,
+        category: sql<string>`COALESCE(${links.userCategory}, ${links.aiCategory})`,
+        tags: sql<string>`COALESCE(${links.userTags}, ${links.aiTags})`,
         domain: links.domain,
         publishedAt: links.publishedAt,
         createdAt: links.createdAt,
@@ -240,7 +248,7 @@ app.get('/suggestions', zValidator('query', suggestionsQuerySchema), async (c) =
       // 使用 FTS5 从分类中查找建议
       const categorySuggestions = await db
         .select({ 
-          category: links.finalCategory,
+          category: sql<string>`COALESCE(${links.userCategory}, ${links.aiCategory})`,
           count: count()
         })
         .from(sql`links_fts`)
@@ -251,7 +259,7 @@ app.get('/suggestions', zValidator('query', suggestionsQuerySchema), async (c) =
             eq(links.status, 'published')
           )
         )
-        .groupBy(links.finalCategory)
+        .groupBy(sql`COALESCE(${links.userCategory}, ${links.aiCategory})`)
         .limit(Math.ceil(limit / 3))
       
       categorySuggestions.forEach(item => {
@@ -268,7 +276,9 @@ app.get('/suggestions', zValidator('query', suggestionsQuerySchema), async (c) =
     if (!type || type === 'tag') {
       // 从标签中查找建议
       const tagData = await db
-        .select({ tags: links.finalTags })
+        .select({ 
+          tags: sql<string>`COALESCE(${links.userTags}, ${links.aiTags})` 
+        })
         .from(links)
         .where(eq(links.status, 'published'))
 
@@ -437,7 +447,15 @@ async function generateSearchSuggestions(
   try {
     // 使用 FTS5 查找相似的标题
     let baseConditions = [eq(links.status, 'published')]
-    if (category) baseConditions.push(eq(links.finalCategory, category))
+    if (category) baseConditions.push(
+      or(
+        eq(links.userCategory, category),
+        and(
+          isNull(links.userCategory),
+          eq(links.aiCategory, category)
+        )
+      )
+    )
     if (domain) baseConditions.push(eq(links.domain, domain))
     
     const titleSuggestions = await db
@@ -472,12 +490,12 @@ async function generateSearchSuggestions(
     if (!category) {
       const categoryData = await db
         .select({ 
-          category: links.finalCategory,
+          category: sql<string>`COALESCE(${links.userCategory}, ${links.aiCategory})`,
           count: count()
         })
         .from(links)
         .where(eq(links.status, 'published'))
-        .groupBy(links.finalCategory)
+        .groupBy(sql`COALESCE(${links.userCategory}, ${links.aiCategory})`)
         .orderBy(sql`count(*) desc`)
         .limit(5)
 

@@ -129,9 +129,9 @@ describe('Auth Edit Link API', () => {
           url: 'https://example.com/published',
           domain: 'example.com',
           title: 'Original Title',
-          finalDescription: 'Final description',
-          finalCategory: 'original-category',
-          finalTags: JSON.stringify(['original-tag']),
+          userDescription: 'Final description',
+          userCategory: 'original-category',
+          userTags: JSON.stringify(['original-tag']),
           status: 'published',
           publishedAt: now,
           createdAt: now,
@@ -168,9 +168,9 @@ describe('Auth Edit Link API', () => {
         .limit(1)
 
       expect(dbLink[0].title).toBe('Updated Title')
-      expect(dbLink[0].finalDescription).toBe('Updated description')
-      expect(dbLink[0].finalCategory).toBe('updated-category')
-      expect(JSON.parse(dbLink[0].finalTags || '[]')).toEqual(['updated-tag'])
+      expect(dbLink[0].userDescription).toBe('Updated description')
+      expect(dbLink[0].userCategory).toBe('updated-category')
+      expect(JSON.parse(dbLink[0].userTags || '[]')).toEqual(['updated-tag'])
       expect(dbLink[0].updatedAt).toBeGreaterThanOrEqual(now)
     })
 
@@ -303,9 +303,9 @@ describe('Auth Edit Link API', () => {
         .limit(1)
 
       expect(dbLink[0].status).toBe('published')
-      expect(dbLink[0].finalDescription).toBe('Final description')
-      expect(dbLink[0].finalCategory).toBe('final-category')
-      expect(JSON.parse(dbLink[0].finalTags || '[]')).toEqual(['final-tag'])
+      expect(dbLink[0].userDescription).toBe('Final description')
+      expect(dbLink[0].userCategory).toBe('final-category')
+      expect(JSON.parse(dbLink[0].userTags || '[]')).toEqual(['final-tag'])
       expect(dbLink[0].publishedAt).toBeGreaterThanOrEqual(now)
     })
 

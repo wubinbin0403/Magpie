@@ -30,7 +30,7 @@ function createPublicCategoriesRouter(database = db) {
           linkCount: sql<number>`COALESCE((
             SELECT COUNT(*)
             FROM ${links}
-            WHERE ${links.finalCategory} = ${categories.name}
+            WHERE COALESCE(${links.userCategory}, ${links.aiCategory}) = ${categories.name}
             AND ${links.status} = 'published'
           ), 0)`,
         })
