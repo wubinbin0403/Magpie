@@ -87,10 +87,10 @@ function createAddLinkStreamRouter(database = db) {
 
           // Try Readability scraper first, fallback to original scraper if needed
           try {
-            console.log('[ADD-LINK-STREAM] Using Readability scraper for better content extraction')
+            // Using Readability scraper for better content extraction
             scrapedContent = await readabilityScraper.scrape(url)
           } catch (readabilityError) {
-            console.warn('[ADD-LINK-STREAM] Readability scraper failed, falling back to original scraper:', readabilityError)
+            // Readability scraper failed, falling back to original scraper
             scrapedContent = await webScraper.scrape(url)
           }
 

@@ -89,9 +89,7 @@ export class AIAnalyzer {
     this.userInstructions = userInstructions || ''
     this.availableCategories = categories || DEFAULT_CATEGORIES
     
-    // Debug: Log basic configuration
-    console.log('[AI-ANALYZER] Initialized with user instructions:', !!userInstructions)
-    console.log('[AI-ANALYZER] User instructions preview:', this.userInstructions.substring(0, 100))
+    // Log initialization
   }
 
   async analyze(content: ScrapedContent): Promise<AIAnalysisResult> {
@@ -99,20 +97,7 @@ export class AIAnalyzer {
       // Prepare content for AI analysis
       const prompt = this.buildPrompt(content)
       
-      // Debug: Log analysis request and full prompt
-      console.log('[AI-ANALYZER] Starting analysis for URL:', content.url)
-      console.log('[AI-ANALYZER] Input data received:')
-      console.log(`[AI-ANALYZER] - Title: "${content.title}" (${content.title?.length || 0} chars)`)
-      console.log(`[AI-ANALYZER] - Description: "${content.description?.substring(0, 150)}..." (${content.description?.length || 0} chars)`)
-      console.log(`[AI-ANALYZER] - Content: "${content.content?.substring(0, 300)}..." (${content.content?.length || 0} chars)`)
-      console.log(`[AI-ANALYZER] - Word count: ${content.wordCount}`)
-      console.log(`[AI-ANALYZER] - Content type: ${content.contentType}`)
-      console.log(`[AI-ANALYZER] - Language detected: ${content.language || 'none'}`)
-      
-      console.log('[AI-ANALYZER] Generated full prompt to send to AI:')
-      console.log('='.repeat(80))
-      console.log(prompt)
-      console.log('='.repeat(80))
+      // Analyze content
       
       // Call OpenAI API with system message for better JSON compliance
       const response = await this.client.chat.completions.create({
@@ -134,11 +119,6 @@ export class AIAnalyzer {
 
       const aiResponse = response.choices[0]?.message?.content?.trim()
       
-      console.log('[AI-ANALYZER] Raw AI response received:')
-      console.log('-'.repeat(60))
-      console.log(aiResponse || '(empty response)')
-      console.log('-'.repeat(60))
-      
       if (!aiResponse) {
         throw new Error('Empty response from AI service')
       }
@@ -154,14 +134,6 @@ export class AIAnalyzer {
 
       // Validate and sanitize the result
       const finalResult = this.validateAndSanitize(analysisResult, content)
-      
-      console.log('[AI-ANALYZER] Final analysis result:')
-      console.log(`[AI-ANALYZER] - Summary: "${finalResult.summary}"`)
-      console.log(`[AI-ANALYZER] - Category: "${finalResult.category}"`)
-      console.log(`[AI-ANALYZER] - Tags: [${finalResult.tags.join(', ')}]`)
-      console.log(`[AI-ANALYZER] - Language: ${finalResult.language}`)
-      console.log(`[AI-ANALYZER] - Sentiment: ${finalResult.sentiment}`)
-      console.log(`[AI-ANALYZER] - Reading time: ${finalResult.readingTime} minutes`)
       
       return finalResult
 
@@ -186,7 +158,7 @@ export class AIAnalyzer {
   }
 
   private truncateContent(text: string, maxLength: number = 8000): string {
-    console.log(`[AI-ANALYZER] Content truncation: ${text.length} chars -> ${Math.min(text.length, maxLength)} chars (limit: ${maxLength})`)
+    // Truncate content if needed
     
     if (text.length <= maxLength) {
       return text
@@ -217,7 +189,7 @@ export class AIAnalyzer {
     if (jsonMatch) {
       try {
         const parsed = JSON.parse(jsonMatch[0])
-        console.log('Successfully extracted JSON from AI response:', parsed)
+        // Successfully extracted JSON from AI response
         return parsed
       } catch (e) {
         console.warn('JSON extraction failed, JSON text was:', jsonMatch[0])
@@ -229,7 +201,7 @@ export class AIAnalyzer {
     if (codeBlockMatch) {
       try {
         const parsed = JSON.parse(codeBlockMatch[1])
-        console.log('Successfully extracted JSON from code block:', parsed)
+        // Successfully extracted JSON from code block
         return parsed
       } catch (e) {
         console.warn('Code block JSON extraction failed, JSON text was:', codeBlockMatch[1])
@@ -238,7 +210,7 @@ export class AIAnalyzer {
     
     // If we have plain text that looks like a summary, try to create a basic analysis
     if (text && !text.includes('{') && text.length > 10) {
-      console.log('AI returned plain text instead of JSON, creating fallback analysis from text:', text.substring(0, 100))
+      // AI returned plain text instead of JSON, creating fallback analysis
       
       // Use the AI response as the summary and generate other fields
       return {
@@ -479,10 +451,6 @@ export class AIAnalyzer {
 
 // Export factory function for creating analyzer with settings
 export async function createAIAnalyzer(settings: Record<string, any>): Promise<AIAnalyzer> {
-  // Debug: Log basic configuration (without sensitive data)
-  console.log('[AI-ANALYZER-FACTORY] Creating AI Analyzer')
-  console.log('[AI-ANALYZER-FACTORY] - API key configured:', !!settings.openai_api_key)
-  console.log('[AI-ANALYZER-FACTORY] - User instructions present:', !!settings.ai_user_instructions)
 
   const options: AIAnalyzerOptions = {
     apiKey: settings.openai_api_key || '',
@@ -500,8 +468,6 @@ export async function createAIAnalyzer(settings: Record<string, any>): Promise<A
   const userInstructions = settings.ai_user_instructions || ''
   const categories = Array.isArray(settings.categories) ? settings.categories : 
                     (settings.categories ? JSON.parse(settings.categories) : undefined)
-
-  console.log('[AI-ANALYZER-FACTORY] - User instructions:', userInstructions ? `"${userInstructions.substring(0, 50)}..."` : '(empty)')
 
   return new AIAnalyzer(options, userInstructions, categories)
 }

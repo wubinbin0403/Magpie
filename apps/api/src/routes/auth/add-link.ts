@@ -70,12 +70,11 @@ async function processUrlContent(url: string, database: BetterSQLite3Database<an
   aiAnalysis: AIAnalysisResult;
 }> {
   // Step 1: Scrape web content using Readability (with fallback)
-  console.log('[ADD-LINK] Using Readability scraper for better content extraction')
   let scrapedContent
   try {
     scrapedContent = await readabilityScraper.scrape(url)
   } catch (readabilityError) {
-    console.warn('[ADD-LINK] Readability scraper failed, falling back to original scraper:', readabilityError)
+    // Readability scraper failed, falling back to original scraper
     scrapedContent = await webScraper.scrape(url)
   }
   

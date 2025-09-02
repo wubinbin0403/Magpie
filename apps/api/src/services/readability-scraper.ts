@@ -25,18 +25,11 @@ export class ReadabilityScraper {
 
   async scrape(url: string): Promise<ScrapedContent> {
     try {
-      if (this.options.debug) {
-        console.log(`[READABILITY-SCRAPER] Starting scrape for URL: ${url}`)
-      }
-
       // Validate URL
       const urlObj = new URL(url)
       
       // Fetch the webpage
       const html = await this.fetchHtml(url)
-      if (this.options.debug) {
-        console.log(`[READABILITY-SCRAPER] Fetched HTML: ${html.length} characters`)
-      }
       
       // Parse with JSDOM
       const dom = new JSDOM(html, { url })
@@ -54,9 +47,6 @@ export class ReadabilityScraper {
       const article = reader.parse()
       
       if (!article) {
-        if (this.options.debug) {
-          console.log('[READABILITY-SCRAPER] Readability failed to parse article, using fallback')
-        }
         // Fallback to basic extraction
         return this.fallbackExtraction(document, url)
       }
@@ -82,17 +72,6 @@ export class ReadabilityScraper {
         wordCount: this.countWords(article.textContent || '')
       }
       
-      if (this.options.debug) {
-        console.log(`[READABILITY-SCRAPER] Extraction completed:`)
-        console.log(`[READABILITY-SCRAPER] - Title: "${result.title}" (${result.title?.length || 0} chars)`)
-        console.log(`[READABILITY-SCRAPER] - Description: "${result.description?.substring(0, 100)}..." (${result.description?.length || 0} chars)`)
-        console.log(`[READABILITY-SCRAPER] - Content preview: "${result.content?.substring(0, 200)}..." (${result.content?.length || 0} chars)`)
-        console.log(`[READABILITY-SCRAPER] - Word count: ${result.wordCount}`)
-        console.log(`[READABILITY-SCRAPER] - Author: ${result.author || 'not found'}`)
-        console.log(`[READABILITY-SCRAPER] - Language: ${result.language || 'not detected'}`)
-        console.log(`[READABILITY-SCRAPER] - Tags: ${result.tags?.join(', ') || 'none'}`)
-        console.log(`[READABILITY-SCRAPER] - Readability score: ${article.length} chars, excerpt: "${article.excerpt?.substring(0, 100)}..."`)
-      }
       
       return result
       
@@ -292,8 +271,8 @@ export class ReadabilityScraper {
   }
 }
 
-// Export default instance with debug enabled
-export const readabilityScraper = new ReadabilityScraper({ debug: true })
+// Export default instance
+export const readabilityScraper = new ReadabilityScraper()
 
 // Export factory function
 export function createReadabilityScraper(options?: ReadabilityScraperOptions): ReadabilityScraper {
