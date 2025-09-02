@@ -65,22 +65,41 @@ describe('LinkCard', () => {
       expect(screen.getByText('技术')).toBeInTheDocument()
     })
 
-    it('should render first 3 tags', () => {
+    it('should render all 4 tags when under limit', () => {
       render(<LinkCard {...defaultProps} />)
       
       expect(screen.getByText('#javascript')).toBeInTheDocument()
       expect(screen.getByText('#react')).toBeInTheDocument()
       expect(screen.getByText('#testing')).toBeInTheDocument()
-      expect(screen.getByText('+1 more')).toBeInTheDocument()
+      expect(screen.getByText('#frontend')).toBeInTheDocument()
+      expect(screen.queryByText('+1 more')).not.toBeInTheDocument()
     })
 
-    it('should not show +more when tags are 3 or fewer', () => {
+    it('should not show +more when tags are 5 or fewer', () => {
       const linkWith2Tags = { ...mockLink, tags: ['javascript', 'react'] }
       render(<LinkCard {...defaultProps} link={linkWith2Tags} />)
       
       expect(screen.getByText('#javascript')).toBeInTheDocument()
       expect(screen.getByText('#react')).toBeInTheDocument()
       expect(screen.queryByText('+1 more')).not.toBeInTheDocument()
+    })
+
+    it('should show +more when tags exceed 5', () => {
+      const linkWithManyTags = { ...mockLink, tags: ['javascript', 'react', 'testing', 'frontend', 'backend', 'nodejs'] }
+      render(<LinkCard {...defaultProps} link={linkWithManyTags} />)
+      
+      // Should show first 5 tags
+      expect(screen.getByText('#javascript')).toBeInTheDocument()
+      expect(screen.getByText('#react')).toBeInTheDocument()
+      expect(screen.getByText('#testing')).toBeInTheDocument()
+      expect(screen.getByText('#frontend')).toBeInTheDocument()
+      expect(screen.getByText('#backend')).toBeInTheDocument()
+      
+      // Should show +more for remaining tags
+      expect(screen.getByText('+1 more')).toBeInTheDocument()
+      
+      // Should not show the 6th tag initially
+      expect(screen.queryByText('#nodejs')).not.toBeInTheDocument()
     })
 
     it('should handle missing description', () => {
@@ -95,18 +114,18 @@ describe('LinkCard', () => {
     it('should format recent dates correctly', () => {
       render(<LinkCard {...defaultProps} />)
       
-      // 5 days ago from the mocked current time
-      expect(screen.getByText('5 days ago')).toBeInTheDocument()
+      // 5天前 from the mocked current time (Chinese format)
+      expect(screen.getByText('5天前')).toBeInTheDocument()
     })
 
-    it('should show "Yesterday" for yesterday', () => {
+    it('should show "昨天" for yesterday', () => {
       const yesterdayLink = {
         ...mockLink,
         publishedAt: '2024-01-19T10:30:00Z' // Yesterday
       }
       render(<LinkCard {...defaultProps} link={yesterdayLink} />)
       
-      expect(screen.getByText('Yesterday')).toBeInTheDocument()
+      expect(screen.getByText('昨天')).toBeInTheDocument()
     })
 
     it('should show weeks for recent weeks', () => {
@@ -116,7 +135,7 @@ describe('LinkCard', () => {
       }
       render(<LinkCard {...defaultProps} link={twoWeeksAgoLink} />)
       
-      expect(screen.getByText('2 weeks ago')).toBeInTheDocument()
+      expect(screen.getByText('2周前')).toBeInTheDocument()
     })
 
     it('should show months for older dates', () => {
@@ -126,8 +145,8 @@ describe('LinkCard', () => {
       }
       render(<LinkCard {...defaultProps} link={oldLink} />)
       
-      // Should show months - accept any number of months
-      expect(screen.getByText(/\d+ months? ago/)).toBeInTheDocument()
+      // Should show months - accept any number of months (Chinese format)
+      expect(screen.getByText(/\d+个月前/)).toBeInTheDocument()
     })
   })
 
@@ -244,7 +263,7 @@ describe('LinkCard', () => {
     it('should have cursor help for date element', () => {
       render(<LinkCard {...defaultProps} />)
       
-      const dateElement = screen.getByText('5 days ago')
+      const dateElement = screen.getByText('5天前')
       expect(dateElement).toHaveClass('cursor-help')
     })
 
