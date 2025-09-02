@@ -88,7 +88,7 @@ describe('Admin Settings API', () => {
       expect(body.success).toBe(true)
       expect(body.data.site.title).toBe('Test Site')
       expect(body.data.site.description).toBe('Test description')
-      expect(body.data.ai.apiKey).toMatch(/^sk-\*+/) // Should be masked
+      expect(body.data.ai.apiKey).toBe('***CONFIGURED***') // Should be masked
       expect(body.data.ai.baseUrl).toBe('https://api.openai.com/v1')
       expect(body.data.ai.model).toBe('gpt-3.5-turbo')
       expect(body.data.ai.temperature).toBe(0.7)

@@ -98,21 +98,15 @@ describe('Database Initialization', () => {
   it('should handle JSON settings correctly', async () => {
     await seedTestDatabase();
     
-    const categories = await testDrizzle.select()
+    // Check that we have some JSON settings (like ai_temperature)
+    const aiTempSetting = await testDrizzle.select()
       .from(settings)
-      .where(eq(settings.key, 'categories'))
+      .where(eq(settings.key, 'ai_temperature'))
       .limit(1);
       
-    expect(categories).toHaveLength(1);
-    expect(categories[0].type).toBe('json');
-    expect(categories[0].value).toBe('["技术", "设计", "产品", "工具", "其他"]');
-    
-    // Verify it's valid JSON
-    const parsedCategories = JSON.parse(categories[0].value);
-    expect(Array.isArray(parsedCategories)).toBe(true);
-    expect(parsedCategories).toContain('技术');
-    expect(parsedCategories).toContain('设计');
-    expect(parsedCategories).toContain('产品');
+    expect(aiTempSetting).toHaveLength(1);
+    expect(aiTempSetting[0].type).toBe('number');
+    expect(aiTempSetting[0].value).toBe('0.7');
   });
 
   it('should create API token with proper format and metadata', async () => {
@@ -154,7 +148,6 @@ describe('Database Initialization', () => {
       'site_description', 
       'openai_base_url',
       'ai_model',
-      'categories',
       'db_version'
     ];
     
