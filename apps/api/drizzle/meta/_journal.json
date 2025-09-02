@@ -5,15 +5,8 @@
     {
       "idx": 0,
       "version": "6",
-      "when": 1756395275272,
-      "tag": "0000_curved_silver_fox",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "6",
-      "when": 1756642265975,
-      "tag": "0001_amusing_blue_blade",
+      "when": 1756826137298,
+      "tag": "0000_natural_maelstrom",
       "breakpoints": true
     }
   ]

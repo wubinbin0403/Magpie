@@ -14,13 +14,30 @@ CREATE TABLE `api_tokens` (
 CREATE UNIQUE INDEX `api_tokens_token_unique` ON `api_tokens` (`token`);--> statement-breakpoint
 CREATE INDEX `idx_tokens_status` ON `api_tokens` (`status`);--> statement-breakpoint
 CREATE INDEX `idx_tokens_last_used` ON `api_tokens` (`last_used_at`);--> statement-breakpoint
+CREATE TABLE `categories` (
+	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+	`name` text NOT NULL,
+	`slug` text,
+	`icon` text DEFAULT 'folder' NOT NULL,
+	`color` text,
+	`description` text,
+	`display_order` integer DEFAULT 0 NOT NULL,
+	`is_active` integer DEFAULT 1 NOT NULL,
+	`created_at` integer NOT NULL,
+	`updated_at` integer
+);
+--> statement-breakpoint
+CREATE UNIQUE INDEX `categories_name_unique` ON `categories` (`name`);--> statement-breakpoint
+CREATE UNIQUE INDEX `categories_slug_unique` ON `categories` (`slug`);--> statement-breakpoint
+CREATE INDEX `idx_categories_display_order` ON `categories` (`display_order`);--> statement-breakpoint
+CREATE INDEX `idx_categories_is_active` ON `categories` (`is_active`);--> statement-breakpoint
+CREATE INDEX `idx_categories_slug` ON `categories` (`slug`);--> statement-breakpoint
 CREATE TABLE `links` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`url` text NOT NULL,
 	`domain` text NOT NULL,
 	`title` text,
 	`original_description` text,
-	`original_content` text,
 	`ai_summary` text,
 	`ai_category` text,
 	`ai_tags` text,
@@ -116,29 +133,4 @@ CREATE UNIQUE INDEX `users_username_unique` ON `users` (`username`);--> statemen
 CREATE INDEX `idx_users_username` ON `users` (`username`);--> statement-breakpoint
 CREATE INDEX `idx_users_session_token` ON `users` (`session_token`);--> statement-breakpoint
 CREATE INDEX `idx_users_status` ON `users` (`status`);--> statement-breakpoint
-CREATE INDEX `idx_users_last_login` ON `users` (`last_login_at`);--> statement-breakpoint
--- FTS5 Full-Text Search Implementation
-CREATE VIRTUAL TABLE `links_fts` USING fts5(
-  title, 
-  final_description, 
-  final_tags, 
-  domain,
-  final_category,
-  content=links,
-  content_rowid=id
-);--> statement-breakpoint
--- FTS5 Synchronization Triggers
-CREATE TRIGGER `links_fts_insert` AFTER INSERT ON `links` BEGIN
-  INSERT INTO links_fts(rowid, title, final_description, final_tags, domain, final_category)
-  VALUES (NEW.id, NEW.title, NEW.final_description, NEW.final_tags, NEW.domain, NEW.final_category);
-END;--> statement-breakpoint
-CREATE TRIGGER `links_fts_delete` AFTER DELETE ON `links` BEGIN
-  INSERT INTO links_fts(links_fts, rowid, title, final_description, final_tags, domain, final_category)
-  VALUES ('delete', OLD.id, OLD.title, OLD.final_description, OLD.final_tags, OLD.domain, OLD.final_category);
-END;--> statement-breakpoint
-CREATE TRIGGER `links_fts_update` AFTER UPDATE ON `links` BEGIN
-  INSERT INTO links_fts(links_fts, rowid, title, final_description, final_tags, domain, final_category)
-  VALUES ('delete', OLD.id, OLD.title, OLD.final_description, OLD.final_tags, OLD.domain, OLD.final_category);
-  INSERT INTO links_fts(rowid, title, final_description, final_tags, domain, final_category)
-  VALUES (NEW.id, NEW.title, NEW.final_description, NEW.final_tags, NEW.domain, NEW.final_category);
-END;
+CREATE INDEX `idx_users_last_login` ON `users` (`last_login_at`);

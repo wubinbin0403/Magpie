@@ -353,7 +353,6 @@ describe('Add Link Integration Tests', () => {
         .limit(1)
       
       expect(savedLink[0].status).toBe('pending')
-      expect(savedLink[0].originalContent).toBe('Content to be reviewed')
       expect(savedLink[0].aiSummary).toBe('AI generated summary')
       expect(savedLink[0].finalDescription).toBeNull() // Not set until confirmed
     })

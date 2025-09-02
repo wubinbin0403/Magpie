@@ -11,7 +11,6 @@ export const links = sqliteTable('links', {
   // Content information
   title: text('title'),
   originalDescription: text('original_description'),
-  originalContent: text('original_content'), // For AI analysis
   
   // AI processing results
   aiSummary: text('ai_summary'),

@@ -293,7 +293,6 @@ function createAddLinkStreamRouter(database = db) {
           domain,
           title: scrapedContent.title || '',
           originalDescription: scrapedContent.description || '',
-          originalContent: scrapedContent.content || '',
           aiSummary: aiAnalysis.summary,
           aiCategory: aiAnalysis.category,
           aiTags: JSON.stringify(aiAnalysis.tags),
