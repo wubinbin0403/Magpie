@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "57d1e356-c929-46fd-8cfb-84fc3ead5610",
+  "id": "ebebf33c-44ee-4b90-b1d0-6ca02aa8c295",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "api_tokens": {
@@ -289,6 +289,20 @@
         "ai_reading_time": {
           "name": "ai_reading_time",
           "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "ai_analysis_failed": {
+          "name": "ai_analysis_failed",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "ai_error": {
+          "name": "ai_error",
+          "type": "text",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false

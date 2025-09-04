@@ -17,6 +17,8 @@ export const links = sqliteTable('links', {
   aiCategory: text('ai_category'),
   aiTags: text('ai_tags'), // JSON array
   aiReadingTime: integer('ai_reading_time'), // AI estimated reading time in minutes
+  aiAnalysisFailed: integer('ai_analysis_failed'), // 0 or 1 - whether AI analysis failed
+  aiError: text('ai_error'), // Error message if AI analysis failed
   
   // User confirmed content
   userDescription: text('user_description'),
@@ -203,6 +205,25 @@ export const searchLogs = sqliteTable('search_logs', {
   createdAtIdx: index('idx_search_created_at').on(table.createdAt),
   noResultsIdx: index('idx_search_no_results').on(table.noResultsFound),
 }));
+
+// FTS5 Full-Text Search Virtual Table
+// Note: FTS5 virtual tables are created manually in SQL migration files
+// because Drizzle ORM doesn't have native support for FTS5 syntax.
+// The actual table is created with:
+// CREATE VIRTUAL TABLE `links_fts` USING fts5(title, description, tags, domain, category, content=links, content_rowid=id);
+// 
+// This schema definition is for TypeScript typing only and should not be used for migrations.
+// The FTS5 table and triggers are manually maintained in SQL migration files.
+
+// Commented out to prevent Drizzle from trying to manage this as a regular table
+// export const linksFts = sqliteTable('links_fts', {
+//   rowid: integer('rowid').primaryKey(),
+//   title: text('title'),
+//   description: text('description'),
+//   tags: text('tags'), 
+//   domain: text('domain'),
+//   category: text('category'),
+// });
 
 // Type exports for TypeScript
 export type Link = typeof links.$inferSelect;

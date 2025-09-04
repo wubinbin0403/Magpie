@@ -42,6 +42,8 @@ CREATE TABLE `links` (
 	`ai_category` text,
 	`ai_tags` text,
 	`ai_reading_time` integer,
+	`ai_analysis_failed` integer,
+	`ai_error` text,
 	`user_description` text,
 	`user_category` text,
 	`user_tags` text,
@@ -129,58 +131,18 @@ CREATE INDEX `idx_users_username` ON `users` (`username`);--> statement-breakpoi
 CREATE INDEX `idx_users_session_token` ON `users` (`session_token`);--> statement-breakpoint
 CREATE INDEX `idx_users_status` ON `users` (`status`);--> statement-breakpoint
 CREATE INDEX `idx_users_last_login` ON `users` (`last_login_at`);--> statement-breakpoint
--- FTS5 Full-Text Search Implementation
-CREATE VIRTUAL TABLE `links_fts` USING fts5(
-  title, 
-  description,
-  tags,
-  domain,
-  category,
-  content=links,
-  content_rowid=id
-);--> statement-breakpoint
--- FTS5 Synchronization Triggers (using dynamic computed fields)
+-- FTS5 Full-Text Search Implementation (Independent Table)
+CREATE VIRTUAL TABLE `links_fts` USING fts5(title, description, tags, domain, category);--> statement-breakpoint
+-- FTS5 Synchronization Triggers
 CREATE TRIGGER `links_fts_insert` AFTER INSERT ON `links` BEGIN
   INSERT INTO links_fts(rowid, title, description, tags, domain, category)
-  VALUES (
-    NEW.id, 
-    NEW.title, 
-    COALESCE(NEW.user_description, NEW.ai_summary),
-    COALESCE(NEW.user_tags, NEW.ai_tags),
-    NEW.domain,
-    COALESCE(NEW.user_category, NEW.ai_category)
-  );
+  VALUES (NEW.id, NEW.title, NEW.user_description, NEW.user_tags, NEW.domain, NEW.user_category);
 END;--> statement-breakpoint
 CREATE TRIGGER `links_fts_delete` AFTER DELETE ON `links` BEGIN
-  INSERT INTO links_fts(links_fts, rowid, title, description, tags, domain, category)
-  VALUES (
-    'delete', 
-    OLD.id, 
-    OLD.title, 
-    COALESCE(OLD.user_description, OLD.ai_summary),
-    COALESCE(OLD.user_tags, OLD.ai_tags),
-    OLD.domain,
-    COALESCE(OLD.user_category, OLD.ai_category)
-  );
+  DELETE FROM links_fts WHERE rowid = OLD.id;
 END;--> statement-breakpoint
 CREATE TRIGGER `links_fts_update` AFTER UPDATE ON `links` BEGIN
-  INSERT INTO links_fts(links_fts, rowid, title, description, tags, domain, category)
-  VALUES (
-    'delete', 
-    OLD.id, 
-    OLD.title, 
-    COALESCE(OLD.user_description, OLD.ai_summary),
-    COALESCE(OLD.user_tags, OLD.ai_tags),
-    OLD.domain,
-    COALESCE(OLD.user_category, OLD.ai_category)
-  );
+  DELETE FROM links_fts WHERE rowid = OLD.id;
   INSERT INTO links_fts(rowid, title, description, tags, domain, category)
-  VALUES (
-    NEW.id, 
-    NEW.title, 
-    COALESCE(NEW.user_description, NEW.ai_summary),
-    COALESCE(NEW.user_tags, NEW.ai_tags),
-    NEW.domain,
-    COALESCE(NEW.user_category, NEW.ai_category)
-  );
+  VALUES (NEW.id, NEW.title, NEW.user_description, NEW.user_tags, NEW.domain, NEW.user_category);
 END;
