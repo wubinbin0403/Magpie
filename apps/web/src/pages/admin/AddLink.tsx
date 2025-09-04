@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import api from '../../utils/api'
 import ProcessingAnimation, { ProcessingStage } from '../../components/ProcessingAnimation'
+import CategoryBadge from '../../components/CategoryBadge'
+import TagList from '../../components/TagList'
 
 interface AddLinkForm {
   url: string
@@ -769,13 +771,11 @@ export default function AddLink() {
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-medium text-base-content/70">分类：</span>
-                        <span className="badge badge-primary badge-outline">{pendingLinkData.aiCategory}</span>
+                        <CategoryBadge category={pendingLinkData.aiCategory} />
                       </div>
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-sm font-medium text-base-content/70">标签：</span>
-                        {pendingLinkData.aiTags.map((tag: string, index: number) => (
-                          <span key={index} className="badge badge-ghost badge-sm">#{tag}</span>
-                        ))}
+                        <TagList tags={pendingLinkData.aiTags} maxVisible={10} />
                       </div>
                     </div>
                   </div>
