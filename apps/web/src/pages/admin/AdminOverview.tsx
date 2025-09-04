@@ -51,12 +51,12 @@ export default function AdminOverview() {
 
   // Transform API data to match component interface
   const stats: Stats | undefined = statsData ? {
-    totalLinks: statsData.data.totalLinks,
-    pendingLinks: statsData.data.pendingLinks,
-    monthlyNew: statsData.data.monthlyStats?.[statsData.data.monthlyStats.length - 1]?.count || 0,
-    totalCategories: statsData.data.totalCategories,
-    totalTags: statsData.data.totalTags,
-    recentActivity: statsData.data.recentActivity
+    totalLinks: statsData.totalLinks,
+    pendingLinks: statsData.pendingLinks,
+    monthlyNew: statsData.monthlyStats?.[statsData.monthlyStats.length - 1]?.count || 0,
+    totalCategories: statsData.totalCategories,
+    totalTags: statsData.totalTags,
+    recentActivity: statsData.recentActivity
   } : undefined
 
   const getActivityIcon = (type: string) => {
