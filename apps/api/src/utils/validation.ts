@@ -93,6 +93,17 @@ export const adminPendingQuerySchema = z.object({
   category: z.string().optional(),
 })
 
+// Admin links query schema
+export const adminLinksQuerySchema = z.object({
+  page: z.coerce.number().min(1).default(1),
+  limit: z.coerce.number().min(1).max(100).default(20),
+  search: z.string().optional(),
+  status: z.enum(['published', 'pending', 'deleted', 'all']).default('all'),
+  sort: z.enum(['newest', 'oldest', 'title', 'domain']).default('newest'),
+  category: z.string().optional(),
+  domain: z.string().optional(),
+})
+
 export const createTokenSchema = z.object({
   name: z.string().max(100).optional(),
   expiresAt: z.string().datetime().optional(),
