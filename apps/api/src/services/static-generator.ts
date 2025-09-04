@@ -66,9 +66,9 @@ async function getPublishedLinks(database: BetterSQLite3Database<any> = db) {
       id: links.id,
       url: links.url,
       title: links.title,
-      finalDescription: sql<string>`COALESCE(${links.userDescription}, ${links.aiSummary})`,
-      finalCategory: sql<string>`COALESCE(${links.userCategory}, ${links.aiCategory})`,
-      finalTags: sql<string>`COALESCE(${links.userTags}, ${links.aiTags})`,
+      finalDescription: links.userDescription,
+      finalCategory: links.userCategory,
+      finalTags: links.userTags,
       publishedAt: links.publishedAt,
       clickCount: links.clickCount,
     })

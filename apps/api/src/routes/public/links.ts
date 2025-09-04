@@ -49,15 +49,7 @@ app.get('/', zValidator('query', linksQuerySchema), async (c) => {
     let whereConditions: any[] = [eq(links.status, 'published')]
     
     if (category) {
-      whereConditions.push(
-        or(
-          eq(links.userCategory, category),
-          and(
-            isNull(links.userCategory),
-            eq(links.aiCategory, category)
-          )
-        )
-      )
+      whereConditions.push(eq(links.userCategory, category))
     }
     
     if (domain) {
@@ -69,9 +61,7 @@ app.get('/', zValidator('query', linksQuerySchema), async (c) => {
         or(
           like(links.title, `%${search}%`),
           like(links.userDescription, `%${search}%`),
-          like(links.aiSummary, `%${search}%`),
-          like(links.userTags, `%${search}%`),
-          like(links.aiTags, `%${search}%`)
+          like(links.userTags, `%${search}%`)
         )
       )
     }
@@ -79,10 +69,7 @@ app.get('/', zValidator('query', linksQuerySchema), async (c) => {
     if (tags) {
       const tagList = tags.split(',').map(t => t.trim())
       const tagConditions = tagList.map(tag => 
-        or(
-          like(links.userTags, `%${tag}%`),
-          like(links.aiTags, `%${tag}%`)
-        )
+        like(links.userTags, `%${tag}%`)
       )
       whereConditions.push(or(...tagConditions))
     }
@@ -124,16 +111,17 @@ app.get('/', zValidator('query', linksQuerySchema), async (c) => {
     
     const total = totalResult[0].count
     
-    // 获取链接列表 (使用动态计算替代final字段)
+    // 获取链接列表 (直接使用user字段)
     const linksResult = await database
       .select({
         id: links.id,
         url: links.url,
         title: links.title,
-        description: sql<string>`COALESCE(${links.userDescription}, ${links.aiSummary})`,
-        category: sql<string>`COALESCE(${links.userCategory}, ${links.aiCategory})`,
-        tags: sql<string>`COALESCE(${links.userTags}, ${links.aiTags})`,
+        description: links.userDescription,
+        category: links.userCategory,
+        tags: links.userTags,
         domain: links.domain,
+        readingTime: links.aiReadingTime,
         publishedAt: links.publishedAt,
         createdAt: links.createdAt,
       })
@@ -152,6 +140,7 @@ app.get('/', zValidator('query', linksQuerySchema), async (c) => {
       category: link.category || '',
       tags: link.tags ? JSON.parse(link.tags) : [],
       domain: link.domain,
+      readingTime: link.readingTime || undefined,
       publishedAt: new Date(link.publishedAt * 1000).toISOString(),
       createdAt: new Date(link.createdAt * 1000).toISOString(),
     }))
@@ -169,22 +158,22 @@ app.get('/', zValidator('query', linksQuerySchema), async (c) => {
     
     // 获取filters统计数据（移除域名统计，按需加载）
     const [categoryStats, tagData, yearMonthData] = await Promise.all([
-      // 分类统计 (使用动态计算)
+      // 分类统计 (直接使用user字段)
       database
         .select({
-          name: sql<string>`COALESCE(${links.userCategory}, ${links.aiCategory})`,
+          name: links.userCategory,
           count: sql<number>`count(*)`
         })
         .from(links)
         .where(eq(links.status, 'published'))
-        .groupBy(sql`COALESCE(${links.userCategory}, ${links.aiCategory})`)
-        .having(sql`COALESCE(${links.userCategory}, ${links.aiCategory}) IS NOT NULL AND COALESCE(${links.userCategory}, ${links.aiCategory}) != ''`)
+        .groupBy(links.userCategory)
+        .having(sql`${links.userCategory} IS NOT NULL AND ${links.userCategory} != ''`)
         .orderBy(sql`count(*) desc`),
 
-      // 标签数据（需要进一步处理，使用动态计算）
+      // 标签数据（直接使用user字段）
       database
         .select({ 
-          tags: sql<string>`COALESCE(${links.userTags}, ${links.aiTags})` 
+          tags: links.userTags 
         })
         .from(links)
         .where(eq(links.status, 'published')),
@@ -262,10 +251,11 @@ app.get('/:id', zValidator('param', idParamSchema), async (c) => {
         id: links.id,
         url: links.url,
         title: links.title,
-        description: sql<string>`COALESCE(${links.userDescription}, ${links.aiSummary})`,
-        category: sql<string>`COALESCE(${links.userCategory}, ${links.aiCategory})`,
-        tags: sql<string>`COALESCE(${links.userTags}, ${links.aiTags})`,
+        description: links.userDescription,
+        category: links.userCategory,
+        tags: links.userTags,
         domain: links.domain,
+        readingTime: links.aiReadingTime,
         publishedAt: links.publishedAt,
         createdAt: links.createdAt,
       })
@@ -287,6 +277,7 @@ app.get('/:id', zValidator('param', idParamSchema), async (c) => {
       category: link.category || '',
       tags: link.tags ? JSON.parse(link.tags) : [],
       domain: link.domain,
+      readingTime: link.readingTime || undefined,
       publishedAt: new Date(link.publishedAt * 1000).toISOString(),
       createdAt: new Date(link.createdAt * 1000).toISOString(),
     }

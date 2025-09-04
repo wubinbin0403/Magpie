@@ -94,8 +94,8 @@ const SAMPLE_LINKS = [
     aiSummary: 'Astro 4.5发布，新增开发审计UI、性能改进和更好的开发体验，提升静态站点生成器的易用性。',
     aiCategory: '技术',
     aiTags: '["Astro", "静态站点", "开发工具"]',
-    finalCategory: '',
-    finalTags: '',
+    userCategory: null,
+    userTags: null,
     status: 'pending'
   },
   {
@@ -106,8 +106,8 @@ const SAMPLE_LINKS = [
     aiSummary: 'MongoDB 7.0推出原生向量搜索和增强时间序列集合，为现代AI应用提供强大的数据库支持。',
     aiCategory: '技术', 
     aiTags: '["MongoDB", "数据库", "向量搜索", "AI"]',
-    finalCategory: '',
-    finalTags: '',
+    userCategory: null,
+    userTags: null,
     status: 'pending'
   },
   {
@@ -118,8 +118,8 @@ const SAMPLE_LINKS = [
     aiSummary: 'LottieFiles推出交互式Lottie动画功能，支持点击、悬停和滚动触发，打造更吸引人的网页体验。',
     aiCategory: '设计',
     aiTags: '["Lottie", "动画", "交互设计", "Web"]',
-    finalCategory: '',
-    finalTags: '',
+    userCategory: null,
+    userTags: null,
     status: 'pending'
   },
   // Published links
@@ -131,8 +131,8 @@ const SAMPLE_LINKS = [
     aiSummary: 'React 19候选版本发布，介绍新功能包括Actions、useTransition等改进，提升开发体验和性能。',
     aiCategory: '技术',
     aiTags: '["React", "前端", "JavaScript"]',
-    finalCategory: '技术',
-    finalTags: '["React", "前端", "JavaScript"]',
+    userCategory: '技术',
+    userTags: '["React", "前端", "JavaScript"]',
     status: 'published'
   },
   {
@@ -143,8 +143,8 @@ const SAMPLE_LINKS = [
     aiSummary: 'TypeScript 5.4版本发布，新增NoInfer工具类型，支持Object.groupBy等特性，提升类型推导能力。',
     aiCategory: '技术',
     aiTags: '["TypeScript", "编程语言", "开发工具"]',
-    finalCategory: '技术',
-    finalTags: '["TypeScript", "编程语言", "开发工具"]',
+    userCategory: '技术',
+    userTags: '["TypeScript", "编程语言", "开发工具"]',
     status: 'published'
   },
   {
@@ -155,8 +155,8 @@ const SAMPLE_LINKS = [
     aiSummary: 'Tailwind CSS v4.0 Alpha版本发布，采用新引擎和oxide解析器，显著提升性能和构建速度。',
     aiCategory: '技术',
     aiTags: '["CSS", "前端", "设计系统"]',
-    finalCategory: '技术',
-    finalTags: '["CSS", "前端", "设计系统"]',
+    userCategory: '技术',
+    userTags: '["CSS", "前端", "设计系统"]',
     status: 'published'
   },
   {
@@ -167,8 +167,8 @@ const SAMPLE_LINKS = [
     aiSummary: 'Figma推出Slides演示文稿功能，让用户使用熟悉的设计工具创建精美的演示文稿。',
     aiCategory: '设计',
     aiTags: '["Figma", "设计工具", "演示"]',
-    finalCategory: '设计',
-    finalTags: '["Figma", "设计工具", "演示"]',
+    userCategory: '设计',
+    userTags: '["Figma", "设计工具", "演示"]',
     status: 'published'
   },
   {
@@ -179,8 +179,8 @@ const SAMPLE_LINKS = [
     aiSummary: 'Linear三月更新，新增团队模板、改进项目规划功能和GitHub集成体验。',
     aiCategory: '产品',
     aiTags: '["Linear", "项目管理", "团队协作"]',
-    finalCategory: '产品',
-    finalTags: '["Linear", "项目管理", "团队协作"]',
+    userCategory: '产品',
+    userTags: '["Linear", "项目管理", "团队协作"]',
     status: 'published'
   },
   {
@@ -191,8 +191,8 @@ const SAMPLE_LINKS = [
     aiSummary: 'OpenAI发布GPT-4 Turbo视觉版本，具备更强能力、更高效率和更低成本。',
     aiCategory: '技术',
     aiTags: '["AI", "OpenAI", "机器学习"]',
-    finalCategory: '技术',
-    finalTags: '["AI", "OpenAI", "机器学习"]',
+    userCategory: '技术',
+    userTags: '["AI", "OpenAI", "机器学习"]',
     status: 'published'
   },
   {
@@ -203,8 +203,8 @@ const SAMPLE_LINKS = [
     aiSummary: 'Vercel推出v0生成式UI工具，通过AI和React从文本提示生成UI组件。',
     aiCategory: '工具',
     aiTags: '["Vercel", "AI", "UI生成"]',
-    finalCategory: '工具',
-    finalTags: '["Vercel", "AI", "UI生成"]',
+    userCategory: '工具',
+    userTags: '["Vercel", "AI", "UI生成"]',
     status: 'published'
   },
   {
@@ -215,8 +215,8 @@ const SAMPLE_LINKS = [
     aiSummary: 'daisyUI 4.0发布，新增主题、改进无障碍支持和自定义能力。',
     aiCategory: '技术',
     aiTags: '["daisyUI", "CSS框架", "Tailwind"]',
-    finalCategory: '技术',
-    finalTags: '["daisyUI", "CSS框架", "Tailwind"]',
+    userCategory: '技术',
+    userTags: '["daisyUI", "CSS框架", "Tailwind"]',
     status: 'published'
   },
   {
@@ -227,8 +227,8 @@ const SAMPLE_LINKS = [
     aiSummary: 'Arc浏览器推出AI驱动的"为我浏览"功能，自动阅读多个页面并创建定制化内容。',
     aiCategory: '产品',
     aiTags: '["Arc浏览器", "AI", "浏览器"]',
-    finalCategory: '产品',
-    finalTags: '["Arc浏览器", "AI", "浏览器"]',
+    userCategory: '产品',
+    userTags: '["Arc浏览器", "AI", "浏览器"]',
     status: 'published'
   },
   {
@@ -239,8 +239,8 @@ const SAMPLE_LINKS = [
     aiSummary: '使用Supabase Realtime和Presence功能构建实时多人游戏的完整指南。',
     aiCategory: '技术',
     aiTags: '["Supabase", "实时通信", "游戏开发"]',
-    finalCategory: '技术',
-    finalTags: '["Supabase", "实时通信", "游戏开发"]',
+    userCategory: '技术',
+    userTags: '["Supabase", "实时通信", "游戏开发"]',
     status: 'published'
   },
   {
@@ -251,8 +251,8 @@ const SAMPLE_LINKS = [
     aiSummary: 'Raycast集成AI命令功能，通过智能自动化提升工作效率和生产力。',
     aiCategory: '工具',
     aiTags: '["Raycast", "AI", "效率工具"]',
-    finalCategory: '工具',
-    finalTags: '["Raycast", "AI", "效率工具"]',
+    userCategory: '工具',
+    userTags: '["Raycast", "AI", "效率工具"]',
     status: 'published'
   },
   {
@@ -263,8 +263,8 @@ const SAMPLE_LINKS = [
     aiSummary: '设计令牌如何帮助团队在产品和平台之间扩展设计决策的最佳实践指南。',
     aiCategory: '设计',
     aiTags: '["设计令牌", "设计系统", "团队协作"]',
-    finalCategory: '设计',
-    finalTags: '["设计令牌", "设计系统", "团队协作"]',
+    userCategory: '设计',
+    userTags: '["设计令牌", "设计系统", "团队协作"]',
     status: 'published'
   },
   {
@@ -275,8 +275,8 @@ const SAMPLE_LINKS = [
     aiSummary: 'Anthropic发布Claude 3系列模型，包括Haiku、Sonnet和Opus，在认知任务上达到最先进性能。',
     aiCategory: '技术',
     aiTags: '["Claude", "AI模型", "Anthropic"]',
-    finalCategory: '技术',
-    finalTags: '["Claude", "AI模型", "Anthropic"]',
+    userCategory: '技术',
+    userTags: '["Claude", "AI模型", "Anthropic"]',
     status: 'published'
   },
   {
@@ -287,8 +287,8 @@ const SAMPLE_LINKS = [
     aiSummary: 'Notion推出AI问答功能，从工作空间内容中获取即时智能回答。',
     aiCategory: '产品',
     aiTags: '["Notion", "AI", "知识管理"]',
-    finalCategory: '产品',
-    finalTags: '["Notion", "AI", "知识管理"]',
+    userCategory: '产品',
+    userTags: '["Notion", "AI", "知识管理"]',
     status: 'published'
   },
   {
@@ -299,8 +299,8 @@ const SAMPLE_LINKS = [
     aiSummary: 'Vite 5.0正式发布，支持Rollup 4，改进开发服务器性能和开发体验。',
     aiCategory: '技术',
     aiTags: '["Vite", "构建工具", "前端"]',
-    finalCategory: '技术',
-    finalTags: '["Vite", "构建工具", "前端"]',
+    userCategory: '技术',
+    userTags: '["Vite", "构建工具", "前端"]',
     status: 'published'
   },
   {
@@ -311,8 +311,8 @@ const SAMPLE_LINKS = [
     aiSummary: 'Hono v4发布，增强TypeScript支持、改进中间件架构和性能优化。',
     aiCategory: '技术',
     aiTags: '["Hono", "Web框架", "TypeScript"]',
-    finalCategory: '技术',
-    finalTags: '["Hono", "Web框架", "TypeScript"]',
+    userCategory: '技术',
+    userTags: '["Hono", "Web框架", "TypeScript"]',
     status: 'published'
   },
   {
@@ -323,8 +323,8 @@ const SAMPLE_LINKS = [
     aiSummary: 'Stripe Elements改进，提升移动端体验和自定义选项，优化支付流程。',
     aiCategory: '产品',
     aiTags: '["Stripe", "支付", "Web组件"]',
-    finalCategory: '产品',
-    finalTags: '["Stripe", "支付", "Web组件"]',
+    userCategory: '产品',
+    userTags: '["Stripe", "支付", "Web组件"]',
     status: 'published'
   },
   {
@@ -335,8 +335,8 @@ const SAMPLE_LINKS = [
     aiSummary: 'Discord技术分享，详解如何构建万亿级消息存储架构和扩展策略。',
     aiCategory: '技术',
     aiTags: '["Discord", "架构设计", "数据库"]',
-    finalCategory: '技术',
-    finalTags: '["Discord", "架构设计", "数据库"]',
+    userCategory: '技术',
+    userTags: '["Discord", "架构设计", "数据库"]',
     status: 'published'
   },
   {
@@ -347,8 +347,8 @@ const SAMPLE_LINKS = [
     aiSummary: 'GitHub推出Copilot Workspace，AI原生开发环境支持从构思到部署的完整开发流程。',
     aiCategory: '工具',
     aiTags: '["GitHub", "AI编程", "开发环境"]',
-    finalCategory: '工具',
-    finalTags: '["GitHub", "AI编程", "开发环境"]',
+    userCategory: '工具',
+    userTags: '["GitHub", "AI编程", "开发环境"]',
     status: 'published'
   },
   {
@@ -359,8 +359,8 @@ const SAMPLE_LINKS = [
     aiSummary: 'PlanetScale推出无服务器JavaScript驱动，支持从无服务器环境连接数据库。',
     aiCategory: '技术',
     aiTags: '["PlanetScale", "数据库", "Serverless"]',
-    finalCategory: '技术',
-    finalTags: '["PlanetScale", "数据库", "Serverless"]',
+    userCategory: '技术',
+    userTags: '["PlanetScale", "数据库", "Serverless"]',
     status: 'published'
   },
   {
@@ -371,8 +371,8 @@ const SAMPLE_LINKS = [
     aiSummary: 'Cursor推出Composer功能，AI理解整个代码库并支持跨文件代码生成。',
     aiCategory: '工具',
     aiTags: '["Cursor", "AI编程", "代码生成"]',
-    finalCategory: '工具',
-    finalTags: '["Cursor", "AI编程", "代码生成"]',
+    userCategory: '工具',
+    userTags: '["Cursor", "AI编程", "代码生成"]',
     status: 'published'
   },
   {
@@ -383,8 +383,8 @@ const SAMPLE_LINKS = [
     aiSummary: 'Excalidraw 2024路线图，计划改进协作功能、推出移动应用和新特性。',
     aiCategory: '设计',
     aiTags: '["Excalidraw", "绘图工具", "协作"]',
-    finalCategory: '设计',
-    finalTags: '["Excalidraw", "绘图工具", "协作"]',
+    userCategory: '设计',
+    userTags: '["Excalidraw", "绘图工具", "协作"]',
     status: 'published'
   },
   {
@@ -395,8 +395,8 @@ const SAMPLE_LINKS = [
     aiSummary: 'Next.js 14.2发布，Turbopack开发模式进入RC阶段，改进构建和生产性能。',
     aiCategory: '技术',
     aiTags: '["Next.js", "React", "构建工具"]',
-    finalCategory: '技术',
-    finalTags: '["Next.js", "React", "构建工具"]',
+    userCategory: '技术',
+    userTags: '["Next.js", "React", "构建工具"]',
     status: 'published'
   },
   {
@@ -407,8 +407,8 @@ const SAMPLE_LINKS = [
     aiSummary: 'Framer通过缓存优化、代码分割等技术将网站性能提升3倍。',
     aiCategory: '技术',
     aiTags: '["Framer", "性能优化", "Web开发"]',
-    finalCategory: '技术',
-    finalTags: '["Framer", "性能优化", "Web开发"]',
+    userCategory: '技术',
+    userTags: '["Framer", "性能优化", "Web开发"]',
     status: 'published'
   },
   {
@@ -419,8 +419,8 @@ const SAMPLE_LINKS = [
     aiSummary: 'Bun v1.1发布，新增Windows支持，改进Node.js兼容性和性能表现。',
     aiCategory: '技术',
     aiTags: '["Bun", "JavaScript运行时", "性能"]',
-    finalCategory: '技术',
-    finalTags: '["Bun", "JavaScript运行时", "性能"]',
+    userCategory: '技术',
+    userTags: '["Bun", "JavaScript运行时", "性能"]',
     status: 'published'
   },
   {
@@ -431,8 +431,8 @@ const SAMPLE_LINKS = [
     aiSummary: 'Obsidian重新设计移动端编辑器，改进触控体验和性能表现。',
     aiCategory: '产品',
     aiTags: '["Obsidian", "笔记工具", "移动端"]',
-    finalCategory: '产品',
-    finalTags: '["Obsidian", "笔记工具", "移动端"]',
+    userCategory: '产品',
+    userTags: '["Obsidian", "笔记工具", "移动端"]',
     status: 'published'
   },
   {
@@ -443,8 +443,8 @@ const SAMPLE_LINKS = [
     aiSummary: 'Firebase改进现代Web框架集成，更好支持Next.js、Nuxt和SvelteKit。',
     aiCategory: '技术',
     aiTags: '["Firebase", "Web框架", "云服务"]',
-    finalCategory: '技术',
-    finalTags: '["Firebase", "Web框架", "云服务"]',
+    userCategory: '技术',
+    userTags: '["Firebase", "Web框架", "云服务"]',
     status: 'published'
   },
   {
@@ -455,8 +455,8 @@ const SAMPLE_LINKS = [
     aiSummary: 'shadcn/ui更新，新增组件、改进无障碍支持和TypeScript集成。',
     aiCategory: '技术',
     aiTags: '["shadcn/ui", "React组件", "UI库"]',
-    finalCategory: '技术',
-    finalTags: '["shadcn/ui", "React组件", "UI库"]',
+    userCategory: '技术',
+    userTags: '["shadcn/ui", "React组件", "UI库"]',
     status: 'published'
   },
   {
@@ -467,8 +467,8 @@ const SAMPLE_LINKS = [
     aiSummary: 'Product Hunt分享主页重设计过程，专注于性能优化和用户体验改进。',
     aiCategory: '产品',
     aiTags: '["Product Hunt", "网站设计", "用户体验"]',
-    finalCategory: '产品',
-    finalTags: '["Product Hunt", "网站设计", "用户体验"]',
+    userCategory: '产品',
+    userTags: '["Product Hunt", "网站设计", "用户体验"]',
     status: 'published'
   },
   {
@@ -479,8 +479,8 @@ const SAMPLE_LINKS = [
     aiSummary: '在本地开发环境配置HTTPS的完整指南，解释为什么对现代Web应用至关重要。',
     aiCategory: '技术',
     aiTags: '["HTTPS", "本地开发", "Web安全"]',
-    finalCategory: '技术',
-    finalTags: '["HTTPS", "本地开发", "Web安全"]',
+    userCategory: '技术',
+    userTags: '["HTTPS", "本地开发", "Web安全"]',
     status: 'published'
   },
   {
@@ -491,8 +491,8 @@ const SAMPLE_LINKS = [
     aiSummary: '深入解析低延迟直播流技术原理，以及在何种场景下应该使用。',
     aiCategory: '技术',
     aiTags: '["直播技术", "低延迟", "音视频"]',
-    finalCategory: '技术',
-    finalTags: '["直播技术", "低延迟", "音视频"]',
+    userCategory: '技术',
+    userTags: '["直播技术", "低延迟", "音视频"]',
     status: 'published'
   }
 ] as const;
@@ -588,11 +588,17 @@ async function seedDatabase(database = db, includeDevData = false) {
         const linkCreatedAt = now - (daysAgo * 24 * 60 * 60) - (hoursAgo * 60 * 60);
         const linkPublishedAt = linkCreatedAt + Math.floor(Math.random() * 3600); // Published within 1 hour of creation
         
-        // Set final description to aiSummary for now (simulating user confirmation)
-        const finalDescription = link.aiSummary;
+        // For published links, set user fields; for pending links, leave user fields null
+        const userDescription = link.status === 'published' ? link.aiSummary : null;
+        const userCategory = link.status === 'published' ? (link.userCategory || link.aiCategory) : null;
+        const userTags = link.status === 'published' ? (link.userTags || link.aiTags) : null;
         
         // Create search text for optimization
-        const searchText = `${link.title} ${link.aiSummary} ${link.finalCategory} ${link.finalTags}`.toLowerCase();
+        const searchText = `${link.title} ${link.aiSummary} ${link.aiCategory} ${link.aiTags}`.toLowerCase();
+        
+        // Generate reading time based on content length (estimated)
+        const estimatedWordCount = link.aiSummary.split(/\s+/).length * 2; // Multiply by 2 to simulate full article
+        const readingTime = Math.max(1, Math.ceil(estimatedWordCount / 225)); // 225 words per minute average
         
         await database.insert(links).values({
           url: link.url,
@@ -602,9 +608,10 @@ async function seedDatabase(database = db, includeDevData = false) {
           aiSummary: link.aiSummary,
           aiCategory: link.aiCategory,
           aiTags: link.aiTags,
-          finalDescription,
-          finalCategory: link.finalCategory,
-          finalTags: link.finalTags,
+          aiReadingTime: readingTime,
+          userDescription,
+          userCategory,
+          userTags,
           status: link.status as 'pending' | 'published' | 'deleted',
           createdAt: linkCreatedAt,
           publishedAt: link.status === 'published' ? linkPublishedAt : undefined,
@@ -621,8 +628,8 @@ async function seedDatabase(database = db, includeDevData = false) {
       // Populate FTS5 index for existing published links
       console.log('Populating FTS5 search index...');
       await database.run(sql`
-        INSERT INTO links_fts(rowid, title, final_description, final_tags, domain, final_category)
-        SELECT id, title, final_description, final_tags, domain, final_category 
+        INSERT INTO links_fts(rowid, title, description, tags, domain, category)
+        SELECT id, title, user_description, user_tags, domain, user_category 
         FROM links 
         WHERE status = 'published'
       `);

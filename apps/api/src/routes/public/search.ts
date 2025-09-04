@@ -36,15 +36,7 @@ app.get('/', zValidator('query', searchQuerySchema), async (c) => {
     let joinConditions: any[] = []
     
     if (category) {
-      joinConditions.push(
-        or(
-          eq(links.userCategory, category),
-          and(
-            isNull(links.userCategory),
-            eq(links.aiCategory, category)
-          )
-        )
-      )
+      joinConditions.push(eq(links.userCategory, category))
     }
     
     if (domain) {
@@ -73,10 +65,11 @@ app.get('/', zValidator('query', searchQuerySchema), async (c) => {
         id: links.id,
         url: links.url,
         title: links.title,
-        description: sql<string>`COALESCE(${links.userDescription}, ${links.aiSummary})`,
-        category: sql<string>`COALESCE(${links.userCategory}, ${links.aiCategory})`,
-        tags: sql<string>`COALESCE(${links.userTags}, ${links.aiTags})`,
+        description: links.userDescription,
+        category: links.userCategory,
+        tags: links.userTags,
         domain: links.domain,
+        readingTime: links.aiReadingTime,
         publishedAt: links.publishedAt,
         createdAt: links.createdAt,
         rank: sql`links_fts.rank`.as('rank')
@@ -133,6 +126,7 @@ app.get('/', zValidator('query', searchQuerySchema), async (c) => {
         category: link.category || '',
         tags: link.tags ? JSON.parse(link.tags) : [],
         domain: link.domain,
+        readingTime: link.readingTime || undefined,
         publishedAt: new Date(link.publishedAt * 1000).toISOString(),
         createdAt: new Date(link.createdAt * 1000).toISOString(),
         score: Math.abs(link.rank || 0), // FTS5 rank score (absolute value, lower is better)
@@ -248,7 +242,7 @@ app.get('/suggestions', zValidator('query', suggestionsQuerySchema), async (c) =
       // 使用 FTS5 从分类中查找建议
       const categorySuggestions = await db
         .select({ 
-          category: sql<string>`COALESCE(${links.userCategory}, ${links.aiCategory})`,
+          category: links.userCategory,
           count: count()
         })
         .from(sql`links_fts`)
@@ -259,7 +253,7 @@ app.get('/suggestions', zValidator('query', suggestionsQuerySchema), async (c) =
             eq(links.status, 'published')
           )
         )
-        .groupBy(sql`COALESCE(${links.userCategory}, ${links.aiCategory})`)
+        .groupBy(links.userCategory)
         .limit(Math.ceil(limit / 3))
       
       categorySuggestions.forEach(item => {
@@ -277,7 +271,7 @@ app.get('/suggestions', zValidator('query', suggestionsQuerySchema), async (c) =
       // 从标签中查找建议
       const tagData = await db
         .select({ 
-          tags: sql<string>`COALESCE(${links.userTags}, ${links.aiTags})` 
+          tags: links.userTags 
         })
         .from(links)
         .where(eq(links.status, 'published'))
@@ -447,15 +441,7 @@ async function generateSearchSuggestions(
   try {
     // 使用 FTS5 查找相似的标题
     let baseConditions = [eq(links.status, 'published')]
-    if (category) baseConditions.push(
-      or(
-        eq(links.userCategory, category),
-        and(
-          isNull(links.userCategory),
-          eq(links.aiCategory, category)
-        )
-      )
-    )
+    if (category) baseConditions.push(eq(links.userCategory, category))
     if (domain) baseConditions.push(eq(links.domain, domain))
     
     const titleSuggestions = await db
@@ -490,12 +476,12 @@ async function generateSearchSuggestions(
     if (!category) {
       const categoryData = await db
         .select({ 
-          category: sql<string>`COALESCE(${links.userCategory}, ${links.aiCategory})`,
+          category: links.userCategory,
           count: count()
         })
         .from(links)
         .where(eq(links.status, 'published'))
-        .groupBy(sql`COALESCE(${links.userCategory}, ${links.aiCategory})`)
+        .groupBy(links.userCategory)
         .orderBy(sql`count(*) desc`)
         .limit(5)
 
@@ -510,7 +496,7 @@ async function generateSearchSuggestions(
 
     // 使用 FTS5 查找常用标签
     const tagData = await db
-      .select({ tags: links.finalTags })
+      .select({ tags: links.userTags })
       .from(sql`links_fts`)
       .innerJoin(links, sql`links.id = links_fts.rowid`)
       .where(
