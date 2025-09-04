@@ -62,10 +62,10 @@ CREATE TABLE links (
   userCategory TEXT,                   -- 用户选择的分类
   userTags TEXT,                      -- 用户选择的标签（JSON数组）
   
-  -- 最终展示内容（冗余字段，优化查询性能）
-  finalDescription TEXT,              -- 最终描述（userDescription 或 aiSummary）
-  finalCategory TEXT,                 -- 最终分类（userCategory 或 aiCategory）
-  finalTags TEXT,                     -- 最终标签（JSON数组）
+  -- 最终展示内容说明：
+  -- 发布后的链接会将最终确认的内容存储在 userXXX 字段中
+  -- userDescription, userCategory, userTags 为最终展示使用的字段
+  -- aiXXX 字段仅作为历史记录和分析参考
   
   -- 元数据
   status TEXT DEFAULT 'pending',       -- pending|published|deleted
@@ -362,30 +362,30 @@ INSERT INTO categories (name, slug, icon, color, display_order, createdAt) VALUE
 -- 创建全文搜索虚拟表
 CREATE VIRTUAL TABLE links_fts USING fts5(
   title,                            -- 标题
-  finalDescription,                 -- 描述
-  finalTags,                        -- 标签
+  description,                      -- 描述（用户确认后的内容）
+  tags,                            -- 标签（用户确认后的内容）
   domain,                          -- 域名
-  finalCategory,                   -- 分类
+  category,                        -- 分类（用户确认后的内容）
   content=links,                   -- 关联到 links 表
   content_rowid=id                 -- 使用 links 表的 id 作为 rowid
 );
 
--- 创建触发器，自动同步数据到 FTS5 表
+-- 创建触发器，自动同步数据到 FTS5 表（直接使用用户确认字段）
 CREATE TRIGGER links_fts_insert AFTER INSERT ON links BEGIN
-  INSERT INTO links_fts(rowid, title, finalDescription, finalTags, domain, finalCategory)
-  VALUES (NEW.id, NEW.title, NEW.finalDescription, NEW.finalTags, NEW.domain, NEW.finalCategory);
+  INSERT INTO links_fts(rowid, title, description, tags, domain, category)
+  VALUES (NEW.id, NEW.title, NEW.userDescription, NEW.userTags, NEW.domain, NEW.userCategory);
 END;
 
 CREATE TRIGGER links_fts_delete AFTER DELETE ON links BEGIN
-  INSERT INTO links_fts(links_fts, rowid, title, finalDescription, finalTags, domain, finalCategory)
-  VALUES ('delete', OLD.id, OLD.title, OLD.finalDescription, OLD.finalTags, OLD.domain, OLD.finalCategory);
+  INSERT INTO links_fts(links_fts, rowid, title, description, tags, domain, category)
+  VALUES ('delete', OLD.id, OLD.title, OLD.userDescription, OLD.userTags, OLD.domain, OLD.userCategory);
 END;
 
 CREATE TRIGGER links_fts_update AFTER UPDATE ON links BEGIN
-  INSERT INTO links_fts(links_fts, rowid, title, finalDescription, finalTags, domain, finalCategory)
-  VALUES ('delete', OLD.id, OLD.title, OLD.finalDescription, OLD.finalTags, OLD.domain, OLD.finalCategory);
-  INSERT INTO links_fts(rowid, title, finalDescription, finalTags, domain, finalCategory)
-  VALUES (NEW.id, NEW.title, NEW.finalDescription, NEW.finalTags, NEW.domain, NEW.finalCategory);
+  INSERT INTO links_fts(links_fts, rowid, title, description, tags, domain, category)
+  VALUES ('delete', OLD.id, OLD.title, OLD.userDescription, OLD.userTags, OLD.domain, OLD.userCategory);
+  INSERT INTO links_fts(rowid, title, description, tags, domain, category)
+  VALUES (NEW.id, NEW.title, NEW.userDescription, NEW.userTags, NEW.domain, NEW.userCategory);
 END;
 ```
 
@@ -440,12 +440,12 @@ CREATE INDEX idx_categories_slug ON categories(slug);
 ```sql
 -- 分类统计（实时查询）
 SELECT 
-  finalCategory as category,
+  userCategory as category,
   COUNT(*) as count,
   MAX(publishedAt) as lastPublished
 FROM links 
 WHERE status = 'published' 
-GROUP BY finalCategory
+GROUP BY userCategory
 ORDER BY count DESC;
 
 -- 域名统计（实时查询）
@@ -462,7 +462,7 @@ ORDER BY count DESC;
 SELECT 
   strftime('%Y-%m', publishedAt, 'unixepoch') as month,
   COUNT(*) as count,
-  COUNT(DISTINCT finalCategory) as categories,
+  COUNT(DISTINCT userCategory) as categories,
   COUNT(DISTINCT domain) as domains
 FROM links 
 WHERE status = 'published' 
@@ -473,7 +473,7 @@ ORDER BY month DESC;
 SELECT 
   json_each.value as tag,
   COUNT(*) as count
-FROM links, json_each(links.finalTags)
+FROM links, json_each(links.userTags)
 WHERE links.status = 'published'
 GROUP BY json_each.value
 ORDER BY count DESC;
@@ -518,7 +518,7 @@ VALUES ('mgp_' || hex(randomblob(32)), 'Initial Admin Token', strftime('%s', 'no
 
 ### 2. 存储优化
 - JSON 字段用于非查询的数组数据（如 tags）
-- 冗余设计：finalXxx 字段避免复杂的 CASE WHEN 查询
+- 性能优化：发布后的链接直接使用userXXX字段，避免COALESCE动态计算
 - 定期清理过期的日志数据
 
 ### 3. 全文搜索优化
