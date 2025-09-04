@@ -1,51 +1,71 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
+import api from '../../utils/api'
 
 interface Stats {
   totalLinks: number
   pendingLinks: number
   monthlyNew: number
-  databaseSize: string
+  totalCategories: number
+  totalTags: number
   recentActivity: {
-    type: 'added' | 'published' | 'deleted'
+    type: 'link_added' | 'link_published' | 'link_deleted'
     title: string
+    url?: string
     timestamp: string
   }[]
 }
 
-// Mock data for now
-const mockStats: Stats = {
-  totalLinks: 123,
-  pendingLinks: 5,
-  monthlyNew: 12,
-  databaseSize: '1.2GB',
-  recentActivity: [
-    { type: 'published', title: 'React 19 新特性详解', timestamp: '2024-08-30T15:30:00Z' },
-    { type: 'added', title: 'Vue 3.4 性能优化指南', timestamp: '2024-08-30T14:20:00Z' },
-    { type: 'published', title: 'TypeScript 5.0 发布', timestamp: '2024-08-30T12:15:00Z' },
-    { type: 'added', title: 'Tailwind CSS 最佳实践', timestamp: '2024-08-29T16:45:00Z' },
-    { type: 'deleted', title: '过时的技术文档', timestamp: '2024-08-29T10:30:00Z' }
-  ]
+interface StatsResponse {
+  success: boolean
+  data: {
+    totalLinks: number
+    publishedLinks: number
+    pendingLinks: number
+    totalCategories: number
+    totalTags: number
+    recentActivity: {
+      type: 'link_added' | 'link_published' | 'link_deleted'
+      title: string
+      url?: string
+      timestamp: string
+    }[]
+    popularTags: { name: string; count: number }[]
+    popularDomains: { name: string; count: number }[]
+    monthlyStats: { year: number; month: number; count: number }[]
+  }
 }
 
 export default function AdminOverview() {
-  // In real implementation, this would fetch from API
-  const { data: stats = mockStats, isLoading } = useQuery<Stats>({
-    queryKey: ['admin-stats'],
+  const queryClient = useQueryClient()
+  
+  const { data: statsData, isLoading } = useQuery<StatsResponse>({
+    queryKey: ['admin-stats-summary'],
     queryFn: async () => {
-      // Mock API call
-      await new Promise(resolve => setTimeout(resolve, 500))
-      return mockStats
-    }
+      const response = await api.getStats()
+      return response.data
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: false
   })
+
+  // Transform API data to match component interface
+  const stats: Stats | undefined = statsData ? {
+    totalLinks: statsData.data.totalLinks,
+    pendingLinks: statsData.data.pendingLinks,
+    monthlyNew: statsData.data.monthlyStats?.[statsData.data.monthlyStats.length - 1]?.count || 0,
+    totalCategories: statsData.data.totalCategories,
+    totalTags: statsData.data.totalTags,
+    recentActivity: statsData.data.recentActivity
+  } : undefined
 
   const getActivityIcon = (type: string) => {
     switch (type) {
-      case 'added': 
+      case 'link_added': 
         return <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-      case 'published': 
+      case 'link_published': 
         return <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-      case 'deleted': 
+      case 'link_deleted': 
         return <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
       default: 
         return <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 8h6m-6 4h6" /></svg>
@@ -54,9 +74,9 @@ export default function AdminOverview() {
 
   const getActivityColor = (type: string) => {
     switch (type) {
-      case 'added': return 'text-blue-600'
-      case 'published': return 'text-green-600'
-      case 'deleted': return 'text-red-600'
+      case 'link_added': return 'text-blue-600'
+      case 'link_published': return 'text-green-600'
+      case 'link_deleted': return 'text-red-600'
       default: return 'text-gray-600'
     }
   }
@@ -69,6 +89,11 @@ export default function AdminOverview() {
     if (diffInHours < 1) return '刚刚'
     if (diffInHours < 24) return `${diffInHours}小时前`
     return `${Math.floor(diffInHours / 24)}天前`
+  }
+
+  const handleRefresh = () => {
+    // Force refresh the stats
+    queryClient.invalidateQueries({ queryKey: ['admin-stats-summary'] })
   }
 
   if (isLoading) {
@@ -142,7 +167,7 @@ export default function AdminOverview() {
           <p className="text-base-content/60 mt-1">系统状态和最近活动</p>
         </div>
         <div className="flex items-center gap-2">
-          <button className="btn btn-ghost btn-sm">
+          <button className="btn btn-ghost btn-sm" onClick={handleRefresh}>
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
@@ -155,29 +180,36 @@ export default function AdminOverview() {
       <div className="bg-base-100 p-6">
         <div className="flex flex-wrap items-center justify-center gap-8 lg:gap-12">
           <div className="text-center">
-            <div className="text-3xl font-bold text-magpie-200">{stats.totalLinks}</div>
+            <div className="text-3xl font-bold text-magpie-200">{stats?.totalLinks || 0}</div>
             <div className="text-sm text-base-content/60">链接总数</div>
           </div>
           
           <div className="w-px h-12 bg-base-content/10"></div>
           
           <div className="text-center">
-            <div className="text-3xl font-bold text-orange-500">{stats.pendingLinks}</div>
+            <div className="text-3xl font-bold text-orange-500">{stats?.pendingLinks || 0}</div>
             <div className="text-sm text-base-content/60">待审核</div>
           </div>
           
           <div className="w-px h-12 bg-base-content/10"></div>
           
           <div className="text-center">
-            <div className="text-3xl font-bold text-green-500">{stats.monthlyNew}</div>
+            <div className="text-3xl font-bold text-green-500">{stats?.monthlyNew || 0}</div>
             <div className="text-sm text-base-content/60">本月新增</div>
           </div>
           
           <div className="w-px h-12 bg-base-content/10"></div>
           
           <div className="text-center">
-            <div className="text-3xl font-bold text-purple-500">{stats.databaseSize}</div>
-            <div className="text-sm text-base-content/60">数据库大小</div>
+            <div className="text-3xl font-bold text-purple-500">{stats?.totalCategories || 0}</div>
+            <div className="text-sm text-base-content/60">分类数</div>
+          </div>
+          
+          <div className="w-px h-12 bg-base-content/10"></div>
+          
+          <div className="text-center">
+            <div className="text-3xl font-bold text-indigo-500">{stats?.totalTags || 0}</div>
+            <div className="text-sm text-base-content/60">标签数</div>
           </div>
         </div>
       </div>
@@ -218,7 +250,7 @@ export default function AdminOverview() {
           {/* Badge in top-right corner */}
           <div className="absolute top-3 right-3 z-10">
             <span className="text-xs font-medium text-orange-500 bg-orange-500/10 px-2 py-1 rounded-full">
-              {stats.pendingLinks}
+              {stats?.pendingLinks || 0}
             </span>
           </div>
           
@@ -228,7 +260,7 @@ export default function AdminOverview() {
               审核待处理
             </div>
             <div className="text-sm text-base-content/60 mt-1">
-              {stats.pendingLinks} 项待处理
+              {stats?.pendingLinks || 0} 项待处理
             </div>
           </div>
         </Link>
@@ -268,7 +300,7 @@ export default function AdminOverview() {
         </div>
         <div className="card-body p-6 pt-4">
           <div className="space-y-3">
-            {stats.recentActivity.map((activity, index) => (
+            {(stats?.recentActivity || []).map((activity, index) => (
               <div key={index} className="flex items-center gap-4 py-2">
                 <div className={`${getActivityColor(activity.type)}`}>
                   {getActivityIcon(activity.type)}
@@ -282,14 +314,14 @@ export default function AdminOverview() {
                   </div>
                 </div>
                 <div className={`text-xs px-2 py-1 rounded-full ${
-                  activity.type === 'added' ? 'bg-blue-100 text-blue-700' :
-                  activity.type === 'published' ? 'bg-green-100 text-green-700' :
-                  activity.type === 'deleted' ? 'bg-red-100 text-red-700' :
+                  activity.type === 'link_added' ? 'bg-blue-100 text-blue-700' :
+                  activity.type === 'link_published' ? 'bg-green-100 text-green-700' :
+                  activity.type === 'link_deleted' ? 'bg-red-100 text-red-700' :
                   'bg-gray-100 text-gray-700'
                 }`}>
-                  {activity.type === 'added' ? '已添加' :
-                   activity.type === 'published' ? '已发布' :
-                   activity.type === 'deleted' ? '已删除' :
+                  {activity.type === 'link_added' ? '已添加' :
+                   activity.type === 'link_published' ? '已发布' :
+                   activity.type === 'link_deleted' ? '已删除' :
                    activity.type}
                 </div>
               </div>

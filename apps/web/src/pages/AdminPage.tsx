@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
+import api from '../utils/api'
 import AdminNavBar from '../components/AdminNavBar'
 import AdminSidebar from '../components/AdminSidebar'
 import AdminOverview from './admin/AdminOverview'
@@ -18,17 +19,21 @@ const mockUser = {
 export default function AdminPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   
-  // Mock stats query for sidebar badges
-  const { data: stats } = useQuery({
+  // Real stats query for sidebar badges
+  const { data: statsResponse } = useQuery({
     queryKey: ['admin-stats-summary'],
     queryFn: async () => {
-      await new Promise(resolve => setTimeout(resolve, 200))
-      return {
-        pendingCount: 5,
-        totalLinks: 123
-      }
-    }
+      const response = await api.getStats()
+      return response.data
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: false
   })
+
+  const stats = statsResponse ? {
+    pendingCount: statsResponse.pendingLinks,
+    totalLinks: statsResponse.totalLinks
+  } : undefined
 
   return (
     <div className="min-h-screen bg-base-100">
