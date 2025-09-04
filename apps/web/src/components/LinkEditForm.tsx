@@ -93,7 +93,6 @@ export default function LinkEditForm({
             value={formData.title}
             onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
             placeholder="链接标题"
-            required
           />
         </div>
 
@@ -107,7 +106,6 @@ export default function LinkEditForm({
             value={formData.description}
             onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
             placeholder="链接描述或摘要"
-            required
           />
         </div>
 

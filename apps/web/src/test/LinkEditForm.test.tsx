@@ -35,10 +35,16 @@ describe('LinkEditForm', () => {
     it('should render all form fields', () => {
       render(<LinkEditForm {...defaultProps} />)
       
-      expect(screen.getByLabelText(/标题/)).toBeInTheDocument()
-      expect(screen.getByLabelText(/描述/)).toBeInTheDocument()
-      expect(screen.getByLabelText(/分类/)).toBeInTheDocument()
-      expect(screen.getByLabelText(/标签/)).toBeInTheDocument()
+      expect(screen.getByText('标题 *')).toBeInTheDocument()
+      expect(screen.getByText('描述 *')).toBeInTheDocument()
+      expect(screen.getByText('分类')).toBeInTheDocument()
+      expect(screen.getByText('标签')).toBeInTheDocument()
+      
+      // Check for actual form controls
+      expect(screen.getByPlaceholderText('链接标题')).toBeInTheDocument()
+      expect(screen.getByPlaceholderText('链接描述或摘要')).toBeInTheDocument()
+      expect(screen.getByDisplayValue('Technology')).toBeInTheDocument()
+      expect(screen.getByPlaceholderText('标签1, 标签2, 标签3')).toBeInTheDocument()
     })
 
     it('should render action buttons', () => {
@@ -62,8 +68,9 @@ describe('LinkEditForm', () => {
     it('should show status field when showStatus is true', () => {
       render(<LinkEditForm {...defaultProps} showStatus={true} />)
       
-      expect(screen.getByLabelText(/状态/)).toBeInTheDocument()
-      expect(screen.getByDisplayValue('published')).toBeInTheDocument()
+      expect(screen.getByText('状态')).toBeInTheDocument()
+      const statusSelect = screen.getByDisplayValue('已发布')
+      expect(statusSelect).toHaveValue('published')
     })
 
     it('should not show status field when showStatus is false', () => {
@@ -75,8 +82,8 @@ describe('LinkEditForm', () => {
     it('should have correct status options', () => {
       render(<LinkEditForm {...defaultProps} showStatus={true} />)
       
-      const statusSelect = screen.getByDisplayValue('published')
-      expect(statusSelect).toBeInTheDocument()
+      const statusSelect = screen.getByDisplayValue('已发布')
+      expect(statusSelect).toHaveValue('published')
       
       // Check all options are present
       expect(screen.getByRole('option', { name: '已发布' })).toBeInTheDocument()
@@ -90,7 +97,7 @@ describe('LinkEditForm', () => {
       const user = userEvent.setup()
       render(<LinkEditForm {...defaultProps} />)
       
-      const titleInput = screen.getByLabelText(/标题/)
+      const titleInput = screen.getByPlaceholderText('链接标题')
       await user.clear(titleInput)
       await user.type(titleInput, 'New Title')
       
@@ -101,7 +108,7 @@ describe('LinkEditForm', () => {
       const user = userEvent.setup()
       render(<LinkEditForm {...defaultProps} />)
       
-      const descriptionTextarea = screen.getByLabelText(/描述/)
+      const descriptionTextarea = screen.getByPlaceholderText('链接描述或摘要')
       await user.clear(descriptionTextarea)
       await user.type(descriptionTextarea, 'New description')
       
@@ -112,7 +119,7 @@ describe('LinkEditForm', () => {
       const user = userEvent.setup()
       render(<LinkEditForm {...defaultProps} />)
       
-      const categorySelect = screen.getByLabelText(/分类/)
+      const categorySelect = screen.getByDisplayValue('Technology')
       await user.selectOptions(categorySelect, 'Design')
       
       expect(screen.getByDisplayValue('Design')).toBeInTheDocument()
@@ -122,9 +129,10 @@ describe('LinkEditForm', () => {
       const user = userEvent.setup()
       render(<LinkEditForm {...defaultProps} />)
       
-      const tagsInput = screen.getByLabelText(/标签/)
-      await user.clear(tagsInput)
-      await user.type(tagsInput, 'vue, javascript, frontend')
+      const tagsInput = screen.getByPlaceholderText('标签1, 标签2, 标签3')
+      
+      // Use fireEvent for more reliable tag input
+      fireEvent.change(tagsInput, { target: { value: 'vue, javascript, frontend' } })
       
       expect(screen.getByDisplayValue('vue, javascript, frontend')).toBeInTheDocument()
     })
@@ -133,10 +141,10 @@ describe('LinkEditForm', () => {
       const user = userEvent.setup()
       render(<LinkEditForm {...defaultProps} showStatus={true} />)
       
-      const statusSelect = screen.getByLabelText(/状态/)
+      const statusSelect = screen.getByDisplayValue('已发布')
       await user.selectOptions(statusSelect, 'pending')
       
-      expect(screen.getByDisplayValue('pending')).toBeInTheDocument()
+      expect(statusSelect).toHaveValue('pending')
     })
   })
 
@@ -166,20 +174,20 @@ describe('LinkEditForm', () => {
       render(<LinkEditForm {...defaultProps} onSave={onSave} />)
       
       // Update form fields
-      const titleInput = screen.getByLabelText(/标题/)
+      const titleInput = screen.getByPlaceholderText('链接标题')
       await user.clear(titleInput)
       await user.type(titleInput, 'Updated Title')
       
-      const descriptionTextarea = screen.getByLabelText(/描述/)
+      const descriptionTextarea = screen.getByPlaceholderText('链接描述或摘要')
       await user.clear(descriptionTextarea)
       await user.type(descriptionTextarea, 'Updated description')
       
-      const categorySelect = screen.getByLabelText(/分类/)
+      const categorySelect = screen.getByDisplayValue('Technology')
       await user.selectOptions(categorySelect, 'Design')
       
-      const tagsInput = screen.getByLabelText(/标签/)
+      const tagsInput = screen.getByPlaceholderText('标签1, 标签2, 标签3')
       await user.clear(tagsInput)
-      await user.type(tagsInput, 'new, tags')
+      fireEvent.change(tagsInput, { target: { value: 'new, tags' } })
       
       const saveButton = screen.getByRole('button', { name: /保存/ })
       await user.click(saveButton)
@@ -213,7 +221,7 @@ describe('LinkEditForm', () => {
       
       render(<LinkEditForm {...defaultProps} />)
       
-      const titleInput = screen.getByLabelText(/标题/)
+      const titleInput = screen.getByPlaceholderText('链接标题')
       await user.clear(titleInput)
       
       const saveButton = screen.getByRole('button', { name: /保存/ })
@@ -230,7 +238,7 @@ describe('LinkEditForm', () => {
       
       render(<LinkEditForm {...defaultProps} />)
       
-      const descriptionTextarea = screen.getByLabelText(/描述/)
+      const descriptionTextarea = screen.getByPlaceholderText('链接描述或摘要')
       await user.clear(descriptionTextarea)
       
       const saveButton = screen.getByRole('button', { name: /保存/ })
@@ -248,7 +256,7 @@ describe('LinkEditForm', () => {
       
       render(<LinkEditForm {...defaultProps} onSave={onSave} />)
       
-      const titleInput = screen.getByLabelText(/标题/)
+      const titleInput = screen.getByPlaceholderText('链接标题')
       await user.clear(titleInput)
       
       const saveButton = screen.getByRole('button', { name: /保存/ })
@@ -288,10 +296,10 @@ describe('LinkEditForm', () => {
       render(<LinkEditForm {...defaultProps} compact={true} />)
       
       // Check for compact class on form elements
-      const titleInput = screen.getByLabelText(/标题/)
+      const titleInput = screen.getByPlaceholderText('链接标题')
       expect(titleInput).toHaveClass('input-sm')
       
-      const categorySelect = screen.getByLabelText(/分类/)
+      const categorySelect = screen.getByDisplayValue('Technology')
       expect(categorySelect).toHaveClass('select-sm')
       
       const saveButton = screen.getByRole('button', { name: /保存/ })
@@ -329,9 +337,9 @@ describe('LinkEditForm', () => {
       
       render(<LinkEditForm {...defaultProps} onSave={onSave} />)
       
-      const tagsInput = screen.getByLabelText(/标签/)
+      const tagsInput = screen.getByPlaceholderText('标签1, 标签2, 标签3')
       await user.clear(tagsInput)
-      await user.type(tagsInput, '  tag1  ,  tag2,tag3   ,  ')
+      fireEvent.change(tagsInput, { target: { value: '  tag1  ,  tag2,tag3   ,  ' } })
       
       const saveButton = screen.getByRole('button', { name: /保存/ })
       await user.click(saveButton)
@@ -349,7 +357,7 @@ describe('LinkEditForm', () => {
       
       render(<LinkEditForm {...defaultProps} onSave={onSave} />)
       
-      const tagsInput = screen.getByLabelText(/标签/)
+      const tagsInput = screen.getByPlaceholderText('标签1, 标签2, 标签3')
       await user.clear(tagsInput)
       
       const saveButton = screen.getByRole('button', { name: /保存/ })

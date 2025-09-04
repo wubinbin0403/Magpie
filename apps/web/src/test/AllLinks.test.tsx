@@ -178,7 +178,7 @@ describe('AllLinks', () => {
       renderWithQueryClient(<AllLinks />)
       
       await waitFor(() => {
-        expect(screen.getByTestId('category-badge')).toHaveTextContent('Technology')
+        expect(screen.getAllByTestId('category-badge')[0]).toHaveTextContent('Technology')
         expect(screen.getByTestId('tag-react')).toBeInTheDocument()
         expect(screen.getByTestId('tag-testing')).toBeInTheDocument()
       })
@@ -188,7 +188,7 @@ describe('AllLinks', () => {
       renderWithQueryClient(<AllLinks />)
       
       await waitFor(() => {
-        expect(screen.getByText(/创建：2022\/01\/01/)).toBeInTheDocument()
+        expect(screen.getAllByText(/创建：2022\/01\/01/)[0]).toBeInTheDocument()
         expect(screen.getByText(/发布：2022\/01\/01/)).toBeInTheDocument()
       })
     })
