@@ -97,6 +97,12 @@ class ApiClient {
     return this.request(`/admin/pending${queryString}`)
   }
 
+  // Get all links for admin (published, pending, deleted) with pagination and search
+  async getAllLinksAdmin(params?: Record<string, any>) {
+    const queryString = params ? `?${new URLSearchParams(params).toString()}` : ''
+    return this.request(`/admin/links${queryString}`)
+  }
+
   async batchPendingLinks(ids: number[], action: 'confirm' | 'delete' | 'reanalyze', params?: any) {
     return this.request('/admin/pending/batch', {
       method: 'POST',
