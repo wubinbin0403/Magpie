@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import api from '../utils/api'
+import CategoryBadge from './CategoryBadge'
+import TagList from './TagList'
 
 interface Link {
   id: number
@@ -11,6 +13,7 @@ interface Link {
   domain: string
   publishedAt: string
   createdAt: string
+  readingTime?: number // AI estimated reading time in minutes
 }
 
 interface LinkCardProps {
@@ -24,7 +27,7 @@ export default function LinkCard({ link, onTitleClick, onTagClick, selectedTags 
   const [domainCount, setDomainCount] = useState<number | null>(null)
   const [showTooltip, setShowTooltip] = useState(false)
   const [showDateTooltip, setShowDateTooltip] = useState(false)
-  const [showTagsTooltip, setShowTagsTooltip] = useState(false)
+  const [showReadingTimeTooltip, setShowReadingTimeTooltip] = useState(false)
 
   // Fetch domain count on hover using new dedicated API
   const fetchDomainCount = async () => {
@@ -86,21 +89,24 @@ export default function LinkCard({ link, onTitleClick, onTagClick, selectedTags 
     })
   }
 
-  const handleDomainClick = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    console.log('Filter by domain:', link.domain)
-  }
-
-  const handleTagClick = (e: React.MouseEvent, tag: string) => {
-    e.stopPropagation()
-    if (onTagClick) {
-      onTagClick(tag)
+  // Format reading time: <1h shows "X分钟", >=1h shows "X小时Y分钟"
+  const formatReadingTime = (minutes: number) => {
+    if (minutes < 60) {
+      return `${minutes}分钟`
+    } else {
+      const hours = Math.floor(minutes / 60)
+      const remainingMinutes = minutes % 60
+      if (remainingMinutes === 0) {
+        return `${hours}小时`
+      } else {
+        return `${hours}小时${remainingMinutes}分钟`
+      }
     }
   }
 
-  const handleCategoryClick = (e: React.MouseEvent) => {
+  const handleDomainClick = (e: React.MouseEvent) => {
     e.stopPropagation()
-    console.log('Filter by category:', link.category)
+    console.log('Filter by domain:', link.domain)
   }
 
   return (
@@ -138,8 +144,8 @@ export default function LinkCard({ link, onTitleClick, onTagClick, selectedTags 
           </div>
         </div>
         
-        {/* Domain */}
-        <div className="mb-3 relative">
+        {/* Domain and Reading Time */}
+        <div className="mb-3 relative flex items-center gap-3">
           <button 
             onClick={handleDomainClick}
             onMouseEnter={() => {
@@ -160,8 +166,33 @@ export default function LinkCard({ link, onTitleClick, onTagClick, selectedTags 
             </svg>
             {link.domain}
           </button>
-          
-          {/* Tooltip */}
+
+          {/* Reading Time */}
+          {link.readingTime && (
+            <div 
+              className="relative"
+              onMouseEnter={() => setShowReadingTimeTooltip(true)}
+              onMouseLeave={() => setShowReadingTimeTooltip(false)}
+            >
+              <div className="flex items-center gap-1 text-sm text-base-content/50">
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                </svg>
+                <span>{formatReadingTime(link.readingTime)}</span>
+              </div>
+              
+              {/* Reading Time Tooltip */}
+              {showReadingTimeTooltip && (
+                <div className="absolute bottom-full left-0 mb-2 px-3 py-2 bg-gray-800 text-white text-xs rounded-lg whitespace-nowrap z-10 shadow-lg">
+                  预估阅读时间:{link.readingTime}分钟
+                  {/* Arrow */}
+                  <div className="absolute top-full left-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-gray-800"></div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Domain Tooltip */}
           {showTooltip && (
             <div className="absolute bottom-full left-0 mb-2 px-3 py-2 bg-gray-800 text-white text-xs rounded-lg whitespace-nowrap z-10 shadow-lg">
               {domainCount !== null ? (
@@ -185,65 +216,18 @@ export default function LinkCard({ link, onTitleClick, onTagClick, selectedTags 
         {/* Footer with category and tags */}
         <div className="flex flex-wrap items-center gap-2">
           {/* Category */}
-          <button
-            onClick={handleCategoryClick}
-            className="inline-flex items-center px-2 py-1 bg-accent/20 hover:bg-accent/30 text-secondary text-xs font-medium rounded transition-colors border border-transparent"
-          >
-            <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14-7H5m14 14H5" />
-            </svg>
-            {link.category}
-          </button>
+          <CategoryBadge
+            category={link.category}
+            onClick={() => console.log('Filter by category:', link.category)}
+          />
 
           {/* Tags */}
-          {link.tags.slice(0, 5).map((tag) => (
-            <button
-              key={tag}
-              onClick={(e) => handleTagClick(e, tag)}
-              className={`inline-flex items-center px-2 py-1 text-xs rounded transition-colors border ${
-                selectedTags.includes(tag)
-                  ? 'bg-primary/30 text-primary font-semibold border-primary/50'
-                  : 'bg-primary/10 hover:bg-primary/20 text-primary border-transparent'
-              }`}
-            >
-              #{tag}
-            </button>
-          ))}
-          
-          {link.tags.length > 5 && (
-            <div 
-              className="relative"
-              onMouseEnter={() => setShowTagsTooltip(true)}
-              onMouseLeave={() => setShowTagsTooltip(false)}
-            >
-              <span className="text-xs text-base-content/40 cursor-pointer hover:text-base-content/60 transition-colors">
-                +{link.tags.length - 5} more
-              </span>
-              
-              {/* Tags Tooltip */}
-              {showTagsTooltip && (
-                <div className="absolute bottom-full left-0 mb-2 px-3 py-2 bg-gray-800 text-white text-xs rounded-lg whitespace-nowrap z-20 shadow-lg">
-                  <div className="flex flex-wrap gap-1">
-                    {link.tags.slice(5).map((tag) => (
-                      <button
-                        key={tag}
-                        onClick={(e) => handleTagClick(e, tag)}
-                        className={`inline-flex items-center px-2 py-1 text-xs rounded transition-colors border ${
-                          selectedTags.includes(tag)
-                            ? 'bg-primary/80 text-white font-semibold border-primary'
-                            : 'bg-gray-600 hover:bg-gray-500 text-white border-transparent'
-                        }`}
-                      >
-                        #{tag}
-                      </button>
-                    ))}
-                  </div>
-                  {/* Arrow */}
-                  <div className="absolute top-full left-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-gray-800"></div>
-                </div>
-              )}
-            </div>
-          )}
+          <TagList
+            tags={link.tags}
+            selectedTags={selectedTags}
+            onTagClick={onTagClick}
+            maxVisible={5}
+          />
         </div>
       </div>
     </article>

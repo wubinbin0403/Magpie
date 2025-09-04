@@ -19,7 +19,8 @@ describe('LinkCard', () => {
     tags: ['javascript', 'react', 'testing', 'frontend'],
     domain: 'example.com',
     publishedAt: '2024-01-15T10:30:00Z',
-    createdAt: '2024-01-15T10:30:00Z'
+    createdAt: '2024-01-15T10:30:00Z',
+    readingTime: 5
   }
 
   const defaultProps = {
@@ -274,6 +275,71 @@ describe('LinkCard', () => {
       expect(screen.getByText('example.com').closest('button')).toBeInTheDocument()
       expect(screen.getByText('技术').closest('button')).toBeInTheDocument()
       expect(screen.getByText('#javascript').closest('button')).toBeInTheDocument()
+    })
+  })
+
+  describe('Reading Time Display', () => {
+    it('should display reading time when provided', () => {
+      render(<LinkCard {...defaultProps} />)
+      
+      expect(screen.getByText('5分钟')).toBeInTheDocument()
+    })
+
+    it('should format reading time under 1 hour correctly', () => {
+      const link30Min = { ...mockLink, readingTime: 30 }
+      render(<LinkCard {...defaultProps} link={link30Min} />)
+      
+      expect(screen.getByText('30分钟')).toBeInTheDocument()
+    })
+
+    it('should format reading time over 1 hour correctly', () => {
+      const link90Min = { ...mockLink, readingTime: 90 }
+      render(<LinkCard {...defaultProps} link={link90Min} />)
+      
+      expect(screen.getByText('1小时30分钟')).toBeInTheDocument()
+    })
+
+    it('should format exact hour reading time correctly', () => {
+      const link2Hours = { ...mockLink, readingTime: 120 }
+      render(<LinkCard {...defaultProps} link={link2Hours} />)
+      
+      expect(screen.getByText('2小时')).toBeInTheDocument()
+    })
+
+    it('should not display reading time when not provided', () => {
+      const linkWithoutReadingTime = { ...mockLink, readingTime: undefined }
+      render(<LinkCard {...defaultProps} link={linkWithoutReadingTime} />)
+      
+      expect(screen.queryByText(/分钟/)).not.toBeInTheDocument()
+      expect(screen.queryByText(/小时/)).not.toBeInTheDocument()
+    })
+
+    it('should not display reading time when 0', () => {
+      const linkWithZeroReadingTime = { ...mockLink, readingTime: 0 }
+      render(<LinkCard {...defaultProps} link={linkWithZeroReadingTime} />)
+      
+      expect(screen.queryByText('0分钟')).not.toBeInTheDocument()
+    })
+
+    it('should show reading time tooltip on hover', async () => {
+      render(<LinkCard {...defaultProps} />)
+      
+      const readingTimeElement = screen.getByText('5分钟')
+      fireEvent.mouseEnter(readingTimeElement)
+      
+      expect(screen.getByText('预估阅读时间:5分钟')).toBeInTheDocument()
+      
+      fireEvent.mouseLeave(readingTimeElement)
+      expect(screen.queryByText('预估阅读时间:5分钟')).not.toBeInTheDocument()
+    })
+
+    it('should have book icon for reading time', () => {
+      render(<LinkCard {...defaultProps} />)
+      
+      // Check that the reading time section contains a book icon
+      const readingTimeElement = screen.getByText('5分钟').closest('div')
+      expect(readingTimeElement).toContainHTML('stroke="currentColor"')
+      expect(readingTimeElement).toContainHTML('viewBox="0 0 24 24"')
     })
   })
 })

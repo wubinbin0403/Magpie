@@ -17,6 +17,7 @@ interface Link {
   category: string
   tags: string[]
   domain: string
+  readingTime?: number // AI estimated reading time in minutes
 }
 
 interface MonthGroup {
