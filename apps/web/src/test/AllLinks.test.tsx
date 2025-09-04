@@ -104,7 +104,7 @@ describe('AllLinks', () => {
     vi.clearAllMocks()
     
     // Setup default mock responses
-    vi.mocked(api.getAllLinksAdmin).mockResolvedValue({ data: mockLinks })
+    vi.mocked(api.getAllLinksAdmin).mockResolvedValue(mockLinks)
     vi.mocked(api.getCategories).mockResolvedValue({ data: mockCategories })
     vi.mocked(api.updateLink).mockResolvedValue({ data: { success: true } })
     vi.mocked(api.deleteLink).mockResolvedValue({ data: { success: true } })
@@ -298,8 +298,8 @@ describe('AllLinks', () => {
     })
   })
 
-  describe('Deleting Links', () => {
-    it('should show confirmation dialog when delete is clicked', async () => {
+  describe('Link Actions', () => {
+    it('should show confirmation dialog when delete is clicked for non-deleted links', async () => {
       // Mock window.confirm
       const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
       
@@ -341,6 +341,62 @@ describe('AllLinks', () => {
       
       confirmSpy.mockRestore()
     })
+
+    it('should show restore button for deleted links', async () => {
+      const deletedLinkMock = {
+        ...mockLinks,
+        data: {
+          ...mockLinks.data,
+          links: [{
+            ...mockLinks.data.links[0],
+            status: 'deleted' as const
+          }]
+        }
+      }
+      
+      vi.mocked(api.getAllLinksAdmin).mockResolvedValue(deletedLinkMock)
+      
+      renderWithQueryClient(<AllLinks />)
+      
+      await waitFor(() => {
+        expect(screen.getByText('恢复')).toBeInTheDocument()
+        expect(screen.queryByText('删除')).not.toBeInTheDocument()
+      })
+    })
+
+    it('should restore deleted links when restore is clicked', async () => {
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
+      
+      const deletedLinkMock = {
+        ...mockLinks,
+        data: {
+          ...mockLinks.data,
+          links: [{
+            ...mockLinks.data.links[0],
+            status: 'deleted' as const
+          }]
+        }
+      }
+      
+      vi.mocked(api.getAllLinksAdmin).mockResolvedValue(deletedLinkMock)
+      
+      const user = userEvent.setup()
+      renderWithQueryClient(<AllLinks />)
+      
+      await waitFor(() => {
+        expect(screen.getByText('恢复')).toBeInTheDocument()
+      })
+      
+      await user.click(screen.getByText('恢复'))
+      
+      expect(confirmSpy).toHaveBeenCalledWith('确定要恢复链接"Test Article 1"吗？')
+      
+      await waitFor(() => {
+        expect(api.updateLink).toHaveBeenCalledWith(1, { status: 'published' })
+      })
+      
+      confirmSpy.mockRestore()
+    })
   })
 
   describe('Loading and Error States', () => {
@@ -357,13 +413,11 @@ describe('AllLinks', () => {
 
     it('should show empty state when no links are found', async () => {
       vi.mocked(api.getAllLinksAdmin).mockResolvedValue({
+        ...mockLinks,
         data: {
-          ...mockLinks,
-          data: {
-            ...mockLinks.data,
-            links: [],
-            pagination: { ...mockLinks.data.pagination, total: 0 }
-          }
+          ...mockLinks.data,
+          links: [],
+          pagination: { ...mockLinks.data.pagination, total: 0 }
         }
       })
       
@@ -371,7 +425,7 @@ describe('AllLinks', () => {
       
       await waitFor(() => {
         expect(screen.getByText('暂无链接')).toBeInTheDocument()
-        expect(screen.getByText('当前条件下没有找到任何链接')).toBeInTheDocument()
+        expect(screen.getByText('当前条件下没有找到任何链接，请尝试调整筛选条件或添加新链接。')).toBeInTheDocument()
       })
     })
 
@@ -402,7 +456,7 @@ describe('AllLinks', () => {
         }
       }
       
-      vi.mocked(api.getAllLinksAdmin).mockResolvedValue({ data: mockWithPagination })
+      vi.mocked(api.getAllLinksAdmin).mockResolvedValue(mockWithPagination)
       
       renderWithQueryClient(<AllLinks />)
       

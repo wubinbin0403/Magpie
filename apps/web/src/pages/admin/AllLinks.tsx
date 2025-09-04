@@ -93,8 +93,8 @@ export default function AllLinks() {
     }
   })
 
-  const links = linksData?.data.links || []
-  const pagination = linksData?.data.pagination
+  const links = linksData?.links || []
+  const pagination = linksData?.pagination
   const categories = categoriesData || []
 
   // Update link mutation
@@ -153,6 +153,15 @@ export default function AllLinks() {
     }
   }
 
+  const handleRestoreLink = (id: number, title: string) => {
+    if (confirm(`确定要恢复链接"${title}"吗？`)) {
+      updateMutation.mutate({
+        id,
+        updates: { status: 'published' }
+      })
+    }
+  }
+
   const formatDate = (timestamp: number) => {
     const date = new Date(timestamp * 1000)
     return date.toLocaleString('zh-CN', {
@@ -166,17 +175,17 @@ export default function AllLinks() {
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
-      published: { text: '已发布', class: 'badge-success' },
-      pending: { text: '待审核', class: 'badge-warning' },
-      deleted: { text: '已删除', class: 'badge-error' }
+      published: { text: '已发布', class: 'bg-success text-white text-xs px-2 py-1 rounded-md' },
+      pending: { text: '待审核', class: 'bg-warning text-white text-xs px-2 py-1 rounded-md' },
+      deleted: { text: '已删除', class: 'bg-error text-white text-xs px-2 py-1 rounded-md' }
     }
     
     const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.published
     
     return (
-      <span className={`badge badge-sm ${config.class}`}>
+      <div className={`${config.class}`}>
         {config.text}
-      </span>
+      </div>
     )
   }
 
@@ -210,21 +219,21 @@ export default function AllLinks() {
       </div>
 
       {/* Search and Filters */}
-      <div className="card bg-base-100 shadow-sm">
+      <div className="card bg-base-100">
         <div className="card-body p-4">
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex flex-col sm:flex-row gap-3">
             {/* Search Input */}
-            <div className="flex-1">
+            <div className="flex-1 max-w-6xl">
               <div className="form-control">
-                <div className="input-group">
+                <div className="flex items-center gap-2">
                   <input
                     type="text"
-                    className="input input-bordered input-sm flex-1"
+                    className="input input-bordered flex-1 focus:border-primary"
                     placeholder="搜索标题、描述、域名、分类或ID..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                   />
-                  <button className="btn btn-square btn-sm">
+                  <button className="btn btn-primary btn-square">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                     </svg>
@@ -236,7 +245,7 @@ export default function AllLinks() {
             {/* Status Filter */}
             <div className="form-control">
               <select
-                className="select select-bordered select-sm"
+                className="select select-bordered focus:border-primary"
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value as any)}
               >
@@ -265,31 +274,33 @@ export default function AllLinks() {
           ))}
         </div>
       ) : links.length === 0 ? (
-        <div className="text-center py-12">
-          <div className="text-base-content/60">
-            <svg className="w-16 h-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M19 11H5m14-7H5m14 14H5" />
-            </svg>
-            <p className="text-lg font-medium mb-1">暂无链接</p>
-            <p className="text-sm">当前条件下没有找到任何链接</p>
+        <div className="card bg-base-100">
+          <div className="card-body text-center py-12">
+            <div className="text-base-content/60">
+              <svg className="w-20 h-20 mx-auto mb-6 text-primary/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14-7H5m14 14H5" />
+              </svg>
+              <h3 className="text-xl font-semibold text-base-content mb-2">暂无链接</h3>
+              <p className="text-base-content/60 max-w-md mx-auto">当前条件下没有找到任何链接，请尝试调整筛选条件或添加新链接。</p>
+            </div>
           </div>
         </div>
       ) : (
         <div className="space-y-4">
           {links.map((link) => (
-            <div key={link.id} className="card bg-base-100 shadow-sm hover:shadow-md transition-shadow">
-              <div className="card-body p-4">
+            <div key={link.id} className={`group hover:bg-base-200/30 transition-colors duration-1000 ease-in-out -mx-4 px-4 py-4 rounded-lg ${link.status === 'deleted' ? 'opacity-60' : ''}`}>
+              <div className="">
                 {/* Link Header - Compact Layout */}
-                <div className="flex items-start gap-4">
+                <div className="flex items-start gap-3">
                   {/* ID Badge */}
                   <div className="flex-shrink-0">
-                    <span className="badge badge-neutral badge-sm">#{link.id}</span>
+                    <span className="badge badge-primary badge-outline">#{link.id}</span>
                   </div>
 
                   {/* Main Content */}
                   <div className="flex-1 min-w-0">
                     {/* Title and Status */}
-                    <div className="flex items-start justify-between gap-2 mb-2">
+                    <div className="flex items-start justify-between gap-2 mb-1">
                       <h3 
                         className="font-semibold text-base leading-tight line-clamp-2 cursor-pointer hover:underline"
                         onClick={() => window.open(link.url, '_blank')}
@@ -303,12 +314,12 @@ export default function AllLinks() {
                     </div>
 
                     {/* URL */}
-                    <div className="text-sm text-primary mb-2">
+                    <div className="text-sm mb-1">
                       <a 
                         href={link.url} 
                         target="_blank" 
                         rel="noopener noreferrer"
-                        className="hover:underline truncate block"
+                        className="text-primary hover:text-primary-focus hover:underline truncate block transition-colors"
                         title={link.url}
                       >
                         {link.url}
@@ -316,20 +327,20 @@ export default function AllLinks() {
                     </div>
 
                     {/* Description */}
-                    <p className="text-sm text-base-content/80 mb-3 line-clamp-2">
+                    <p className="text-sm text-base-content/80 mb-2 line-clamp-2">
                       {link.description}
                     </p>
 
                     {/* Category and Tags */}
                     {editingId !== link.id && (
-                      <div className="flex flex-wrap items-center gap-2 mb-3">
+                      <div className="flex flex-wrap items-center gap-2 mb-2">
                         {link.category && <CategoryBadge category={link.category} />}
                         {link.tags.length > 0 && <TagList tags={link.tags} maxVisible={6} />}
                       </div>
                     )}
 
                     {/* Metadata */}
-                    <div className="flex items-center gap-4 text-xs text-base-content/60 mb-3">
+                    <div className="flex items-center gap-4 text-xs text-base-content/60 mb-2">
                       <span>创建：{formatDate(link.createdAt)}</span>
                       {link.publishedAt && (
                         <span>发布：{formatDate(link.publishedAt)}</span>
@@ -360,7 +371,7 @@ export default function AllLinks() {
                         isLoading={updateMutation.isPending}
                         showStatus={true}
                         compact={true}
-                        className="mb-3"
+                        className="mb-2"
                       />
                     )}
 
@@ -368,7 +379,7 @@ export default function AllLinks() {
                     {editingId !== link.id && (
                       <div className="flex items-center gap-2">
                         <button 
-                          className="btn btn-outline btn-sm"
+                          className="btn btn-primary btn-outline btn-sm hover:btn-primary"
                           onClick={() => handleStartEdit(link)}
                         >
                           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -376,16 +387,29 @@ export default function AllLinks() {
                           </svg>
                           编辑
                         </button>
-                        <button 
-                          className="btn btn-error btn-outline btn-sm"
-                          onClick={() => handleDeleteLink(link.id, link.title)}
-                          disabled={deleteMutation.isPending}
-                        >
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                          删除
-                        </button>
+                        {link.status === 'deleted' ? (
+                          <button 
+                            className="btn btn-success btn-outline btn-sm hover:btn-success"
+                            onClick={() => handleRestoreLink(link.id, link.title)}
+                            disabled={updateMutation.isPending}
+                          >
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                            恢复
+                          </button>
+                        ) : (
+                          <button 
+                            className="btn btn-error btn-outline btn-sm hover:btn-error"
+                            onClick={() => handleDeleteLink(link.id, link.title)}
+                            disabled={deleteMutation.isPending}
+                          >
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            删除
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>
@@ -398,57 +422,145 @@ export default function AllLinks() {
 
       {/* Pagination */}
       {pagination && pagination.totalPages > 1 && (
-        <div className="flex justify-center">
-          <div className="join">
-            <button
-              className="join-item btn btn-sm"
-              disabled={currentPage === 1}
-              onClick={() => setCurrentPage(1)}
-            >
-              首页
-            </button>
-            <button
-              className="join-item btn btn-sm"
-              disabled={currentPage === 1}
-              onClick={() => setCurrentPage(prev => prev - 1)}
-            >
-              上一页
-            </button>
+        <div className="card bg-base-100">
+          <div className="card-body p-3">
+            <div className="flex justify-between items-center">
+              <div className="text-sm text-base-content/70">
+                显示 {((currentPage - 1) * pageSize) + 1}-{Math.min(currentPage * pageSize, pagination.total)} 条，共 {pagination.total} 条
+              </div>
+              <div className="flex items-center gap-1">
+                <button
+                  className="px-3 py-1 text-sm text-primary hover:text-primary-focus disabled:text-base-content/40 transition-colors"
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(1)}
+                >
+                  首页
+                </button>
+                <button
+                  className="px-3 py-1 text-sm text-primary hover:text-primary-focus disabled:text-base-content/40 transition-colors"
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(prev => prev - 1)}
+                >
+                  上一页
+                </button>
             
             {/* Page Numbers */}
-            {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
-              const pageNum = Math.max(1, Math.min(
-                pagination.totalPages - 4,
-                currentPage - 2
-              )) + i
+            {(() => {
+              const pages = []
+              const totalPages = pagination.totalPages
+              const current = currentPage
               
-              if (pageNum > pagination.totalPages) return null
+              if (totalPages <= 7) {
+                // Show all pages if 7 or fewer
+                for (let i = 1; i <= totalPages; i++) {
+                  pages.push(
+                    <button
+                      key={i}
+                      className={`px-3 py-1 text-sm transition-colors ${
+                        current === i 
+                          ? 'text-primary underline underline-offset-2' 
+                          : 'text-primary hover:text-primary-focus'
+                      }`}
+                      onClick={() => setCurrentPage(i)}
+                    >
+                      {i}
+                    </button>
+                  )
+                }
+              } else {
+                // Complex pagination with ellipsis
+                // Always show first page
+                pages.push(
+                  <button
+                    key={1}
+                    className={`px-3 py-1 text-sm transition-colors ${
+                      current === 1 
+                        ? 'text-primary underline underline-offset-2' 
+                        : 'text-primary hover:text-primary-focus'
+                    }`}
+                    onClick={() => setCurrentPage(1)}
+                  >
+                    1
+                  </button>
+                )
+                
+                // Add ellipsis after first page if needed
+                if (current > 4) {
+                  pages.push(
+                    <span key="ellipsis-start" className="px-2 py-1 text-sm text-base-content/60">
+                      ...
+                    </span>
+                  )
+                }
+                
+                // Show pages around current page
+                const start = Math.max(2, current - 1)
+                const end = Math.min(totalPages - 1, current + 1)
+                
+                for (let i = start; i <= end; i++) {
+                  if (i !== 1 && i !== totalPages) {
+                    pages.push(
+                      <button
+                        key={i}
+                        className={`px-3 py-1 text-sm transition-colors ${
+                          current === i 
+                            ? 'text-primary underline underline-offset-2' 
+                            : 'text-primary hover:text-primary-focus'
+                        }`}
+                        onClick={() => setCurrentPage(i)}
+                      >
+                        {i}
+                      </button>
+                    )
+                  }
+                }
+                
+                // Add ellipsis before last page if needed
+                if (current < totalPages - 3) {
+                  pages.push(
+                    <span key="ellipsis-end" className="px-2 py-1 text-sm text-base-content/60">
+                      ...
+                    </span>
+                  )
+                }
+                
+                // Always show last page
+                if (totalPages > 1) {
+                  pages.push(
+                    <button
+                      key={totalPages}
+                      className={`px-3 py-1 text-sm transition-colors ${
+                        current === totalPages 
+                          ? 'text-primary underline underline-offset-2' 
+                          : 'text-primary hover:text-primary-focus'
+                      }`}
+                      onClick={() => setCurrentPage(totalPages)}
+                    >
+                      {totalPages}
+                    </button>
+                  )
+                }
+              }
               
-              return (
-                <button
-                  key={pageNum}
-                  className={`join-item btn btn-sm ${currentPage === pageNum ? 'btn-active' : ''}`}
-                  onClick={() => setCurrentPage(pageNum)}
-                >
-                  {pageNum}
-                </button>
-              )
-            })}
+              return pages
+            })()}
             
-            <button
-              className="join-item btn btn-sm"
-              disabled={currentPage === pagination.totalPages}
-              onClick={() => setCurrentPage(prev => prev + 1)}
-            >
-              下一页
-            </button>
-            <button
-              className="join-item btn btn-sm"
-              disabled={currentPage === pagination.totalPages}
-              onClick={() => setCurrentPage(pagination.totalPages)}
-            >
-              末页
-            </button>
+                <button
+                  className="px-3 py-1 text-sm text-primary hover:text-primary-focus disabled:text-base-content/40 transition-colors"
+                  disabled={currentPage === pagination.totalPages}
+                  onClick={() => setCurrentPage(prev => prev + 1)}
+                >
+                  下一页
+                </button>
+                <button
+                  className="px-3 py-1 text-sm text-primary hover:text-primary-focus disabled:text-base-content/40 transition-colors"
+                  disabled={currentPage === pagination.totalPages}
+                  onClick={() => setCurrentPage(pagination.totalPages)}
+                >
+                  末页
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

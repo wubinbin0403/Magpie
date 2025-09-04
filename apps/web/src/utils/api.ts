@@ -234,7 +234,7 @@ class ApiClient {
     tags?: string[]
     status?: string
   }) {
-    return this.request(`/links/${id}`, {
+    return this.request(`/admin/links/${id}`, {
       method: 'PUT',
       body: JSON.stringify(updates),
     })

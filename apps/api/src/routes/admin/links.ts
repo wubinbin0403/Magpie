@@ -3,8 +3,8 @@ import { zValidator } from '@hono/zod-validator'
 import { db } from '../../db/index.js'
 import { links } from '../../db/schema.js'
 import { eq, desc, asc, count, and, or, like, inArray } from 'drizzle-orm'
-import { sendSuccess, sendError } from '../../utils/response.js'
-import { adminLinksQuerySchema } from '../../utils/validation.js'
+import { sendSuccess, sendError, notFound } from '../../utils/response.js'
+import { adminLinksQuerySchema, idParamSchema, updateLinkSchema } from '../../utils/validation.js'
 import { requireAdmin } from '../../middleware/admin.js'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 
@@ -110,45 +110,65 @@ export function createAdminLinksRouter(database = db) {
       }
       
       // Get total count
-      let totalCountQuery = database
-        .select({ count: count() })
-        .from(links)
-      
-      if (whereClause) {
-        totalCountQuery = totalCountQuery.where(whereClause)
-      }
-      
-      const totalResult = await totalCountQuery
+      const totalResult = whereClause 
+        ? await database
+            .select({ count: count() })
+            .from(links)
+            .where(whereClause)
+        : await database
+            .select({ count: count() })
+            .from(links)
       
       const total = totalResult[0].count
       const totalPages = Math.ceil(total / limit)
       
       // Get links list
-      let linksQuery = database
-        .select({
-          id: links.id,
-          url: links.url,
-          title: links.title,
-          domain: links.domain,
-          originalDescription: links.originalDescription,
-          userDescription: links.userDescription,
-          aiSummary: links.aiSummary,
-          aiCategory: links.aiCategory,
-          userCategory: links.userCategory,
-          aiTags: links.aiTags,
-          userTags: links.userTags,
-          status: links.status,
-          createdAt: links.createdAt,
-          publishedAt: links.publishedAt,
-          readingTime: links.aiReadingTime,
-        })
-        .from(links)
-      
-      if (whereClause) {
-        linksQuery = linksQuery.where(whereClause)
-      }
-      
-      const linksResult = await linksQuery.orderBy(orderBy).limit(limit).offset(offset)
+      const linksResult = whereClause 
+        ? await database
+            .select({
+              id: links.id,
+              url: links.url,
+              title: links.title,
+              domain: links.domain,
+              originalDescription: links.originalDescription,
+              userDescription: links.userDescription,
+              aiSummary: links.aiSummary,
+              aiCategory: links.aiCategory,
+              userCategory: links.userCategory,
+              aiTags: links.aiTags,
+              userTags: links.userTags,
+              status: links.status,
+              createdAt: links.createdAt,
+              publishedAt: links.publishedAt,
+              readingTime: links.aiReadingTime,
+            })
+            .from(links)
+            .where(whereClause)
+            .orderBy(orderBy)
+            .limit(limit)
+            .offset(offset)
+        : await database
+            .select({
+              id: links.id,
+              url: links.url,
+              title: links.title,
+              domain: links.domain,
+              originalDescription: links.originalDescription,
+              userDescription: links.userDescription,
+              aiSummary: links.aiSummary,
+              aiCategory: links.aiCategory,
+              userCategory: links.userCategory,
+              aiTags: links.aiTags,
+              userTags: links.userTags,
+              status: links.status,
+              createdAt: links.createdAt,
+              publishedAt: links.publishedAt,
+              readingTime: links.aiReadingTime,
+            })
+            .from(links)
+            .orderBy(orderBy)
+            .limit(limit)
+            .offset(offset)
       
       // Format response data
       const formattedLinks: AdminLink[] = linksResult.map(link => {
@@ -197,6 +217,128 @@ export function createAdminLinksRouter(database = db) {
       return sendError(c, 'INTERNAL_SERVER_ERROR', 'Failed to fetch links')
     }
   })
+
+  // PUT /api/admin/links/:id - Update link (admin authenticated)
+  app.put('/:id', 
+    requireAdmin(database), 
+    zValidator('param', idParamSchema),
+    zValidator('json', updateLinkSchema),
+    async (c) => {
+      try {
+        const { id } = c.req.valid('param')
+        const updateData = c.req.valid('json')
+
+        // Get link details first
+        const linkResult = await database
+          .select()
+          .from(links)
+          .where(eq(links.id, id))
+          .limit(1)
+
+        if (linkResult.length === 0) {
+          return notFound(c, 'Link not found')
+        }
+
+        const link = linkResult[0]
+        const now = Math.floor(Date.now() / 1000)
+        const updateFields: any = {
+          updatedAt: now
+        }
+
+        // Handle status change
+        if (updateData.status) {
+          updateFields.status = updateData.status
+          
+          if (updateData.status === 'published' && link.status !== 'published') {
+            updateFields.publishedAt = now
+          }
+        }
+
+        // Update title if provided
+        if (updateData.title !== undefined) {
+          updateFields.title = updateData.title
+        }
+
+        // Update user values if provided
+        if (updateData.description !== undefined) {
+          updateFields.userDescription = updateData.description
+        }
+        if (updateData.category !== undefined) {
+          updateFields.userCategory = updateData.category
+        }
+        if (updateData.tags !== undefined) {
+          updateFields.userTags = JSON.stringify(updateData.tags)
+        }
+
+        // Perform the update
+        await database
+          .update(links)
+          .set(updateFields)
+          .where(eq(links.id, id))
+
+        // Fetch and return the updated link
+        const updatedLinkResult = await database
+          .select({
+            id: links.id,
+            url: links.url,
+            title: links.title,
+            domain: links.domain,
+            originalDescription: links.originalDescription,
+            userDescription: links.userDescription,
+            aiSummary: links.aiSummary,
+            aiCategory: links.aiCategory,
+            userCategory: links.userCategory,
+            aiTags: links.aiTags,
+            userTags: links.userTags,
+            status: links.status,
+            createdAt: links.createdAt,
+            publishedAt: links.publishedAt,
+            readingTime: links.aiReadingTime,
+          })
+          .from(links)
+          .where(eq(links.id, id))
+          .limit(1)
+
+        if (updatedLinkResult.length === 0) {
+          return sendError(c, 'UPDATE_FAILED', 'Failed to fetch updated link')
+        }
+
+        const updatedLink = updatedLinkResult[0]
+        
+        // Format response data same as GET endpoint
+        const description = updatedLink.userDescription || updatedLink.aiSummary || updatedLink.originalDescription || ''
+        const category = updatedLink.userCategory || updatedLink.aiCategory || ''
+        const tags = (() => {
+          try {
+            const userTags = updatedLink.userTags ? JSON.parse(updatedLink.userTags) : []
+            const aiTags = updatedLink.aiTags ? JSON.parse(updatedLink.aiTags) : []
+            return userTags.length > 0 ? userTags : aiTags
+          } catch {
+            return []
+          }
+        })()
+
+        const formattedLink = {
+          id: updatedLink.id,
+          url: updatedLink.url,
+          title: updatedLink.title || '',
+          domain: updatedLink.domain,
+          description,
+          category,
+          tags,
+          status: updatedLink.status as 'published' | 'pending' | 'deleted',
+          createdAt: updatedLink.createdAt,
+          publishedAt: updatedLink.publishedAt || undefined,
+          readingTime: updatedLink.readingTime || undefined,
+        }
+
+        return sendSuccess(c, formattedLink)
+        
+      } catch (error) {
+        console.error('Error updating admin link:', error)
+        return sendError(c, 'INTERNAL_SERVER_ERROR', 'Failed to update link')
+      }
+    })
 
   return app
 }
