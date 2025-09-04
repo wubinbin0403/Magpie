@@ -6,6 +6,7 @@ import AdminNavBar from '../components/AdminNavBar'
 import AdminSidebar from '../components/AdminSidebar'
 import AdminOverview from './admin/AdminOverview'
 import PendingLinks from './admin/PendingLinks'
+import AllLinks from './admin/AllLinks'
 import AddLink from './admin/AddLink'
 import SystemSettings from './admin/SystemSettings'
 import AISettings from './admin/AISettings'
@@ -80,7 +81,7 @@ export default function AdminPage() {
               
               {/* Dashboard routes */}
               <Route path="/pending" element={<PendingLinks />} />
-              <Route path="/links" element={<div>所有链接页面（即将推出）</div>} />
+              <Route path="/links" element={<AllLinks />} />
               <Route path="/activity" element={<div>活动页面（即将推出）</div>} />
               
               {/* Link Management routes */}
