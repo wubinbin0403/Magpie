@@ -38,6 +38,7 @@ describe('Public Links API', () => {
             userDescription: 'Published description',
             userCategory: 'test',
             userTags: JSON.stringify(['tag1', 'tag2']),
+            aiReadingTime: 5,
             status: 'published',
             publishedAt: now,
             createdAt: now,
@@ -59,6 +60,7 @@ describe('Public Links API', () => {
       expect(data.data.links).toHaveLength(1)
       expect(data.data.links[0].title).toBe('Published Link')
       expect(data.data.links[0].tags).toEqual(['tag1', 'tag2'])
+      expect(data.data.links[0].readingTime).toBe(5)
       expect(data.data.pagination.total).toBe(1)
     })
 
@@ -383,6 +385,7 @@ describe('Public Links API', () => {
           userDescription: 'This is a published link',
           userCategory: 'tech',
           userTags: JSON.stringify(['react', 'frontend']),
+          aiReadingTime: 8,
           status: 'published',
           publishedAt: now,
           createdAt: now,
@@ -401,6 +404,62 @@ describe('Public Links API', () => {
       expect(data.data.tags).toEqual(['react', 'frontend'])
       expect(data.data.domain).toBe('example.com')
       expect(data.data.url).toBe('https://example.com/published')
+      expect(data.data.readingTime).toBe(8)
+    })
+
+    it('should handle readingTime field properly', async () => {
+      const now = Math.floor(Date.now() / 1000)
+      const linksResult = await testDrizzle
+        .insert(links)
+        .values([
+          {
+            url: 'https://example.com/with-reading-time',
+            domain: 'example.com',
+            title: 'Link with Reading Time',
+            userDescription: 'Has reading time',
+            userCategory: 'tech',
+            userTags: '[]',
+            aiReadingTime: 10,
+            status: 'published',
+            publishedAt: now,
+            createdAt: now,
+          },
+          {
+            url: 'https://example.com/without-reading-time',
+            domain: 'example.com',
+            title: 'Link without Reading Time',
+            userDescription: 'No reading time',
+            userCategory: 'tech',
+            userTags: '[]',
+            aiReadingTime: null,
+            status: 'published',
+            publishedAt: now + 1,
+            createdAt: now + 1,
+          }
+        ])
+        .returning({ id: links.id })
+
+      // Test list endpoint includes readingTime
+      const listResponse = await app.request('/')
+      const listData = await listResponse.json() as any
+
+      expect(listResponse.status).toBe(200)
+      expect(listData.success).toBe(true)
+      expect(listData.data.links).toHaveLength(2)
+      
+      const linkWithTime = listData.data.links.find((l: any) => l.title === 'Link with Reading Time')
+      const linkWithoutTime = listData.data.links.find((l: any) => l.title === 'Link without Reading Time')
+      
+      expect(linkWithTime.readingTime).toBe(10)
+      expect(linkWithoutTime.readingTime).toBeUndefined()
+
+      // Test detail endpoint includes readingTime
+      const detailResponse = await app.request(`/${linksResult[0].id}`)
+      const detailData = await detailResponse.json() as any
+
+      expect(detailResponse.status).toBe(200)
+      expect(detailData.success).toBe(true)
+      expect(detailData.data.readingTime).toBe(10)
     })
 
     it('should validate ID parameter', async () => {

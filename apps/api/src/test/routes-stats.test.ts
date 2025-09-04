@@ -35,19 +35,19 @@ const createStatsApp = () => {
       // 获取分类统计
       const categoryStats = await testDrizzle
         .select({
-          category: sql<string>`COALESCE(${links.userCategory}, ${links.aiCategory})`,
+          category: links.userCategory,
           count: sql<number>`count(*)`
         })
         .from(links)
         .where(eq(links.status, 'published'))
-        .groupBy(sql`COALESCE(${links.userCategory}, ${links.aiCategory})`)
-        .having(sql`COALESCE(${links.userCategory}, ${links.aiCategory}) IS NOT NULL`)
+        .groupBy(links.userCategory)
+        .having(sql`${links.userCategory} IS NOT NULL`)
 
       const totalCategories = categoryStats.length
 
       // 获取标签统计 (简化版本 - 统计唯一标签数量)
       const tagData = await testDrizzle
-        .select({ tags: sql<string>`COALESCE(${links.userTags}, ${links.aiTags})` })
+        .select({ tags: links.userTags })
         .from(links)
         .where(eq(links.status, 'published'))
 

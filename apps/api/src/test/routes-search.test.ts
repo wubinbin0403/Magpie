@@ -36,14 +36,14 @@ const createSearchApp = () => {
       whereConditions.push(
         or(
           like(links.title, `%${q}%`),
-          like(sql`COALESCE(${links.userDescription}, ${links.aiSummary})`, `%${q}%`),
-          like(sql`COALESCE(${links.userTags}, ${links.aiTags})`, `%${q}%`),
+          like(links.userDescription, `%${q}%`),
+          like(links.userTags, `%${q}%`),
           like(links.domain, `%${q}%`)
         )
       )
       
       if (category) {
-        whereConditions.push(eq(sql`COALESCE(${links.userCategory}, ${links.aiCategory})`, category))
+        whereConditions.push(eq(links.userCategory, category))
       }
       
       if (domain) {
@@ -53,7 +53,7 @@ const createSearchApp = () => {
       if (tags) {
         const tagList = tags.split(',').map(t => t.trim())
         const tagConditions = tagList.map(tag => 
-          like(sql`COALESCE(${links.userTags}, ${links.aiTags})`, `%${tag}%`)
+          like(links.userTags, `%${tag}%`)
         )
         whereConditions.push(or(...tagConditions))
       }
@@ -98,10 +98,11 @@ const createSearchApp = () => {
           id: links.id,
           url: links.url,
           title: links.title,
-          description: sql<string>`COALESCE(${links.userDescription}, ${links.aiSummary})`,
-          category: sql<string>`COALESCE(${links.userCategory}, ${links.aiCategory})`,
-          tags: sql<string>`COALESCE(${links.userTags}, ${links.aiTags})`,
+          description: links.userDescription,
+          category: links.userCategory,
+          tags: links.userTags,
           domain: links.domain,
+          readingTime: links.aiReadingTime,
           publishedAt: links.publishedAt,
           createdAt: links.createdAt,
         })
@@ -121,6 +122,7 @@ const createSearchApp = () => {
           category: link.category || '',
           tags: link.tags ? JSON.parse(link.tags) : [],
           domain: link.domain,
+          readingTime: link.readingTime || undefined,
           publishedAt: new Date(link.publishedAt * 1000).toISOString(),
           createdAt: new Date(link.createdAt * 1000).toISOString(),
           score: 1.0 - (index * 0.01), // 简单的相关性得分
@@ -208,20 +210,20 @@ const createSearchApp = () => {
       }
       
       if (!type || type === 'category') {
-        // 从分类中查找建议
+        // 从分类中查承建议
         const categorySuggestions = await testDrizzle
           .select({ 
-            category: sql<string>`COALESCE(${links.userCategory}, ${links.aiCategory})`,
+            category: links.userCategory,
             count: count()
           })
           .from(links)
           .where(
             and(
               eq(links.status, 'published'),
-              like(sql`COALESCE(${links.userCategory}, ${links.aiCategory})`, `%${q}%`)
+              like(links.userCategory, `%${q}%`)
             )
           )
-          .groupBy(sql`COALESCE(${links.userCategory}, ${links.aiCategory})`)
+          .groupBy(links.userCategory)
           .limit(limit)
         
         categorySuggestions.forEach(item => {
@@ -238,7 +240,7 @@ const createSearchApp = () => {
       if (!type || type === 'tag') {
         // 从标签中查找建议
         const tagData = await testDrizzle
-          .select({ tags: sql<string>`COALESCE(${links.userTags}, ${links.aiTags})` })
+          .select({ tags: links.userTags })
           .from(links)
           .where(eq(links.status, 'published'))
 
@@ -325,8 +327,8 @@ describe('Public Search API', () => {
         title: 'React Tutorial for Beginners',
         originalDescription: 'Learn React basics',
         aiSummary: 'React tutorial',
-        userDescription: 'Great React tutorial',
         userDescription: 'Complete React tutorial for beginners',
+        aiReadingTime: 5,
         userCategory: 'programming',
         userTags: '["react", "javascript", "tutorial"]',
         status: 'published',
@@ -339,8 +341,8 @@ describe('Public Search API', () => {
         title: 'Vue.js Complete Guide', 
         originalDescription: 'Vue.js guide',
         aiSummary: 'Vue guide',
-        userDescription: 'Vue.js guide',
         userDescription: 'Vue.js framework complete guide',
+        aiReadingTime: 8,
         userCategory: 'programming',
         userTags: '["vue", "javascript", "framework"]',
         status: 'published',
@@ -353,8 +355,8 @@ describe('Public Search API', () => {
         title: 'Design Patterns in Software',
         originalDescription: 'Design patterns',
         aiSummary: 'Design patterns',
-        userDescription: 'Software design patterns',
         userDescription: 'Common design patterns in software development',
+        aiReadingTime: 12,
         userCategory: 'architecture',
         userTags: '["patterns", "design", "software"]',
         status: 'published',
@@ -378,6 +380,7 @@ describe('Public Search API', () => {
       expect(data.data.results[0].title).toContain('React')
       expect(data.data.results[0]).toHaveProperty('score')
       expect(data.data.results[0]).toHaveProperty('highlights')
+      expect(data.data.results[0].readingTime).toBe(5)
     })
 
     it('should return search with highlights when enabled', async () => {
