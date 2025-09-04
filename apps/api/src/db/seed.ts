@@ -615,7 +615,6 @@ async function seedDatabase(database = db, includeDevData = false) {
           status: link.status as 'pending' | 'published' | 'deleted',
           createdAt: linkCreatedAt,
           publishedAt: link.status === 'published' ? linkPublishedAt : undefined,
-          searchText,
         });
         
         if ((i + 1) % 10 === 0) {
@@ -625,15 +624,8 @@ async function seedDatabase(database = db, includeDevData = false) {
       
       console.log(`✓ Inserted all ${SAMPLE_LINKS.length} sample links`);
       
-      // Populate FTS5 index for existing published links
-      console.log('Populating FTS5 search index...');
-      await database.run(sql`
-        INSERT INTO links_fts(rowid, title, description, tags, domain, category)
-        SELECT id, title, user_description, user_tags, domain, user_category 
-        FROM links 
-        WHERE status = 'published'
-      `);
-      console.log('✓ FTS5 search index populated');
+      // FTS5 index is automatically populated by triggers during link insertion
+      console.log('✓ FTS5 search index automatically populated via triggers');
     }
     
     console.log('Database seeding completed successfully!');
