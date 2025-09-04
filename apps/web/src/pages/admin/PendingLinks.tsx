@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '../../utils/api'
+import CategoryBadge from '../../components/CategoryBadge'
+import TagList from '../../components/TagList'
 
 interface PendingLink {
   id: number
@@ -20,6 +22,13 @@ interface PendingLink {
 
 export default function PendingLinks() {
   const [selectedIds, setSelectedIds] = useState<number[]>([])
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const [editForm, setEditForm] = useState({
+    title: '',
+    description: '',
+    category: '',
+    tags: [] as string[]
+  })
   const queryClient = useQueryClient()
 
   // Fetch pending links
@@ -30,6 +39,17 @@ export default function PendingLinks() {
       return response.data
     }
   })
+
+  // Fetch categories for the edit form
+  const { data: categoriesData } = useQuery({
+    queryKey: ['categories'],
+    queryFn: async () => {
+      const response = await api.getCategories()
+      return response.data
+    }
+  })
+
+  const categories = categoriesData || []
 
   // Process the data to ensure proper format
   const pendingLinks: PendingLink[] = (pendingLinksData?.links || []).map((link: any) => ({
@@ -64,6 +84,73 @@ export default function PendingLinks() {
       setSelectedIds([])
     }
   })
+
+  // Update link mutation for editing
+  const updateMutation = useMutation({
+    mutationFn: async (data: { id: number; title?: string; description: string; category: string; tags: string[] }) => {
+      const response = await api.confirmLink(data.id, {
+        title: data.title,
+        description: data.description,
+        category: data.category,
+        tags: data.tags,
+        publish: true
+      })
+      return response.data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pending-links'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-stats-summary'] })
+      setEditingId(null)
+      setEditForm({ title: '', description: '', category: '', tags: [] })
+    }
+  })
+
+  // Edit handlers
+  const handleStartEdit = (link: PendingLink) => {
+    setEditForm({
+      title: link.title,
+      description: link.aiSummary,
+      category: link.aiCategory,
+      tags: [...link.aiTags]
+    })
+    setEditingId(link.id)
+  }
+
+  const handleCancelEdit = () => {
+    setEditingId(null)
+    setEditForm({ title: '', description: '', category: '', tags: [] })
+  }
+
+  const handleSaveEdit = () => {
+    if (!editingId) return
+    
+    // Basic validation
+    if (!editForm.title.trim() || !editForm.description.trim() || !editForm.category) {
+      alert('请填写所有必填字段')
+      return
+    }
+
+    updateMutation.mutate({
+      id: editingId,
+      title: editForm.title.trim(),
+      description: editForm.description.trim(),
+      category: editForm.category,
+      tags: editForm.tags
+    })
+  }
+
+  const handleTagsChange = (tagsString: string) => {
+    const tags = tagsString
+      .split(',')
+      .map(tag => tag.trim())
+      .filter(tag => tag.length > 0)
+    
+    setEditForm(prev => ({ ...prev, tags }))
+  }
+
+  const getTagsString = () => {
+    return editForm.tags.join(', ')
+  }
 
   const handleSelectAll = () => {
     if (selectedIds.length === pendingLinks.length) {
@@ -241,135 +328,246 @@ export default function PendingLinks() {
             </div>
           </div>
 
-          {/* Pending Links List */}
-          <div className="space-y-4">
+          {/* Pending Links List - Redesigned to match HomePage style */}
+          <div className="space-y-8">
             {pendingLinks.map((link) => (
-              <div key={link.id} className={`card bg-base-100 shadow-sm hover:shadow-md transition-shadow ${
-                selectedIds.includes(link.id) ? 'ring-2 ring-primary ring-opacity-50' : ''
+              <article key={link.id} className={`bg-transparent transition-all duration-200 ${
+                selectedIds.includes(link.id) ? 'opacity-75' : ''
               }`}>
-                <div className="card-body p-6">
-                  <div className="flex items-start gap-4">
-                    {/* Checkbox */}
-                    <label className="flex items-center cursor-pointer mt-1">
-                      <input
-                        type="checkbox"
-                        className="checkbox checkbox-primary"
-                        checked={selectedIds.includes(link.id)}
-                        onChange={() => handleSelectOne(link.id)}
-                      />
-                    </label>
+                <div className="flex items-start gap-4">
+                  {/* Checkbox - styled to match design */}
+                  <label className="flex items-center cursor-pointer mt-2">
+                    <input
+                      type="checkbox"
+                      className="checkbox checkbox-primary checkbox-sm"
+                      checked={selectedIds.includes(link.id)}
+                      onChange={() => handleSelectOne(link.id)}
+                    />
+                  </label>
 
-                    {/* Content */}
-                    <div className="flex-1 min-w-0">
-                      {/* Header */}
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex-1 min-w-0">
-                          <h3 className="text-lg font-semibold text-base-content mb-1 truncate">
-                            {link.title}
-                          </h3>
-                          <div className="flex items-center gap-2 text-sm text-base-content/60 mb-2">
-                            <span>{link.domain}</span>
-                            <span>•</span>
-                            <span>{formatDate(link.createdAt)}</span>
-                          </div>
-                        </div>
+                  {/* Main Content */}
+                  <div className="flex-1 min-w-0">
+                    {/* Header with title and date - matching LinkCard */}
+                    <div className="flex items-start justify-between gap-4 mb-3">
+                      <h2 
+                        className="text-lg font-semibold line-clamp-2 cursor-pointer hover:underline max-w-[80%] lg:max-w-[61.8%]"
+                        style={{ color: '#06161a' }}
+                        title={link.title}
+                        onClick={() => window.open(link.url, '_blank')}
+                      >
+                        {link.title}
+                      </h2>
+                      
+                      {/* Date in top right */}
+                      <span className="text-xs text-base-content/50 whitespace-nowrap">
+                        {formatDate(link.createdAt)}
+                      </span>
+                    </div>
+                    
+                    {/* Domain and AI status - matching LinkCard meta style */}
+                    <div className="mb-3 flex items-center gap-3">
+                      <div className="flex items-center gap-1 text-sm" style={{ color: '#2c5766' }}>
+                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M4.083 9h1.946c.089-1.546.383-2.97.837-4.118A6.004 6.004 0 004.083 9zM10 2a8 8 0 100 16 8 8 0 000-16zm0 2c-.076 0-.232.032-.465.262-.238.234-.497.623-.737 1.182-.389.907-.673 2.142-.766 3.556h3.936c-.093-1.414-.377-2.649-.766-3.556-.24-.56-.5-.948-.737-1.182C10.232 4.032 10.076 4 10 4zm3.971 5c-.089-1.546-.383-2.97-.837-4.118A6.004 6.004 0 0115.917 9h-1.946zm-2.003 2H8.032c.093 1.414.377 2.649.766 3.556.24.56.5.948.737 1.182.233.23.389.262.465.262.076 0 .232-.032.465-.262.238-.234.498-.623.737-1.182.389-.907.673-2.142.766-3.556zm1.166 4.118c.454-1.147.748-2.572.837-4.118h1.946a6.004 6.004 0 01-2.783 4.118zm-6.268 0C6.412 13.97 6.118 12.546 6.03 11H4.083a6.004 6.004 0 002.783 4.118z" clipRule="evenodd" />
+                        </svg>
+                        {link.domain}
                       </div>
-
-                      {/* AI Analysis Status */}
+                      
+                      {/* AI Status Indicator */}
                       {link.aiAnalysisFailed && (
-                        <div className="alert alert-warning mb-4">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div className="flex items-center gap-1 text-xs text-orange-600">
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                           </svg>
-                          <div className="flex-1">
-                            <div className="text-xs font-semibold">AI 分析失败 - 以下内容基于原始信息生成</div>
-                            {link.aiError && (
-                              <div className="text-xs opacity-75 mt-1">错误信息：{link.aiError}</div>
-                            )}
-                          </div>
+                          <span>AI分析失败</span>
                         </div>
                       )}
-
-                      {/* AI Summary */}
-                      <div className="mb-4">
-                        <div className="text-sm text-base-content/80 leading-relaxed">
-                          <strong className="text-base-content">AI 摘要：</strong> {link.aiSummary}
-                        </div>
-                      </div>
-
-                      {/* AI Suggestions */}
-                      <div className="flex flex-wrap items-center gap-4 mb-4">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-base-content/70">分类：</span>
-                          <span className="badge badge-outline">{link.aiCategory}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-base-content/70">标签：</span>
-                          <div className="flex gap-1">
-                            {link.aiTags.map((tag, index) => (
-                              <span key={index} className="badge badge-ghost badge-sm">
-                                #{tag}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Actions */}
-                      <div className="flex items-center gap-2">
-                        <button 
-                          className="btn btn-success btn-sm"
-                          onClick={() => handleConfirm([link.id])}
-                          disabled={confirmMutation.isPending}
-                        >
-                          <span className="flex items-center gap-2">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            快速确认
-                          </span>
-                        </button>
-                        <button 
-                          className="btn btn-outline btn-sm"
-                          onClick={() => {/* Edit functionality coming soon */}}
-                        >
-                          <span className="flex items-center gap-2">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                            </svg>
-                            编辑
-                          </span>
-                        </button>
-                        <button 
-                          className="btn btn-error btn-outline btn-sm"
-                          onClick={() => handleDelete([link.id])}
-                          disabled={deleteMutation.isPending}
-                        >
-                          <span className="flex items-center gap-2">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                            删除
-                          </span>
-                        </button>
-                        <a 
-                          href={link.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="btn btn-ghost btn-sm"
-                        >
-                          <span className="flex items-center gap-2">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                            </svg>
-                            访问
-                          </span>
-                        </a>
-                      </div>
                     </div>
+
+                    {/* AI Summary - matching LinkCard description style */}
+                    {link.aiSummary && (
+                      <div className="text-base-content/80 text-sm leading-relaxed mb-4 line-clamp-3 max-w-[80%] lg:max-w-[61.8%]">
+                        {link.aiSummary}
+                      </div>
+                    )}
+
+                    {/* AI Error Message - if exists */}
+                    {link.aiAnalysisFailed && link.aiError && (
+                      <div className="text-xs text-red-600/80 mb-3 max-w-[80%] lg:max-w-[61.8%]">
+                        错误: {link.aiError}
+                      </div>
+                    )}
+
+                    {/* AI Suggestions - matching LinkCard footer style */}
+                    {editingId !== link.id && (
+                      <div className="flex flex-wrap items-center gap-2 mb-4">
+                        <CategoryBadge category={link.aiCategory} />
+                        <TagList tags={link.aiTags} maxVisible={8} />
+                      </div>
+                    )}
+
+                    {/* Edit Form - shown when editing this specific link */}
+                    {editingId === link.id && (
+                      <div className="space-y-4 p-4 bg-base-200/30 rounded-lg border border-base-300/20 mb-4">
+                        <h4 className="font-medium text-base-content">编辑链接信息</h4>
+                        
+                        {/* Title */}
+                        <div className="form-control">
+                          <label className="label">
+                            <span className="label-text text-sm">标题</span>
+                          </label>
+                          <input
+                            type="text"
+                            className="input input-bordered input-sm"
+                            value={editForm.title}
+                            onChange={(e) => setEditForm(prev => ({ ...prev, title: e.target.value }))}
+                            placeholder="链接标题"
+                          />
+                        </div>
+
+                        {/* Description */}
+                        <div className="form-control">
+                          <label className="label">
+                            <span className="label-text text-sm">描述</span>
+                          </label>
+                          <textarea
+                            className="textarea textarea-bordered textarea-sm h-20"
+                            value={editForm.description}
+                            onChange={(e) => setEditForm(prev => ({ ...prev, description: e.target.value }))}
+                            placeholder="链接描述或摘要"
+                          />
+                        </div>
+
+                        {/* Category */}
+                        <div className="form-control">
+                          <label className="label">
+                            <span className="label-text text-sm">分类</span>
+                          </label>
+                          <select
+                            className="select select-bordered select-sm"
+                            value={editForm.category}
+                            onChange={(e) => setEditForm(prev => ({ ...prev, category: e.target.value }))}
+                          >
+                            <option value="">选择分类</option>
+                            {categories.map((category: any) => (
+                              <option key={category.id} value={category.name}>{category.name}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* Tags */}
+                        <div className="form-control">
+                          <label className="label">
+                            <span className="label-text text-sm">标签</span>
+                          </label>
+                          <input
+                            type="text"
+                            className="input input-bordered input-sm"
+                            value={getTagsString()}
+                            onChange={(e) => handleTagsChange(e.target.value)}
+                            placeholder="标签1, 标签2, 标签3"
+                          />
+                          <label className="label">
+                            <span className="label-text-alt text-xs text-base-content/50">
+                              多个标签用逗号分隔
+                            </span>
+                          </label>
+                        </div>
+
+                        {/* Edit Actions */}
+                        <div className="flex items-center gap-2 pt-2">
+                          <button 
+                            className={`text-sm px-3 py-1 bg-green-100 hover:bg-green-200 text-green-700 rounded-full transition-colors duration-200 flex items-center gap-1 ${updateMutation.isPending ? 'opacity-50' : ''}`}
+                            onClick={handleSaveEdit}
+                            disabled={updateMutation.isPending}
+                          >
+                            {updateMutation.isPending ? (
+                              <>
+                                <svg className="w-3 h-3 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" strokeOpacity="0.25"></circle>
+                                  <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" strokeOpacity="0.75"></path>
+                                </svg>
+                                保存中...
+                              </>
+                            ) : (
+                              <>
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                </svg>
+                                保存并发布
+                              </>
+                            )}
+                          </button>
+                          
+                          <button 
+                            className="text-sm px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full transition-colors duration-200 flex items-center gap-1"
+                            onClick={handleCancelEdit}
+                            disabled={updateMutation.isPending}
+                          >
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                            取消
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Actions - redesigned to be more minimal, hidden when editing */}
+                    {editingId !== link.id && (
+                      <div className="flex items-center gap-2 flex-wrap">
+                      <button 
+                        className="text-sm px-3 py-1 bg-green-100 hover:bg-green-200 text-green-700 rounded-full transition-colors duration-200 flex items-center gap-1"
+                        onClick={() => handleConfirm([link.id])}
+                        disabled={confirmMutation.isPending}
+                      >
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        确认
+                      </button>
+                      
+                      <button 
+                        className="text-sm px-3 py-1 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-full transition-colors duration-200 flex items-center gap-1"
+                        onClick={() => handleStartEdit(link)}
+                        disabled={updateMutation.isPending}
+                      >
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                        编辑
+                      </button>
+                      
+                      <button 
+                        className="text-sm px-3 py-1 bg-red-100 hover:bg-red-200 text-red-700 rounded-full transition-colors duration-200 flex items-center gap-1"
+                        onClick={() => handleDelete([link.id])}
+                        disabled={deleteMutation.isPending}
+                      >
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                        删除
+                      </button>
+                      
+                      <a 
+                        href={link.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full transition-colors duration-200 flex items-center gap-1"
+                      >
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                        </svg>
+                        访问
+                      </a>
+                    </div>
+                    )}
                   </div>
                 </div>
-              </div>
+                
+                {/* Subtle separator */}
+                <div className="border-b border-base-content/10 mt-6"></div>
+              </article>
             ))}
           </div>
         </>
