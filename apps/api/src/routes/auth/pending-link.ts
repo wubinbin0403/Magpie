@@ -74,6 +74,8 @@ app.get('/:id/pending', requireApiTokenOrAdminSession(database), zValidator('par
         aiSummary: links.aiSummary,
         aiCategory: links.aiCategory,
         aiTags: links.aiTags,
+        aiAnalysisFailed: links.aiAnalysisFailed,
+        aiError: links.aiError,
         userDescription: links.userDescription,
         userCategory: links.userCategory,
         userTags: links.userTags,
@@ -131,6 +133,8 @@ app.get('/:id/pending', requireApiTokenOrAdminSession(database), zValidator('par
       aiSummary: link.aiSummary || '',
       aiCategory: link.aiCategory || '',
       aiTags: link.aiTags ? JSON.parse(link.aiTags) : [],
+      aiAnalysisFailed: link.aiAnalysisFailed === 1,
+      aiError: link.aiError || undefined,
       domain: link.domain,
       createdAt: new Date(link.createdAt * 1000).toISOString(),
     }

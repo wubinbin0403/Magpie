@@ -117,6 +117,8 @@ async function processUrlContent(url: string, database: BetterSQLite3Database<an
   content: any;
   aiAnalysis: AIAnalysisResult;
   scrapingFailed?: boolean;
+  aiAnalysisFailed?: boolean;
+  aiError?: string;
 }> {
   // Step 1: Scrape web content using Readability (with fallback)
   let scrapedContent
@@ -140,6 +142,9 @@ async function processUrlContent(url: string, database: BetterSQLite3Database<an
   
   // Step 2: Get AI settings and analyze content
   let aiAnalysis: AIAnalysisResult
+  let aiAnalysisFailed = false
+  let aiError: string | undefined
+  
   try {
     const settings = await getSettings(database)
     
@@ -152,6 +157,8 @@ async function processUrlContent(url: string, database: BetterSQLite3Database<an
     aiAnalysis = await aiAnalyzer.analyze(scrapedContent)
   } catch (error) {
     console.warn('AI analysis failed, using basic analysis:', error)
+    aiAnalysisFailed = true
+    aiError = error instanceof Error ? error.message : 'Unknown AI analysis error'
     
     // Fallback to basic analysis
     aiAnalysis = {
@@ -167,7 +174,9 @@ async function processUrlContent(url: string, database: BetterSQLite3Database<an
   return {
     content: scrapedContent,
     aiAnalysis,
-    scrapingFailed
+    scrapingFailed,
+    aiAnalysisFailed,
+    aiError
   }
 }
 
@@ -255,7 +264,7 @@ app.get('/add', requireApiTokenOrAdminSession(database), zValidator('query', add
       processedContent = createFallbackContent(url)
     }
 
-    const { content: scrapedContent, aiAnalysis, scrapingFailed } = processedContent
+    const { content: scrapedContent, aiAnalysis, scrapingFailed, aiAnalysisFailed, aiError } = processedContent
     
     // Log if scraping failed for monitoring
     if (scrapingFailed) {
@@ -272,8 +281,24 @@ app.get('/add', requireApiTokenOrAdminSession(database), zValidator('query', add
         'Used fallback content due to scraping failure'
       )
     }
+    
+    // Log if AI analysis failed
+    if (aiAnalysisFailed) {
+      await logOperation(
+        'link_add',
+        'links',
+        undefined,
+        { url, reason: 'ai_analysis_failed', warning: 'AI analysis failed, using fallback', error: aiError },
+        authData.tokenId,
+        authData.userId,
+        authData.clientIp,
+        c.req.header('user-agent'),
+        'success', // Still mark as success since we continue the flow
+        'Used fallback content due to AI analysis failure'
+      )
+    }
 
-    // Create final data (for response only, not stored)
+    // Create final data
     const finalCategory = category || aiAnalysis.category
     const finalTags = tags ? tags.split(',').map(t => t.trim()) : aiAnalysis.tags
     const finalDescription = aiAnalysis.summary
@@ -290,6 +315,12 @@ app.get('/add', requireApiTokenOrAdminSession(database), zValidator('query', add
       aiCategory: aiAnalysis.category,
       aiTags: JSON.stringify(aiAnalysis.tags),
       aiReadingTime: aiAnalysis.readingTime,
+      aiAnalysisFailed: aiAnalysisFailed ? 1 : 0,
+      aiError: aiError || null,
+      // For skipConfirm (published), ensure all user fields are set
+      userDescription: skipConfirm ? finalDescription : null,
+      userCategory: skipConfirm ? finalCategory : null,
+      userTags: skipConfirm ? JSON.stringify(finalTags) : null,
       status: skipConfirm ? 'published' as const : 'pending' as const,
       createdAt: now,
       publishedAt: skipConfirm ? now : undefined,
@@ -325,6 +356,9 @@ app.get('/add', requireApiTokenOrAdminSession(database), zValidator('query', add
           category: finalCategory,
           tags: finalTags,
           status: 'published',
+          scrapingFailed,
+          aiAnalysisFailed,
+          aiError
         }
       }
       return c.json(response)
@@ -359,7 +393,7 @@ app.post('/', requireApiTokenOrAdminSession(database), zValidator('json', addLin
       processedContent = createFallbackContent(url)
     }
 
-    const { content: scrapedContent, aiAnalysis, scrapingFailed } = processedContent
+    const { content: scrapedContent, aiAnalysis, scrapingFailed, aiAnalysisFailed, aiError } = processedContent
     
     // Log if scraping failed for monitoring
     if (scrapingFailed) {
@@ -376,13 +410,30 @@ app.post('/', requireApiTokenOrAdminSession(database), zValidator('json', addLin
         'Used fallback content due to scraping failure'
       )
     }
+    
+    // Log if AI analysis failed
+    if (aiAnalysisFailed) {
+      await logOperation(
+        'link_add',
+        'links',
+        undefined,
+        { url, reason: 'ai_analysis_failed', warning: 'AI analysis failed, using fallback', error: aiError },
+        authData.tokenId,
+        authData.userId,
+        authData.clientIp,
+        c.req.header('user-agent'),
+        'success', // Still mark as success since we continue the flow
+        'Used fallback content due to AI analysis failure'
+      )
+    }
 
     const now = Math.floor(Date.now() / 1000)
 
     // Parse user-provided tags
     const userTags = tags ? tags.split(',').map(t => t.trim()).filter(t => t.length > 0) : null
 
-    // Create link record
+    // For skipConfirm (published), ensure all user fields are set
+    // For pending links, user fields can be null and will be set during confirmation
     const linkData = {
       url,
       domain,
@@ -392,9 +443,11 @@ app.post('/', requireApiTokenOrAdminSession(database), zValidator('json', addLin
       aiCategory: aiAnalysis.category,
       aiTags: JSON.stringify(aiAnalysis.tags),
       aiReadingTime: aiAnalysis.readingTime,
-      userDescription: null,
-      userCategory: category || null,
-      userTags: userTags ? JSON.stringify(userTags) : null,
+      aiAnalysisFailed: aiAnalysisFailed ? 1 : 0,
+      aiError: aiError || null,
+      userDescription: skipConfirm ? aiAnalysis.summary : null,
+      userCategory: skipConfirm ? (category || aiAnalysis.category) : (category || null),
+      userTags: skipConfirm ? JSON.stringify(userTags || aiAnalysis.tags) : (userTags ? JSON.stringify(userTags) : null),
       status: skipConfirm ? 'published' : 'pending',
       publishedAt: skipConfirm ? now : null,
       createdAt: now,
@@ -433,16 +486,18 @@ app.post('/', requireApiTokenOrAdminSession(database), zValidator('json', addLin
     )
 
     if (skipConfirm) {
-      // Return published link data (using dynamic computation)
+      // Return published link data (using user fields directly)
       const responseData: AddLinkResponse = {
         id: linkId,
         url,
         title: scrapedContent.title || '',
-        description: linkData.userDescription || linkData.aiSummary!,
-        category: linkData.userCategory || linkData.aiCategory!,
-        tags: linkData.userTags ? JSON.parse(linkData.userTags) : JSON.parse(linkData.aiTags!),
+        description: linkData.userDescription!,
+        category: linkData.userCategory!,
+        tags: JSON.parse(linkData.userTags!),
         status: 'published',
-        scrapingFailed: scrapingFailed
+        scrapingFailed: scrapingFailed,
+        aiAnalysisFailed,
+        aiError
       }
       
       return sendSuccess(c, responseData, 'Link added and published successfully')

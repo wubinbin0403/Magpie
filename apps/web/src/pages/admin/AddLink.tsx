@@ -176,10 +176,14 @@ export default function AddLink() {
       }
     },
     onSuccess: (result) => {
-      // Complete the processing animation
+      // Check if AI analysis failed
+      const aiAnalysisFailed = result.data?.aiAnalysisFailed
+      const aiError = result.data?.aiError
+      
+      // Complete the processing animation with appropriate message
       setCurrentProcessing({
         stage: 'completed',
-        message: '链接处理完成！',
+        message: aiAnalysisFailed ? '链接处理完成（AI分析失败）' : '链接处理完成！',
         progress: 100
       })
       
@@ -188,16 +192,20 @@ export default function AddLink() {
       // Reset form
       setForm({ url: '', skipConfirm: false, presetCategory: '', presetTags: '' })
       
-      // Show success message
+      // Show success message with AI status
       if (result.data?.status === 'published') {
         setMessage({
-          type: 'success',
-          text: '链接已成功添加并发布！'
+          type: aiAnalysisFailed ? 'warning' : 'success',
+          text: aiAnalysisFailed 
+            ? `链接已添加并发布，但AI分析失败：${aiError || '未知错误'}。内容基于原始信息生成。`
+            : '链接已成功添加并发布！'
         })
       } else {
         setMessage({
-          type: 'info',
-          text: '链接已成功添加，请在下方确认后发布。'
+          type: aiAnalysisFailed ? 'warning' : 'info',
+          text: aiAnalysisFailed 
+            ? `链接已添加但AI分析失败：${aiError || '未知错误'}。请在下方手动编辑后发布。`
+            : '链接已成功添加，请在下方确认后发布。'
         })
         // Set pending link ID for editing
         if (result.data?.id) {
@@ -711,6 +719,29 @@ export default function AddLink() {
                     创建时间: {new Date(pendingLinkData.createdAt).toLocaleString('zh-CN')}
                   </p>
                 </div>
+
+                {/* AI Analysis Status Alert */}
+                {pendingLinkData.aiAnalysisFailed && (
+                  <div className="alert alert-warning">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <div className="flex-1">
+                      <div className="text-xs font-semibold">AI 分析失败</div>
+                      <div className="text-xs opacity-75 mt-1">
+                        以下内容基于原始信息生成，建议您手动编辑优化内容
+                      </div>
+                      {pendingLinkData.aiError && (
+                        <details className="mt-2">
+                          <summary className="text-xs cursor-pointer hover:underline">查看错误详情</summary>
+                          <div className="text-xs mt-1 opacity-75 bg-base-100 p-2 rounded">
+                            {pendingLinkData.aiError}
+                          </div>
+                        </details>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {/* AI Suggestions */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

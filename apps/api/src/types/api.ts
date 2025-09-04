@@ -41,6 +41,7 @@ export interface Link {
   category: string;
   tags: string[];
   domain: string;
+  readingTime?: number; // AI estimated reading time in minutes
   publishedAt: string;
   createdAt: string;
 }
@@ -59,6 +60,26 @@ export interface PendingLink {
   userCategory?: string;
   userTags?: string[];
   status: 'pending';
+  scrapingFailed?: boolean;
+  aiAnalysisFailed?: boolean;
+  aiError?: string;
+}
+
+export interface PendingLinkResponse {
+  id: number;
+  url: string;
+  title: string;
+  originalDescription: string;
+  aiSummary: string;
+  aiCategory: string;
+  aiTags: string[];
+  aiAnalysisFailed?: boolean;
+  aiError?: string;
+  domain: string;
+  createdAt: string;
+  userDescription?: string;
+  userCategory?: string;
+  userTags?: string[];
 }
 
 // 统计相关类型
@@ -194,6 +215,8 @@ export interface AddLinkResponse {
   tags: string[];
   status: 'published';
   scrapingFailed?: boolean;
+  aiAnalysisFailed?: boolean;
+  aiError?: string;
 }
 
 export interface ConfirmLinkResponse {
