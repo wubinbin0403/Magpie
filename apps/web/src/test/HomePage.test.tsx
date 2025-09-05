@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { BrowserRouter } from 'react-router-dom'
 import HomePage from '../pages/HomePage'
 import * as api from '../utils/api'
 
@@ -193,9 +194,11 @@ describe('HomePage', () => {
 
   const renderHomePage = () => {
     return render(
-      <QueryClientProvider client={queryClient}>
-        <HomePage />
-      </QueryClientProvider>
+      <BrowserRouter>
+        <QueryClientProvider client={queryClient}>
+          <HomePage />
+        </QueryClientProvider>
+      </BrowserRouter>
     )
   }
 

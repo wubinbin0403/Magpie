@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import NavBar from '../components/NavBar'
 import Sidebar from '../components/Sidebar'
 import LinkCard from '../components/LinkCard'
@@ -30,6 +30,8 @@ interface MonthGroup {
 // 简化后的HomePage组件
 export default function HomePage() {
   const { id: linkId } = useParams<{ id?: string }>()
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   
   // 筛选和分页状态
   const [page, setPage] = useState(1)
@@ -37,6 +39,19 @@ export default function HomePage() {
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
+
+  // 从URL参数初始化筛选状态（仅在首页路由时）
+  useEffect(() => {
+    if (!linkId) {
+      const categoryParam = searchParams.get('category')
+      const tagsParam = searchParams.get('tags')
+      const searchParam = searchParams.get('search')
+      
+      if (categoryParam) setSelectedCategory(categoryParam)
+      if (tagsParam) setSelectedTags([tagsParam]) // 简化处理，只支持单个标签
+      if (searchParam) setSearchQuery(searchParam)
+    }
+  }, [linkId, searchParams])
 
   // 数据获取，如果有linkId就将其作为搜索条件
   const { 
@@ -78,10 +93,27 @@ export default function HomePage() {
   // 事件处理函数
   const handleCategoryFilter = (category: string | null) => {
     if (category === selectedCategory) return
+    
+    // 如果当前在ID搜索模式，跳转到首页并设置分类筛选
+    if (linkId) {
+      const params = new URLSearchParams()
+      if (category) params.set('category', category)
+      navigate(`/?${params.toString()}`)
+      return
+    }
+    
     preserveLinksAndFilter(() => setSelectedCategory(category))
   }
 
   const handleTagFilter = (tag: string) => {
+    // 如果当前在ID搜索模式，跳转到首页并设置标签筛选
+    if (linkId) {
+      const params = new URLSearchParams()
+      params.set('tags', tag)
+      navigate(`/?${params.toString()}`)
+      return
+    }
+    
     preserveLinksAndFilter(() => 
       setSelectedTags(prev => 
         prev.includes(tag) 
@@ -92,6 +124,14 @@ export default function HomePage() {
   }
 
   const handleSearch = (query: string) => {
+    // 如果当前在ID搜索模式，跳转到首页并设置搜索查询
+    if (linkId) {
+      const params = new URLSearchParams()
+      if (query.trim()) params.set('search', query.trim())
+      navigate(`/?${params.toString()}`)
+      return
+    }
+    
     preserveLinksAndFilter(() => setSearchQuery(query))
   }
 
