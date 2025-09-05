@@ -31,7 +31,7 @@ interface MonthGroup {
 export default function HomePage() {
   const { id: linkId, name: categoryName } = useParams<{ id?: string; name?: string }>()
   const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   
   // 筛选和分页状态
   const [page, setPage] = useState(1)
@@ -39,6 +39,45 @@ export default function HomePage() {
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
+
+  // 更新URL参数的统一函数
+  const updateURLParams = (newParams: { 
+    category?: string | null
+    tags?: string[]
+    search?: string
+  }) => {
+    const params = new URLSearchParams(searchParams)
+    
+    // 更新分类参数
+    if (newParams.category !== undefined) {
+      if (newParams.category) {
+        params.set('category', newParams.category)
+      } else {
+        params.delete('category')
+      }
+    }
+    
+    // 更新标签参数
+    if (newParams.tags !== undefined) {
+      if (newParams.tags.length > 0) {
+        // 支持多个标签，使用逗号分隔
+        params.set('tags', newParams.tags.join(','))
+      } else {
+        params.delete('tags')
+      }
+    }
+    
+    // 更新搜索参数
+    if (newParams.search !== undefined) {
+      if (newParams.search.trim()) {
+        params.set('search', newParams.search.trim())
+      } else {
+        params.delete('search')
+      }
+    }
+    
+    setSearchParams(params, { replace: true })
+  }
 
   // 从URL参数初始化筛选状态
   useEffect(() => {
@@ -53,7 +92,11 @@ export default function HomePage() {
       const searchParam = searchParams.get('search')
       
       if (categoryParam) setSelectedCategory(categoryParam)
-      if (tagsParam) setSelectedTags([tagsParam]) // 简化处理，只支持单个标签
+      if (tagsParam) {
+        // 支持多个标签，从逗号分隔的字符串解析，限制最多5个
+        const parsedTags = tagsParam.split(',').map(tag => tag.trim()).filter(tag => tag).slice(0, 5)
+        setSelectedTags(parsedTags)
+      }
       if (searchParam) setSearchQuery(searchParam)
     }
   }, [linkId, categoryName, searchParams])
@@ -107,7 +150,10 @@ export default function HomePage() {
       return
     }
     
-    preserveLinksAndFilter(() => setSelectedCategory(category))
+    preserveLinksAndFilter(() => {
+      setSelectedCategory(category)
+      updateURLParams({ category })
+    })
   }
 
   const handleTagFilter = (tag: string) => {
@@ -119,13 +165,14 @@ export default function HomePage() {
       return
     }
     
-    preserveLinksAndFilter(() => 
-      setSelectedTags(prev => 
-        prev.includes(tag) 
-          ? prev.filter(t => t !== tag)
-          : [...prev, tag]
-      )
-    )
+    preserveLinksAndFilter(() => {
+      const newTags = selectedTags.includes(tag) 
+        ? selectedTags.filter(t => t !== tag)
+        : selectedTags.length < 5 ? [...selectedTags, tag] : selectedTags // 限制最多5个标签
+      
+      setSelectedTags(newTags)
+      updateURLParams({ tags: newTags })
+    })
   }
 
   const handleSearch = (query: string) => {
@@ -137,7 +184,10 @@ export default function HomePage() {
       return
     }
     
-    preserveLinksAndFilter(() => setSearchQuery(query))
+    preserveLinksAndFilter(() => {
+      setSearchQuery(query)
+      updateURLParams({ search: query })
+    })
   }
 
   const handleLoadMore = () => {
