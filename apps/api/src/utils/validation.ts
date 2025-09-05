@@ -22,6 +22,7 @@ export const linksQuerySchema = z.object({
   month: z.coerce.number().min(1).max(12).optional(),
   sort: z.enum(['newest', 'oldest', 'title', 'domain']).default('newest'),
   status: z.enum(['published']).default('published'),
+  id: z.coerce.number().min(1).optional(), // 按ID搜索
 })
 
 export const searchQuerySchema = z.object({

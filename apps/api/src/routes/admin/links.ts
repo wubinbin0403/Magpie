@@ -6,6 +6,7 @@ import { eq, desc, asc, count, and, or, like, inArray } from 'drizzle-orm'
 import { sendSuccess, sendError, notFound } from '../../utils/response.js'
 import { adminLinksQuerySchema, idParamSchema, updateLinkSchema } from '../../utils/validation.js'
 import { requireAdmin } from '../../middleware/admin.js'
+import { triggerStaticGeneration } from '../../services/static-generator.js'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 
 // Admin link type
@@ -332,6 +333,11 @@ export function createAdminLinksRouter(database = db) {
           readingTime: updatedLink.readingTime || undefined,
         }
 
+        // Trigger static file generation if link was published or unpublished
+        if (updateData.status === 'published' || link.status === 'published') {
+          triggerStaticGeneration(database)
+        }
+
         return sendSuccess(c, formattedLink)
         
       } catch (error) {
@@ -367,6 +373,11 @@ export function createAdminLinksRouter(database = db) {
             updatedAt: Math.floor(Date.now() / 1000)
           })
           .where(eq(links.id, id))
+
+        // Trigger static file generation if a published link was deleted
+        if (linkResult[0].status === 'published') {
+          triggerStaticGeneration(database)
+        }
 
         return sendSuccess(c, { message: 'Link deleted successfully' })
         

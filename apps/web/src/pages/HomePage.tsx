@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { useParams } from 'react-router-dom'
 import NavBar from '../components/NavBar'
 import Sidebar from '../components/Sidebar'
 import LinkCard from '../components/LinkCard'
@@ -28,6 +29,8 @@ interface MonthGroup {
 
 // 简化后的HomePage组件
 export default function HomePage() {
+  const { id: linkId } = useParams<{ id?: string }>()
+  
   // 筛选和分页状态
   const [page, setPage] = useState(1)
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
@@ -35,7 +38,7 @@ export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
 
-  // 自定义Hook处理数据获取
+  // 数据获取，如果有linkId就将其作为搜索条件
   const { 
     data, 
     isLoading, 
@@ -43,7 +46,7 @@ export default function HomePage() {
     refetch, 
     displayLinks, 
     preserveLinksAndFilter 
-  } = useHomePageData(page, selectedCategory, selectedTags, searchQuery)
+  } = useHomePageData(page, selectedCategory, selectedTags, searchQuery, true, linkId)
 
   // 自定义Hook处理sidebar数据
   const { sidebarData } = useSidebarData(selectedCategory, data)
@@ -188,6 +191,7 @@ export default function HomePage() {
             {displayLinks.length === 0 && !isLoading && !data ? (
               <EmptyState />
             ) : (
+              // 链接列表模式（支持列表和按ID搜索显示）
               <div className="space-y-8">
                 {displayLinks.length > 0 && Object.entries(groupedLinks)
                   .sort(([a], [b]) => b.localeCompare(a))
@@ -216,8 +220,8 @@ export default function HomePage() {
                     </MonthSection>
                   ))}
 
-                {/* 加载更多按钮 */}
-                {data?.data.pagination.hasNext && (
+                {/* 加载更多按钮，只在非ID搜索模式时显示 */}
+                {!linkId && data?.data.pagination.hasNext && (
                   <LoadMoreButton
                     onLoadMore={handleLoadMore}
                     loading={isLoading && page > 1}

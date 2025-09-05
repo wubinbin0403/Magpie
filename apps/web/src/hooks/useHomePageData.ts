@@ -24,14 +24,16 @@ export function useHomePageData(
   page: number,
   selectedCategory: string | null,
   selectedTags: string[],
-  searchQuery: string
+  searchQuery: string,
+  enabled: boolean = true,
+  linkId?: string
 ) {
   const [allLinks, setAllLinks] = useState<any[]>([])
   const [previousLinks, setPreviousLinks] = useState<any[]>([])
 
   // Fetch links data
   const { data, isLoading, error, refetch } = useQuery<LinksResponse>({
-    queryKey: ['links', page, selectedCategory, selectedTags, searchQuery],
+    queryKey: ['links', page, selectedCategory, selectedTags, searchQuery, linkId],
     queryFn: async () => {
       const params: Record<string, string> = {
         page: page.toString()
@@ -40,9 +42,11 @@ export function useHomePageData(
       if (selectedCategory) params.category = selectedCategory
       if (selectedTags.length > 0) params.tags = selectedTags.join(',')
       if (searchQuery) params.search = searchQuery
+      if (linkId) params.id = linkId
       
       return await api.getLinks(params)
     },
+    enabled,
     keepPreviousData: true,
     staleTime: 1 * 60 * 1000,
   })

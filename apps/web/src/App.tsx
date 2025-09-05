@@ -24,6 +24,7 @@ function App() {
         <div className="min-h-screen bg-base-100">
           <Routes>
             <Route path="/" element={<HomePage />} />
+            <Route path="/link/:id" element={<HomePage />} />
             <Route path="/search" element={<SearchPage />} />
             <Route 
               path="/admin/login" 

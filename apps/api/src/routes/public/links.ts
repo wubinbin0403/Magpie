@@ -29,7 +29,7 @@ app.onError((err, c) => {
 app.get('/', zValidator('query', linksQuerySchema), async (c) => {
   try {
     const queryParams = c.req.valid('query')
-    let { page, limit, category, tags, search, domain, year, month, sort } = queryParams
+    let { page, limit, category, tags, search, domain, year, month, sort, id } = queryParams
     
     // 如果没有提供limit参数，从系统设置中获取默认值
     if (!c.req.query('limit')) {
@@ -47,6 +47,10 @@ app.get('/', zValidator('query', linksQuerySchema), async (c) => {
     
     // 构建查询条件
     let whereConditions: any[] = [eq(links.status, 'published')]
+    
+    if (id) {
+      whereConditions.push(eq(links.id, id))
+    }
     
     if (category) {
       whereConditions.push(eq(links.userCategory, category))
