@@ -82,6 +82,7 @@ export const confirmLinkSchema = z.object({
   description: z.string().min(1).max(1000),
   category: z.string().min(1).max(100).optional(),
   tags: z.array(z.string().max(50)).optional(),
+  readingTime: z.number().min(1).max(1440).optional(), // 1 minute to 24 hours
   publish: z.boolean().default(true),
 })
 

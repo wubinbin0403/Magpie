@@ -42,7 +42,7 @@ const DEFAULT_PROMPT_TEMPLATE = `你是一个专业的内容分析助手，可�
   "tags": ["3-5个相关标签的字符串数组"],
   "language": "检测到的语言代码(zh, en, ja等)",
   "sentiment": "positive, neutral, 或 negative",
-  "readingTime": 预估阅读时间(分钟数，整数)
+  "readingTime": 基于{wordCount}字的文章，按每分钟225字计算阅读时间(分钟数，整数，至少1分钟)
 }
 
 **分析要求：**
@@ -50,7 +50,7 @@ const DEFAULT_PROMPT_TEMPLATE = `你是一个专业的内容分析助手，可�
 - 严格从给定的分类列表中选择最合适的一个分类
 - 标签应该具体且相关，有助于内容检索
 - 准确检测内容的主要语言
-- 根据内容长度提供合理的阅读时间估算(按每分钟200-300字计算)
+- 阅读时间基于提供的准确字数统计计算：Math.ceil({wordCount} / 225) 分钟，最小值为1
 
 **请只返回JSON对象，不要包含任何其他文本。**
 
@@ -154,6 +154,8 @@ export class AIAnalyzer {
       .replace('{description}', content.description || 'No description')
       .replace('{content}', this.truncateContent(content.content))
       .replace('{categories}', this.availableCategories.join('、'))
+      .replace('{wordCount}', content.wordCount.toString())
+      .replace(/{wordCount}/g, content.wordCount.toString())
       .replace('{user_instructions}', this.userInstructions || '无特殊要求')
   }
 

@@ -13,6 +13,7 @@ interface PendingLink {
   aiSummary: string
   aiCategory: string
   aiTags: string | string[] // API可能返回JSON字符串或数组
+  aiReadingTime?: number // AI estimated reading time in minutes
   createdAt: number // API返回的是timestamp
   status: 'pending'
   aiAnalysisFailed?: boolean
@@ -27,7 +28,8 @@ export default function PendingLinks() {
     title: '',
     description: '',
     category: '',
-    tags: [] as string[]
+    tags: [] as string[],
+    readingTime: undefined as number | undefined
   })
   const queryClient = useQueryClient()
 
@@ -87,12 +89,13 @@ export default function PendingLinks() {
 
   // Update link mutation for editing
   const updateMutation = useMutation({
-    mutationFn: async (data: { id: number; title?: string; description: string; category: string; tags: string[] }) => {
+    mutationFn: async (data: { id: number; title?: string; description: string; category: string; tags: string[]; readingTime?: number }) => {
       const response = await api.confirmLink(data.id, {
         title: data.title,
         description: data.description,
         category: data.category,
         tags: data.tags,
+        readingTime: data.readingTime,
         publish: true
       })
       return response.data
@@ -101,7 +104,7 @@ export default function PendingLinks() {
       queryClient.invalidateQueries({ queryKey: ['pending-links'] })
       queryClient.invalidateQueries({ queryKey: ['admin-stats-summary'] })
       setEditingId(null)
-      setEditForm({ title: '', description: '', category: '', tags: [] })
+      setEditForm({ title: '', description: '', category: '', tags: [], readingTime: undefined })
     }
   })
 
@@ -111,14 +114,15 @@ export default function PendingLinks() {
       title: link.title,
       description: link.aiSummary,
       category: link.aiCategory,
-      tags: [...link.aiTags]
+      tags: [...link.aiTags],
+      readingTime: link.aiReadingTime
     })
     setEditingId(link.id)
   }
 
   const handleCancelEdit = () => {
     setEditingId(null)
-    setEditForm({ title: '', description: '', category: '', tags: [] })
+    setEditForm({ title: '', description: '', category: '', tags: [], readingTime: undefined })
   }
 
   const handleSaveEdit = () => {
@@ -135,7 +139,8 @@ export default function PendingLinks() {
       title: editForm.title.trim(),
       description: editForm.description.trim(),
       category: editForm.category,
-      tags: editForm.tags
+      tags: editForm.tags,
+      readingTime: editForm.readingTime
     })
   }
 
@@ -187,6 +192,21 @@ export default function PendingLinks() {
       hour: '2-digit',
       minute: '2-digit'
     })
+  }
+
+  // Format reading time: <1h shows "X分钟", >=1h shows "X小时Y分钟"
+  const formatReadingTime = (minutes: number) => {
+    if (minutes < 60) {
+      return `${minutes}分钟`
+    } else {
+      const hours = Math.floor(minutes / 60)
+      const remainingMinutes = minutes % 60
+      if (remainingMinutes === 0) {
+        return `${hours}小时`
+      } else {
+        return `${hours}小时${remainingMinutes}分钟`
+      }
+    }
   }
 
   if (isLoading) {
@@ -372,6 +392,16 @@ export default function PendingLinks() {
                         </svg>
                         {link.domain}
                       </div>
+
+                      {/* Reading Time */}
+                      {link.aiReadingTime && (
+                        <div className="flex items-center gap-1 text-sm text-base-content/50">
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                          </svg>
+                          <span>{formatReadingTime(link.aiReadingTime)}</span>
+                        </div>
+                      )}
                       
                       {/* AI Status Indicator */}
                       {link.aiAnalysisFailed && (
@@ -470,6 +500,27 @@ export default function PendingLinks() {
                           <label className="label">
                             <span className="label-text-alt text-xs text-base-content/50">
                               多个标签用逗号分隔
+                            </span>
+                          </label>
+                        </div>
+
+                        {/* Reading Time */}
+                        <div className="form-control">
+                          <label className="label">
+                            <span className="label-text text-sm">阅读时间</span>
+                          </label>
+                          <input
+                            type="number"
+                            className="input input-bordered input-sm"
+                            value={editForm.readingTime || ''}
+                            onChange={(e) => setEditForm(prev => ({ ...prev, readingTime: e.target.value ? Number(e.target.value) : undefined }))}
+                            placeholder="预估阅读时间（分钟）"
+                            min="1"
+                            max="1440"
+                          />
+                          <label className="label">
+                            <span className="label-text-alt text-xs text-base-content/50">
+                              预估阅读时间，单位：分钟（1-1440分钟）
                             </span>
                           </label>
                         </div>

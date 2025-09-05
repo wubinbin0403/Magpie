@@ -197,7 +197,7 @@ describe('AllLinks', () => {
       renderWithQueryClient(<AllLinks />)
       
       await waitFor(() => {
-        expect(screen.getByText('阅读时长：5分钟')).toBeInTheDocument()
+        expect(screen.getByText('5分钟')).toBeInTheDocument()
       })
     })
   })

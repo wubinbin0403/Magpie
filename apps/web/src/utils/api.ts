@@ -213,6 +213,7 @@ class ApiClient {
     description: string
     category: string
     tags: string[]
+    readingTime?: number
     publish?: boolean
   }) {
     return this.request(`/links/${id}/confirm`, {

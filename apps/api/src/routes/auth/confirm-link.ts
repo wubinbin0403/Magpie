@@ -63,7 +63,7 @@ function createConfirmLinkRouter(database = db) {
     
     try {
       const { id } = c.req.valid('param')
-      const { title, description, category, tags, publish = true } = c.req.valid('json')
+      const { title, description, category, tags, readingTime, publish = true } = c.req.valid('json')
       const authData = getAuthData(c)
 
       // Get link details - only allow pending links
@@ -128,6 +128,11 @@ function createConfirmLinkRouter(database = db) {
         userTags: tags ? JSON.stringify(tags) : link.aiTags,
         
         updatedAt: now
+      }
+      
+      // Update reading time if provided
+      if (readingTime !== undefined) {
+        updateData.aiReadingTime = readingTime
       }
 
       // Update title if provided

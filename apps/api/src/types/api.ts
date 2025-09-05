@@ -54,6 +54,7 @@ export interface PendingLink {
   aiSummary: string;
   aiCategory: string;
   aiTags: string[];
+  aiReadingTime?: number; // AI estimated reading time in minutes
   domain: string;
   createdAt: string;
   userDescription?: string;
