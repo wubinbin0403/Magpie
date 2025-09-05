@@ -25,6 +25,7 @@ function App() {
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/link/:id" element={<HomePage />} />
+            <Route path="/category/:name" element={<HomePage />} />
             <Route path="/search" element={<SearchPage />} />
             <Route 
               path="/admin/login" 

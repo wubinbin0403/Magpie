@@ -29,7 +29,7 @@ interface MonthGroup {
 
 // 简化后的HomePage组件
 export default function HomePage() {
-  const { id: linkId } = useParams<{ id?: string }>()
+  const { id: linkId, name: categoryName } = useParams<{ id?: string; name?: string }>()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   
@@ -40,9 +40,14 @@ export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
 
-  // 从URL参数初始化筛选状态（仅在首页路由时）
+  // 从URL参数初始化筛选状态
   useEffect(() => {
-    if (!linkId) {
+    if (categoryName) {
+      // 如果是分类路由 /category/:name，设置选中的分类
+      const decodedCategory = decodeURIComponent(categoryName)
+      setSelectedCategory(decodedCategory)
+    } else if (!linkId) {
+      // 如果是首页路由，从查询参数获取筛选条件
       const categoryParam = searchParams.get('category')
       const tagsParam = searchParams.get('tags')
       const searchParam = searchParams.get('search')
@@ -51,7 +56,7 @@ export default function HomePage() {
       if (tagsParam) setSelectedTags([tagsParam]) // 简化处理，只支持单个标签
       if (searchParam) setSearchQuery(searchParam)
     }
-  }, [linkId, searchParams])
+  }, [linkId, categoryName, searchParams])
 
   // 数据获取，如果有linkId就将其作为搜索条件
   const { 

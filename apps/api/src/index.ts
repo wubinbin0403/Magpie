@@ -27,11 +27,27 @@ import adminSettingsRouter from './routes/admin/settings.js'
 import adminTokensRouter from './routes/admin/tokens.js'
 import adminCategoriesRouter from './routes/admin/categories.js'
 import adminLinksRouter from './routes/admin/links.js'
+import { isBot } from './utils/bot-detection.js'
+import { generateBotHTML } from './utils/seo-html-generator.js'
+import { db } from './db/index.js'
 
 // Load environment variables
 dotenv.config()
 
 const app = new Hono()
+
+// Helper function to read React app HTML in production
+async function getReactAppHTML(): Promise<string> {
+  try {
+    const fs = await import('fs')
+    const path = await import('path')
+    const htmlPath = path.join(process.cwd(), '../web/dist/index.html')
+    return fs.readFileSync(htmlPath, 'utf-8')
+  } catch (error) {
+    console.error('Failed to read React app HTML:', error)
+    return '<h1>App Loading Error</h1><p>Please check server configuration.</p>'
+  }
+}
 
 // Middleware
 app.use('*', logger())
@@ -81,8 +97,224 @@ app.route('/api/admin/settings', adminSettingsRouter) // GET/PUT /api/admin/sett
 app.route('/api/admin/tokens', adminTokensRouter)   // GET/POST /api/admin/tokens, DELETE /api/admin/tokens/:id
 app.route('/api/admin/categories', adminCategoriesRouter) // GET/POST /api/admin/categories, PUT/DELETE /api/admin/categories/:id
 
-// Static files (sitemap, RSS feeds) - only in non-test environment
+// Category route handler
+app.get('/category/:name', async (c) => {
+  try {
+    const userAgent = c.req.header('User-Agent') || ''
+    
+    if (isBot(userAgent)) {
+      // For bots/crawlers: return SEO-optimized static HTML for category
+      console.log(`Bot detected on category page: ${userAgent.substring(0, 100)}...`)
+      const html = await generateBotHTML(db)
+      return c.html(html)
+    } else {
+      // For users: serve React SPA (React Router will handle client-side routing)
+      if (process.env.NODE_ENV === 'production') {
+        // In production: serve built React app
+        return c.html(await getReactAppHTML())
+      } else {
+        // In development: proxy to Vite dev server
+        const response = await fetch('http://localhost:3000/')
+        const html = await response.text()
+        return c.html(html)
+      }
+    }
+  } catch (error) {
+    console.error('Error serving category page:', error)
+    return c.html('<h1>Service Temporarily Unavailable</h1><p>Please try again later.</p>', 503)
+  }
+})
+
+// Main route handler - SEO-optimized homepage
+app.get('/', async (c) => {
+  try {
+    const userAgent = c.req.header('User-Agent') || ''
+    
+    if (isBot(userAgent)) {
+      // For bots/crawlers: return SEO-optimized static HTML
+      console.log(`Bot detected: ${userAgent.substring(0, 100)}...`)
+      const searchParams = new URL(c.req.url).searchParams
+      const html = await generateBotHTML(db, searchParams)
+      return c.html(html)
+    } else {
+      // For users: serve React SPA
+      if (process.env.NODE_ENV === 'production') {
+        // In production: serve built React app
+        return c.html(await getReactAppHTML())
+      } else {
+        // In development: proxy to Vite dev server
+        const response = await fetch('http://localhost:3000/')
+        const html = await response.text()
+        return c.html(html)
+      }
+    }
+  } catch (error) {
+    console.error('Error serving homepage:', error)
+    return c.html('<h1>Service Temporarily Unavailable</h1><p>Please try again later.</p>', 503)
+  }
+})
+
+// Development mode: proxy all non-API requests to Vite dev server
+if (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== 'test') {
+  // Proxy specific Vite dev server requests
+  app.get('/@vite/client', async (c) => {
+    try {
+      const response = await fetch(`http://localhost:3000${c.req.path}`)
+      const contentType = response.headers.get('content-type')
+      const body = await response.text()
+      
+      return new Response(body, {
+        status: response.status,
+        headers: {
+          'Content-Type': contentType || 'text/javascript',
+        },
+      })
+    } catch (error) {
+      return c.text('Vite dev server not available', 503)
+    }
+  })
+
+  app.get('/@react-refresh', async (c) => {
+    try {
+      const response = await fetch(`http://localhost:3000${c.req.path}`)
+      const contentType = response.headers.get('content-type')
+      const body = await response.text()
+      
+      return new Response(body, {
+        status: response.status,
+        headers: {
+          'Content-Type': contentType || 'text/javascript',
+        },
+      })
+    } catch (error) {
+      return c.text('Vite dev server not available', 503)
+    }
+  })
+
+  // Proxy Vite filesystem requests
+  app.get('/@fs/*', async (c) => {
+    try {
+      const response = await fetch(`http://localhost:3000${c.req.path}`)
+      const contentType = response.headers.get('content-type')
+      const body = await response.text()
+      
+      return new Response(body, {
+        status: response.status,
+        headers: {
+          'Content-Type': contentType || 'application/javascript',
+        },
+      })
+    } catch (error) {
+      return c.text('Vite dev server not available', 503)
+    }
+  })
+
+  // Proxy other Vite dev server requests
+  app.get('/@*', async (c) => {
+    try {
+      const response = await fetch(`http://localhost:3000${c.req.path}`)
+      const contentType = response.headers.get('content-type')
+      const body = await response.text()
+      
+      return new Response(body, {
+        status: response.status,
+        headers: {
+          'Content-Type': contentType || 'text/plain',
+        },
+      })
+    } catch (error) {
+      return c.text('Vite dev server not available', 503)
+    }
+  })
+
+  app.get('/src/*', async (c) => {
+    try {
+      const response = await fetch(`http://localhost:3000${c.req.path}${c.req.raw.url.includes('?') ? '?' + c.req.raw.url.split('?')[1] : ''}`)
+      const contentType = response.headers.get('content-type')
+      const body = await response.text()
+      
+      return new Response(body, {
+        status: response.status,
+        headers: {
+          'Content-Type': contentType || 'text/plain',
+        },
+      })
+    } catch (error) {
+      return c.text('Vite dev server not available', 503)
+    }
+  })
+
+  // Proxy Vite deps (compiled dependencies)
+  app.get('/node_modules/.vite/deps/*', async (c) => {
+    try {
+      const response = await fetch(`http://localhost:3000${c.req.path}${c.req.raw.url.includes('?') ? '?' + c.req.raw.url.split('?')[1] : ''}`)
+      const contentType = response.headers.get('content-type')
+      const body = await response.text()
+      
+      return new Response(body, {
+        status: response.status,
+        headers: {
+          'Content-Type': contentType || 'application/javascript',
+        },
+      })
+    } catch (error) {
+      return c.text('Vite dev server not available', 503)
+    }
+  })
+
+  // Proxy other static files to Vite dev server
+  app.get('/vite.svg', async (c) => {
+    try {
+      const response = await fetch(`http://localhost:3000${c.req.path}`)
+      const contentType = response.headers.get('content-type')
+      const body = await response.arrayBuffer()
+      
+      return new Response(body, {
+        status: response.status,
+        headers: {
+          'Content-Type': contentType || 'image/svg+xml',
+        },
+      })
+    } catch (error) {
+      return c.text('Vite dev server not available', 503)
+    }
+  })
+
+  // Proxy magpie icon
+  app.get('/magpie-icon.png', async (c) => {
+    try {
+      const response = await fetch(`http://localhost:3000${c.req.path}`)
+      const contentType = response.headers.get('content-type')
+      const body = await response.arrayBuffer()
+      
+      return new Response(body, {
+        status: response.status,
+        headers: {
+          'Content-Type': contentType || 'image/png',
+        },
+      })
+    } catch (error) {
+      return c.text('Vite dev server not available', 503)
+    }
+  })
+}
+
+// Production mode: serve static files
+if (process.env.NODE_ENV === 'production') {
+  // Serve React app static assets (JS, CSS, images, etc.)
+  app.get('/assets/*', serveStatic({
+    root: '../web/dist'
+  }))
+  
+  // Serve other static files (favicon, etc.)
+  app.get('/magpie-icon.png', serveStatic({
+    root: '../web/dist'
+  }))
+}
+
+// Always serve SEO static files
 if (process.env.NODE_ENV !== 'test') {
+  // Serve static files (sitemap, RSS feeds)
   app.get('/sitemap.xml', serveStatic({ 
     root: './static', 
     rewriteRequestPath: (path) => path.replace('/sitemap.xml', '/sitemap.xml')
@@ -141,16 +373,61 @@ app.onError((err, c) => {
   }, 500)
 })
 
-// 404 handler
+// Catch-all handler for non-API routes (SPA fallback)
+app.get('*', async (c) => {
+  // If it's an API route, let it fall through to 404
+  if (c.req.path.startsWith('/api')) {
+    return c.json({
+      success: false,
+      error: {
+        code: 'NOT_FOUND',
+        message: `Route ${c.req.method} ${c.req.path} not found`,
+      },
+      timestamp: new Date().toISOString(),
+    }, 404)
+  }
+
+  try {
+    const userAgent = c.req.header('User-Agent') || ''
+    
+    if (isBot(userAgent)) {
+      // For bots/crawlers: return SEO-optimized static HTML
+      console.log(`Bot detected: ${userAgent.substring(0, 100)}...`)
+      const searchParams = new URL(c.req.url).searchParams
+      const html = await generateBotHTML(db, searchParams)
+      return c.html(html)
+    } else {
+      // For users: serve React SPA
+      if (process.env.NODE_ENV === 'production') {
+        // In production: serve built React app
+        return c.html(await getReactAppHTML())
+      } else {
+        // In development: proxy to Vite dev server
+        const response = await fetch('http://localhost:3000/')
+        const html = await response.text()
+        return c.html(html)
+      }
+    }
+  } catch (error) {
+    console.error('Error serving SPA:', error)
+    return c.html('<h1>Service Temporarily Unavailable</h1><p>Please try again later.</p>', 503)
+  }
+})
+
+// 404 handler for API routes only
 app.notFound((c) => {
-  return c.json({
-    success: false,
-    error: {
-      code: 'NOT_FOUND',
-      message: `Route ${c.req.method} ${c.req.path} not found`,
-    },
-    timestamp: new Date().toISOString(),
-  }, 404)
+  if (c.req.path.startsWith('/api')) {
+    return c.json({
+      success: false,
+      error: {
+        code: 'NOT_FOUND',
+        message: `Route ${c.req.method} ${c.req.path} not found`,
+      },
+      timestamp: new Date().toISOString(),
+    }, 404)
+  }
+  // Non-API routes should have been handled by catch-all above
+  return c.html('<h1>Page Not Found</h1>', 404)
 })
 
 const port = parseInt(process.env.PORT || '3001')
