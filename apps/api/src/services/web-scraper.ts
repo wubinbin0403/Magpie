@@ -379,13 +379,29 @@ export class WebScraper {
   private countWords(text: string): number {
     if (!text) return 0
     
-    // Simple word counting (handles Chinese characters as well)
-    const words = text
-      .replace(/[^\w\s\u4e00-\u9fff]/g, ' ') // Keep only word characters and Chinese characters
+    // Count CJK characters (Chinese, Japanese Kanji/Hiragana/Katakana, Korean)
+    const cjkPattern = /[\u4e00-\u9fff\u3040-\u30ff\u31f0-\u31ff\uac00-\ud7af]/g
+    const cjkMatches = text.match(cjkPattern) || []
+    const cjkCount = cjkMatches.length
+    
+    // Remove CJK characters and count regular words
+    const textWithoutCJK = text.replace(cjkPattern, ' ')
+    
+    // Count words for non-CJK text (English, etc.)
+    const words = textWithoutCJK
+      .replace(/[^\w\s]/g, ' ') // Keep only word characters and spaces
       .split(/\s+/)
       .filter(word => word.length > 0)
+    const wordCount = words.length
     
-    return words.length
+    // For reading time estimation:
+    // - CJK characters: ~500 characters per minute
+    // - English words: ~225-265 words per minute
+    // We normalize CJK characters to "word equivalents" for consistent calculation
+    // Using 2.2 as conversion factor (500 CPM / 225 WPM ≈ 2.2)
+    const cjkWordEquivalent = Math.ceil(cjkCount / 2.2)
+    
+    return wordCount + cjkWordEquivalent
   }
 }
 
