@@ -1,175 +1,18 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { clearTestData } from './helpers.js'
 import { testDrizzle } from './setup.js'
-import { Hono } from 'hono'
 import { links } from '../db/schema.js'
-import { eq, desc, and, sql } from 'drizzle-orm'
-import { sendSuccess, sendError } from '../utils/response.js'
+import { createStatsRouter } from '../routes/public/stats.js'
 import type { StatsResponse } from '../types/api.js'
 
-// 创建统计API
-const createStatsApp = () => {
-  const app = new Hono()
-
-  app.onError((err, c) => {
-    console.error('Stats API Error:', err)
-    return sendError(c, 'INTERNAL_SERVER_ERROR', 'An internal server error occurred', undefined, 500)
-  })
-
-  // GET /api/stats - 获取统计信息
-  app.get('/', async (c) => {
-    try {
-      // 获取链接总数和状态统计
-      const linkStats = await testDrizzle
-        .select({
-          status: links.status,
-          count: sql<number>`count(*)`
-        })
-        .from(links)
-        .groupBy(links.status)
-
-      const totalLinks = linkStats.reduce((sum, stat) => sum + stat.count, 0)
-      const publishedLinks = linkStats.find(stat => stat.status === 'published')?.count || 0
-      const pendingLinks = linkStats.find(stat => stat.status === 'pending')?.count || 0
-
-      // 获取分类统计
-      const categoryStats = await testDrizzle
-        .select({
-          category: links.userCategory,
-          count: sql<number>`count(*)`
-        })
-        .from(links)
-        .where(eq(links.status, 'published'))
-        .groupBy(links.userCategory)
-        .having(sql`${links.userCategory} IS NOT NULL`)
-
-      const totalCategories = categoryStats.length
-
-      // 获取标签统计 (简化版本 - 统计唯一标签数量)
-      const tagData = await testDrizzle
-        .select({ tags: links.userTags })
-        .from(links)
-        .where(eq(links.status, 'published'))
-
-      const allTags = new Set<string>()
-      const tagCounts: { [key: string]: number } = {}
-
-      tagData.forEach(item => {
-        if (item.tags) {
-          try {
-            const tags = JSON.parse(item.tags)
-            tags.forEach((tag: string) => {
-              allTags.add(tag)
-              tagCounts[tag] = (tagCounts[tag] || 0) + 1
-            })
-          } catch (error) {
-            // 忽略无效的JSON
-          }
-        }
-      })
-
-      const totalTags = allTags.size
-
-      // 获取热门标签 (前10个)
-      const popularTags = Object.entries(tagCounts)
-        .sort(([, a], [, b]) => b - a)
-        .slice(0, 10)
-        .map(([name, count]) => ({ name, count }))
-
-      // 获取热门域名
-      const domainStats = await testDrizzle
-        .select({
-          domain: links.domain,
-          count: sql<number>`count(*)`
-        })
-        .from(links)
-        .where(eq(links.status, 'published'))
-        .groupBy(links.domain)
-        .orderBy(sql`count(*) desc`)
-        .limit(10)
-
-      const popularDomains = domainStats.map(stat => ({
-        name: stat.domain,
-        count: stat.count
-      }))
-
-      // 获取最近活动 (最近10个已发布的链接)
-      const recentActivity = await testDrizzle
-        .select({
-          title: links.title,
-          url: links.url,
-          publishedAt: links.publishedAt
-        })
-        .from(links)
-        .where(eq(links.status, 'published'))
-        .orderBy(desc(links.publishedAt))
-        .limit(10)
-
-      const activityItems = recentActivity.map(item => ({
-        type: 'link_published' as const,
-        title: item.title || 'Untitled',
-        url: item.url,
-        timestamp: new Date(item.publishedAt * 1000).toISOString()
-      }))
-
-      // 获取月度统计 (最近12个月)
-      const now = new Date()
-      const monthlyStats = []
-      
-      for (let i = 11; i >= 0; i--) {
-        const date = new Date(now.getFullYear(), now.getMonth() - i, 1)
-        const year = date.getFullYear()
-        const month = date.getMonth() + 1
-        const startOfMonth = Math.floor(new Date(year, month - 1, 1).getTime() / 1000)
-        const endOfMonth = Math.floor(new Date(year, month, 0, 23, 59, 59).getTime() / 1000)
-
-        const monthlyData = await testDrizzle
-          .select({ count: sql<number>`count(*)` })
-          .from(links)
-          .where(
-            and(
-              eq(links.status, 'published'),
-              sql`${links.publishedAt} >= ${startOfMonth}`,
-              sql`${links.publishedAt} <= ${endOfMonth}`
-            )
-          )
-
-        monthlyStats.push({
-          year,
-          month,
-          count: monthlyData[0].count
-        })
-      }
-
-      const responseData: StatsResponse = {
-        totalLinks,
-        publishedLinks,
-        pendingLinks,
-        totalCategories,
-        totalTags,
-        recentActivity: activityItems,
-        popularTags,
-        popularDomains,
-        monthlyStats
-      }
-
-      return sendSuccess(c, responseData)
-
-    } catch (error) {
-      console.error('Error fetching stats:', error)
-      return sendError(c, 'INTERNAL_SERVER_ERROR', 'Failed to fetch statistics', undefined, 500)
-    }
-  })
-
-  return app
-}
-
 describe('Public Stats API', () => {
-  let app: Hono
+  let app: any
 
   beforeEach(async () => {
     clearTestData()
-    app = createStatsApp()
+    
+    // Use real router with test database injection
+    app = createStatsRouter(testDrizzle)
     
     // 插入测试数据
     const now = Math.floor(Date.now() / 1000)
@@ -183,7 +26,6 @@ describe('Public Stats API', () => {
         title: 'React Tutorial',
         originalDescription: 'React tutorial',
         aiSummary: 'React tutorial',
-        userDescription: 'React tutorial',
         userDescription: 'React tutorial for beginners',
         userCategory: 'programming',
         userTags: '["react", "javascript", "tutorial"]',
@@ -197,7 +39,6 @@ describe('Public Stats API', () => {
         title: 'Vue.js Guide', 
         originalDescription: 'Vue guide',
         aiSummary: 'Vue guide',
-        userDescription: 'Vue guide',
         userDescription: 'Vue.js complete guide',
         userCategory: 'programming',
         userTags: '["vue", "javascript", "framework"]',
@@ -211,7 +52,6 @@ describe('Public Stats API', () => {
         title: 'Design Patterns',
         originalDescription: 'Design patterns',
         aiSummary: 'Design patterns',
-        userDescription: 'Design patterns',
         userDescription: 'Software design patterns',
         userCategory: 'architecture',
         userTags: '["patterns", "design", "software"]',
@@ -226,7 +66,6 @@ describe('Public Stats API', () => {
         title: 'Old Article',
         originalDescription: 'Old article',
         aiSummary: 'Old article',
-        userDescription: 'Old article',
         userDescription: 'An old article from last month',
         userCategory: 'general',
         userTags: '["old", "archive"]',
@@ -241,7 +80,6 @@ describe('Public Stats API', () => {
         title: 'Pending Article',
         originalDescription: 'Pending article',
         aiSummary: 'Pending article',
-        userDescription: null,
         userDescription: null,
         userCategory: null,
         userTags: null,
@@ -365,6 +203,59 @@ describe('Public Stats API', () => {
       expect(stats.popularTags).toEqual([])
       expect(stats.popularDomains).toEqual([])
       expect(stats.monthlyStats).toHaveLength(12) // 仍然返回12个月，但都是0
+    })
+
+    it('should support timezone parameter for monthly statistics', async () => {
+      // Test UTC timezone (default)
+      const utcResponse = await app.request('/')
+      const utcData = await utcResponse.json() as any
+      
+      expect(utcResponse.status).toBe(200)
+      expect(utcData.success).toBe(true)
+      
+      // Test UTC+8 timezone (480 minutes offset)
+      const utc8Response = await app.request('/?tz=480')
+      const utc8Data = await utc8Response.json() as any
+      
+      expect(utc8Response.status).toBe(200)
+      expect(utc8Data.success).toBe(true)
+      
+      // Both should have same structure
+      expect(utc8Data.data.monthlyStats).toHaveLength(12)
+      expect(utcData.data.monthlyStats).toHaveLength(12)
+      
+      // The timezone parameter should affect the monthly stats calculation
+      const utcCurrentMonth = utcData.data.monthlyStats[utcData.data.monthlyStats.length - 1]
+      const utc8CurrentMonth = utc8Data.data.monthlyStats[utc8Data.data.monthlyStats.length - 1]
+      
+      expect(utcCurrentMonth).toHaveProperty('year')
+      expect(utcCurrentMonth).toHaveProperty('month')
+      expect(utcCurrentMonth).toHaveProperty('count')
+      expect(utc8CurrentMonth).toHaveProperty('year')
+      expect(utc8CurrentMonth).toHaveProperty('month')
+      expect(utc8CurrentMonth).toHaveProperty('count')
+    })
+
+    it('should handle invalid timezone parameter gracefully', async () => {
+      // Test with invalid timezone
+      const response = await app.request('/?tz=invalid')
+      const data = await response.json() as any
+      
+      expect(response.status).toBe(200)
+      expect(data.success).toBe(true)
+      
+      // Should default to UTC (tz=0)
+      expect(data.data.monthlyStats).toHaveLength(12)
+    })
+
+    it('should handle negative timezone offset', async () => {
+      // Test UTC-5 (Eastern Time, 300 minutes offset)
+      const response = await app.request('/?tz=-300')
+      const data = await response.json() as any
+      
+      expect(response.status).toBe(200)
+      expect(data.success).toBe(true)
+      expect(data.data.monthlyStats).toHaveLength(12)
     })
   })
 })

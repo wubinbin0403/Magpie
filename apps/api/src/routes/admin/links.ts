@@ -340,6 +340,42 @@ export function createAdminLinksRouter(database = db) {
       }
     })
 
+  // DELETE /api/admin/links/:id - Delete link (set status to 'deleted')
+  app.delete('/:id',
+    requireAdmin(database),
+    zValidator('param', idParamSchema),
+    async (c) => {
+      try {
+        const { id } = c.req.valid('param')
+
+        // Check if link exists
+        const linkResult = await database
+          .select()
+          .from(links)
+          .where(eq(links.id, id))
+          .limit(1)
+
+        if (linkResult.length === 0) {
+          return notFound(c, 'Link not found')
+        }
+
+        // Update link status to 'deleted'
+        await database
+          .update(links)
+          .set({
+            status: 'deleted',
+            updatedAt: Math.floor(Date.now() / 1000)
+          })
+          .where(eq(links.id, id))
+
+        return sendSuccess(c, { message: 'Link deleted successfully' })
+        
+      } catch (error) {
+        console.error('Error deleting admin link:', error)
+        return sendError(c, 'INTERNAL_SERVER_ERROR', 'Failed to delete link')
+      }
+    })
+
   return app
 }
 

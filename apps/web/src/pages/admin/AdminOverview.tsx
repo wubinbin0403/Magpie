@@ -42,7 +42,9 @@ export default function AdminOverview() {
   const { data: statsData, isLoading } = useQuery<StatsResponse>({
     queryKey: ['admin-stats-summary'],
     queryFn: async () => {
-      const response = await api.getStats()
+      // Get user's timezone offset in minutes (negative for UTC+)
+      const timezoneOffset = new Date().getTimezoneOffset()
+      const response = await api.getStats({ tz: -timezoneOffset })
       return response.data
     },
     staleTime: 5 * 60 * 1000, // 5 minutes

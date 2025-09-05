@@ -4,6 +4,7 @@ import { testDrizzle } from './setup.js'
 import { links, users } from '../db/schema.js'
 import { createAdminLinksRouter } from '../routes/admin/links.js'
 import { hashPassword, createAdminJWT } from '../utils/auth.js'
+import { eq } from 'drizzle-orm'
 
 describe('Admin Links API', () => {
   let app: any
@@ -592,6 +593,264 @@ describe('Admin Links API', () => {
       expect(link).toHaveProperty('createdAt', now - 100)
       expect(link).toHaveProperty('publishedAt', now)
       expect(link).toHaveProperty('readingTime', 7)
+    })
+  })
+
+  describe('PUT /:id', () => {
+    it('should require admin authentication', async () => {
+      const response = await app.request('/1', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          title: 'Updated Title'
+        })
+      })
+      
+      expect(response.status).toBe(401)
+    })
+
+    it('should return 404 for non-existent link', async () => {
+      const response = await app.request('/99999', {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${adminToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          title: 'Updated Title'
+        })
+      })
+      
+      expect(response.status).toBe(404)
+      const data = await response.json() as any
+      expect(data.success).toBe(false)
+    })
+
+    it('should update link fields', async () => {
+      // Create test link
+      const now = Math.floor(Date.now() / 1000)
+      const insertResult = await testDrizzle
+        .insert(links)
+        .values({
+          url: 'https://example.com/original',
+          domain: 'example.com',
+          title: 'Original Title',
+          userDescription: 'Original description',
+          userCategory: 'original-category',
+          userTags: JSON.stringify(['original']),
+          status: 'pending',
+          createdAt: now,
+        })
+        .returning({ id: links.id })
+
+      const linkId = insertResult[0].id
+
+      // Update the link
+      const response = await app.request(`/${linkId}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${adminToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          title: 'Updated Title',
+          description: 'Updated description',
+          category: 'updated-category',
+          tags: ['updated', 'new'],
+          status: 'published'
+        })
+      })
+
+      expect(response.status).toBe(200)
+      const data = await response.json() as any
+      expect(data.success).toBe(true)
+      
+      const updatedLink = data.data
+      expect(updatedLink.title).toBe('Updated Title')
+      expect(updatedLink.description).toBe('Updated description')
+      expect(updatedLink.category).toBe('updated-category')
+      expect(updatedLink.tags).toEqual(['updated', 'new'])
+      expect(updatedLink.status).toBe('published')
+      expect(updatedLink.publishedAt).toBeDefined()
+    })
+
+    it('should handle status change to published', async () => {
+      // Create test link in pending status
+      const now = Math.floor(Date.now() / 1000)
+      const insertResult = await testDrizzle
+        .insert(links)
+        .values({
+          url: 'https://example.com/pending',
+          domain: 'example.com',
+          title: 'Pending Link',
+          userDescription: 'Pending description',
+          status: 'pending',
+          createdAt: now,
+        })
+        .returning({ id: links.id })
+
+      const linkId = insertResult[0].id
+
+      // Update status to published
+      const response = await app.request(`/${linkId}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${adminToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          status: 'published'
+        })
+      })
+
+      expect(response.status).toBe(200)
+      const data = await response.json() as any
+      expect(data.success).toBe(true)
+      
+      const updatedLink = data.data
+      expect(updatedLink.status).toBe('published')
+      expect(updatedLink.publishedAt).toBeDefined()
+      expect(updatedLink.publishedAt).toBeGreaterThan(0)
+    })
+  })
+
+  describe('DELETE /:id', () => {
+    it('should require admin authentication', async () => {
+      const response = await app.request('/1', {
+        method: 'DELETE'
+      })
+      
+      expect(response.status).toBe(401)
+    })
+
+    it('should return 404 for non-existent link', async () => {
+      const response = await app.request('/99999', {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${adminToken}`
+        }
+      })
+      
+      expect(response.status).toBe(404)
+      const data = await response.json() as any
+      expect(data.success).toBe(false)
+      expect(data.error.message).toBe('Link not found')
+    })
+
+    it('should delete link by setting status to deleted', async () => {
+      // Create test link
+      const now = Math.floor(Date.now() / 1000)
+      const insertResult = await testDrizzle
+        .insert(links)
+        .values({
+          url: 'https://example.com/to-delete',
+          domain: 'example.com',
+          title: 'Link to Delete',
+          userDescription: 'This will be deleted',
+          userCategory: 'test',
+          userTags: JSON.stringify(['test']),
+          status: 'published',
+          publishedAt: now,
+          createdAt: now,
+        })
+        .returning({ id: links.id })
+
+      const linkId = insertResult[0].id
+
+      // Delete the link
+      const response = await app.request(`/${linkId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${adminToken}`
+        }
+      })
+
+      expect(response.status).toBe(200)
+      const data = await response.json() as any
+      expect(data.success).toBe(true)
+      expect(data.data.message).toBe('Link deleted successfully')
+
+      // Verify the link status is now 'deleted'
+      const deletedLink = await testDrizzle
+        .select()
+        .from(links)
+        .where(eq(links.id, linkId))
+        .limit(1)
+
+      expect(deletedLink[0].status).toBe('deleted')
+      expect(deletedLink[0].updatedAt).toBeDefined()
+    })
+
+    it('should be able to delete pending links', async () => {
+      // Create test link with pending status
+      const now = Math.floor(Date.now() / 1000)
+      const insertResult = await testDrizzle
+        .insert(links)
+        .values({
+          url: 'https://example.com/pending-delete',
+          domain: 'example.com',
+          title: 'Pending Link to Delete',
+          aiSummary: 'AI generated summary',
+          status: 'pending',
+          createdAt: now,
+        })
+        .returning({ id: links.id })
+
+      const linkId = insertResult[0].id
+
+      // Delete the pending link
+      const response = await app.request(`/${linkId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${adminToken}`
+        }
+      })
+
+      expect(response.status).toBe(200)
+      const data = await response.json() as any
+      expect(data.success).toBe(true)
+
+      // Verify the link status is now 'deleted'
+      const deletedLink = await testDrizzle
+        .select()
+        .from(links)
+        .where(eq(links.id, linkId))
+        .limit(1)
+
+      expect(deletedLink[0].status).toBe('deleted')
+    })
+
+    it('should be able to delete already deleted links (idempotent)', async () => {
+      // Create test link with deleted status
+      const now = Math.floor(Date.now() / 1000)
+      const insertResult = await testDrizzle
+        .insert(links)
+        .values({
+          url: 'https://example.com/already-deleted',
+          domain: 'example.com',
+          title: 'Already Deleted Link',
+          status: 'deleted',
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning({ id: links.id })
+
+      const linkId = insertResult[0].id
+
+      // Try to delete again
+      const response = await app.request(`/${linkId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${adminToken}`
+        }
+      })
+
+      expect(response.status).toBe(200)
+      const data = await response.json() as any
+      expect(data.success).toBe(true)
+      expect(data.data.message).toBe('Link deleted successfully')
     })
   })
 })

@@ -222,7 +222,7 @@ class ApiClient {
   }
 
   async deleteLink(id: number) {
-    return this.request(`/links/${id}`, {
+    return this.request(`/admin/links/${id}`, {
       method: 'DELETE',
     })
   }

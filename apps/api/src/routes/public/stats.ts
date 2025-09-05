@@ -4,33 +4,38 @@ import { links } from '../../db/schema.js'
 import { eq, desc, and, sql } from 'drizzle-orm'
 import { sendSuccess, sendError } from '../../utils/response.js'
 import type { StatsResponse, ActivityItem, TagStats, DomainStats, MonthlyStats } from '../../types/api.js'
+import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 
-const app = new Hono()
+// Create stats router with optional database dependency injection
+export function createStatsRouter(database = db) {
+  const app = new Hono()
 
-// 添加错误处理中间件
-app.onError((err, c) => {
-  console.error('Stats API Error:', err)
-  return sendError(c, 'INTERNAL_SERVER_ERROR', 'An internal server error occurred', undefined, 500)
-})
+  // 添加错误处理中间件
+  app.onError((err, c) => {
+    console.error('Stats API Error:', err)
+    return sendError(c, 'INTERNAL_SERVER_ERROR', 'An internal server error occurred', undefined, 500)
+  })
 
-// GET /api/stats - 获取统计信息
-app.get('/', async (c) => {
-  try {
-    // 获取链接总数和状态统计
-    const linkStats = await db
-      .select({
-        status: links.status,
-        count: sql<number>`count(*)`
-      })
-      .from(links)
-      .groupBy(links.status)
+  // GET /api/stats - 获取统计信息
+  app.get('/', async (c) => {
+    try {
+      // Get timezone offset from query parameter (in minutes, e.g., -480 for UTC+8)
+      const timezoneOffset = parseInt(c.req.query('tz') || '0') || 0
+      // 获取链接总数和状态统计
+      const linkStats = await database
+        .select({
+          status: links.status,
+          count: sql<number>`count(*)`
+        })
+        .from(links)
+        .groupBy(links.status)
 
-    const totalLinks = linkStats.reduce((sum, stat) => sum + stat.count, 0)
-    const publishedLinks = linkStats.find(stat => stat.status === 'published')?.count || 0
-    const pendingLinks = linkStats.find(stat => stat.status === 'pending')?.count || 0
+      const totalLinks = linkStats.reduce((sum, stat) => sum + stat.count, 0)
+      const publishedLinks = linkStats.find(stat => stat.status === 'published')?.count || 0
+      const pendingLinks = linkStats.find(stat => stat.status === 'pending')?.count || 0
 
-    // 获取分类统计 (直接使用user字段)
-    const categoryStats = await db
+      // 获取分类统计 (直接使用user字段)
+      const categoryStats = await database
       .select({
         category: links.userCategory,
         count: sql<number>`count(*)`
@@ -42,8 +47,8 @@ app.get('/', async (c) => {
 
     const totalCategories = categoryStats.length
 
-    // 获取标签统计 (直接使用user字段)
-    const tagData = await db
+      // 获取标签统计 (直接使用user字段)
+      const tagData = await database
       .select({ 
         tags: links.userTags 
       })
@@ -76,8 +81,8 @@ app.get('/', async (c) => {
       .slice(0, 10)
       .map(([name, count]) => ({ name, count }))
 
-    // 获取热门域名
-    const domainStats = await db
+      // 获取热门域名
+      const domainStats = await database
       .select({
         domain: links.domain,
         count: sql<number>`count(*)`
@@ -93,8 +98,8 @@ app.get('/', async (c) => {
       count: stat.count
     }))
 
-    // 获取最近活动 (最近10个已发布的链接)
-    const recentActivity = await db
+      // 获取最近活动 (最近10个已发布的链接)
+      const recentActivity = await database
       .select({
         title: links.title,
         url: links.url,
@@ -116,14 +121,20 @@ app.get('/', async (c) => {
     const now = new Date()
     const monthlyStats: MonthlyStats[] = []
     
+    // Convert timezone offset from minutes to seconds
+    const tzOffsetSeconds = timezoneOffset * 60
+    
     for (let i = 11; i >= 0; i--) {
       const date = new Date(now.getFullYear(), now.getMonth() - i, 1)
       const year = date.getFullYear()
       const month = date.getMonth() + 1
-      const startOfMonth = Math.floor(new Date(year, month - 1, 1).getTime() / 1000)
-      const endOfMonth = Math.floor(new Date(year, month, 0, 23, 59, 59).getTime() / 1000)
+      
+      // Calculate month boundaries in user's timezone
+      // We subtract the timezone offset from the timestamps to align with user's local time
+      const startOfMonth = Math.floor(new Date(year, month - 1, 1).getTime() / 1000) - tzOffsetSeconds
+      const endOfMonth = Math.floor(new Date(year, month, 0, 23, 59, 59, 999).getTime() / 1000) - tzOffsetSeconds
 
-      const monthlyData = await db
+      const monthlyData = await database
         .select({ count: sql<number>`count(*)` })
         .from(links)
         .where(
@@ -133,6 +144,7 @@ app.get('/', async (c) => {
             sql`${links.publishedAt} <= ${endOfMonth}`
           )
         )
+
 
       monthlyStats.push({
         year,
@@ -157,8 +169,13 @@ app.get('/', async (c) => {
 
   } catch (error) {
     console.error('Error fetching stats:', error)
-    return sendError(c, 'INTERNAL_SERVER_ERROR', 'Failed to fetch statistics', undefined, 500)
-  }
-})
+      return sendError(c, 'INTERNAL_SERVER_ERROR', 'Failed to fetch statistics', undefined, 500)
+    }
+  })
 
-export default app
+  return app
+}
+
+// Export the router instance for use in main app
+const statsRouter = createStatsRouter()
+export default statsRouter

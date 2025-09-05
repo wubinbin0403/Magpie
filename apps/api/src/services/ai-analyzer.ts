@@ -34,13 +34,6 @@ const DEFAULT_CATEGORIES = [
 // Default AI prompt template (optimized for Chinese content with dynamic categories)
 const DEFAULT_PROMPT_TEMPLATE = `你是一个专业的内容分析助手，可以阅读并理解网络内容，包括博客文章，各类新闻，视频，PDF或图片等。请分析以下网页内容并返回JSON格式的结构化摘要。
 
-内容信息：
-- URL: {url}
-- 标题: {title}
-- 内容类型: {contentType}
-- 原始描述: {description}
-- 主要内容: {content}
-
 **重要：你必须严格按照以下JSON格式返回结果，不要添加任何其他文本、解释或格式：**
 
 {
@@ -53,7 +46,7 @@ const DEFAULT_PROMPT_TEMPLATE = `你是一个专业的内容分析助手，可�
 }
 
 **分析要求：**
-- 摘要要简洁且信息丰富，突出核心观点，可以带有一些戏谑性或者吸引人的幽默表达
+- 摘要要简洁且信息丰富，突出核心观点，可以带有一些戏谑性或者吸引人的幽默表达。如果用户有特殊要求，可以遵循
 - 严格从给定的分类列表中选择最合适的一个分类
 - 标签应该具体且相关，有助于内容检索
 - 准确检测内容的主要语言
@@ -64,6 +57,13 @@ const DEFAULT_PROMPT_TEMPLATE = `你是一个专业的内容分析助手，可�
 此外，用户还需要你注意遵守以下规则。如果这些要求和上述规则有严重冲突，请优先遵守上面的规则；否则，请尽量满足用户的要求：
 
 {user_instructions}
+
+以下是内容信息：
+- URL: {url}
+- 标题: {title}
+- 内容类型: {contentType}
+- 原始描述: {description}
+- 主要内容: {content}
 `
 
 export class AIAnalyzer {
