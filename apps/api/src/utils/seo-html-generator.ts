@@ -30,19 +30,52 @@ interface SiteSettings {
   about_url?: string
 }
 
+interface QueryFilters {
+  category?: string
+  tags?: string
+  search?: string
+  linkId?: number
+}
+
 /**
  * 获取爬虫页面所需的数据
  */
-export async function getBotPageData(database: BetterSQLite3Database, category?: string) {
+export async function getBotPageData(database: BetterSQLite3Database, filters?: QueryFilters) {
   try {
-    // 构建查询条件
-    let whereConditions = eq(links.status, 'published')
-    if (category) {
-      // 如果有分类过滤，添加分类条件
-      whereConditions = and(whereConditions, eq(links.userCategory, category))
+    // 检查是否有不支持的查询参数
+    const unsupportedParams = []
+    if (filters?.tags) unsupportedParams.push('tags')
+    if (filters?.search) unsupportedParams.push('search')
+    
+    // 如果有不支持的参数，返回特殊页面
+    if (unsupportedParams.length > 0) {
+      return {
+        links: [],
+        categories: [],
+        settings: {
+          site_title: 'Interactive Feature - Browser Required',
+          site_description: `The requested feature (${unsupportedParams.join(', ')}) requires JavaScript and is only available in web browsers. Please visit this page in a browser for the full interactive experience.`,
+        },
+        unsupportedFeature: unsupportedParams.join(', ')
+      }
     }
 
-    // 获取已发布链接 (50条，用于SEO)
+    // 构建查询条件
+    let whereConditions = eq(links.status, 'published')
+    let linkLimit = 50
+    let orderBy = desc(links.publishedAt)
+    
+    if (filters?.linkId) {
+      // 如果指定了链接ID，只获取该链接
+      whereConditions = and(whereConditions, eq(links.id, filters.linkId))
+      linkLimit = 1
+      // 对于单个链接，不需要排序
+    } else if (filters?.category) {
+      // 如果有分类过滤，添加分类条件
+      whereConditions = and(whereConditions, eq(links.userCategory, filters.category))
+    }
+
+    // 获取已发布链接
     const linksResult = await database
       .select({
         id: links.id,
@@ -56,8 +89,8 @@ export async function getBotPageData(database: BetterSQLite3Database, category?:
       })
       .from(links)
       .where(whereConditions)
-      .orderBy(desc(links.publishedAt))
-      .limit(50)
+      .orderBy(orderBy)
+      .limit(linkLimit)
 
     // 格式化链接数据
     const formattedLinks: LinkData[] = linksResult.map(link => ({
@@ -250,6 +283,512 @@ function escapeHtml(text: string): string {
 }
 
 /**
+ * 生成不支持功能的HTML页面
+ */
+function generateUnsupportedFeatureHTML(data: { settings: SiteSettings; unsupportedFeature: string }): string {
+  return `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${escapeHtml(data.settings.site_title)}</title>
+  <meta name="description" content="${escapeHtml(data.settings.site_description)}">
+  
+  <!-- Robots meta tag to prevent indexing of interactive-only content -->
+  <meta name="robots" content="noindex, nofollow">
+  
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 40px 20px;
+      background: #f8f9fa;
+    }
+    
+    .notice-card {
+      background: white;
+      border-radius: 12px;
+      padding: 40px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+      text-align: center;
+    }
+    
+    .icon {
+      font-size: 48px;
+      margin-bottom: 20px;
+      color: #6c757d;
+    }
+    
+    h1 {
+      color: #2c3e50;
+      margin-bottom: 20px;
+      font-size: 1.8em;
+    }
+    
+    .description {
+      color: #6c757d;
+      margin-bottom: 30px;
+      font-size: 1.1em;
+    }
+    
+    .feature-list {
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 20px 0;
+      border-left: 4px solid #007bff;
+    }
+    
+    .browser-link {
+      display: inline-block;
+      background: #007bff;
+      color: white;
+      text-decoration: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      font-weight: 500;
+      margin-top: 20px;
+      transition: background-color 0.3s;
+    }
+    
+    .browser-link:hover {
+      background: #0056b3;
+      text-decoration: none;
+      color: white;
+    }
+    
+    .alternative {
+      margin-top: 40px;
+      padding-top: 20px;
+      border-top: 1px solid #dee2e6;
+    }
+    
+    .alternative h2 {
+      color: #495057;
+      font-size: 1.2em;
+      margin-bottom: 15px;
+    }
+    
+    .browse-all {
+      color: #007bff;
+      text-decoration: none;
+    }
+    
+    .browse-all:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="notice-card">
+    <div class="icon">🌐</div>
+    <h1>Interactive Feature - Browser Required</h1>
+    <p class="description">
+      The requested feature requires JavaScript and interactive capabilities that are only available in web browsers.
+    </p>
+    
+    <div class="feature-list">
+      <strong>Interactive Features:</strong> ${escapeHtml(data.unsupportedFeature)}
+      <br><small>These features require real-time filtering, search, and user interaction.</small>
+    </div>
+    
+    <a href="/" class="browser-link">
+      Visit in Browser for Full Experience
+    </a>
+    
+    <div class="alternative">
+      <h2>For Search Engines & Crawlers</h2>
+      <p>
+        Browse our content organized by categories: 
+        <a href="/" class="browse-all">View All Content</a>
+      </p>
+    </div>
+  </div>
+  
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebPage",
+      "name": "${escapeHtml(data.settings.site_title)}",
+      "description": "${escapeHtml(data.settings.site_description)}",
+      "url": "/",
+      "interactionStatistic": {
+        "@type": "InteractionCounter",
+        "interactionType": "https://schema.org/BrowseAction",
+        "description": "This page requires browser interaction"
+      }
+    }
+  </script>
+</body>
+</html>`
+}
+
+/**
+ * 生成单个链接页面的HTML
+ */
+function generateSingleLinkHTML(link: LinkData, settings: SiteSettings): string {
+  const pageTitle = link.title ? `${link.title} - ${settings.site_title}` : settings.site_title
+  const pageDescription = link.description || `Check out this link on ${settings.site_title}: ${link.url}`
+  
+  return `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${escapeHtml(pageTitle)}</title>
+  <meta name="description" content="${escapeHtml(pageDescription)}">
+  
+  <!-- Open Graph for single link -->
+  <meta property="og:title" content="${escapeHtml(link.title)}">
+  <meta property="og:description" content="${escapeHtml(pageDescription)}">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="/link/${link.id}">
+  <meta property="article:published_time" content="${link.publishedAt}">
+  ${link.category ? `<meta property="article:section" content="${escapeHtml(link.category)}">` : ''}
+  
+  <!-- Twitter Card for single link -->
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="${escapeHtml(link.title)}">
+  <meta name="twitter:description" content="${escapeHtml(pageDescription)}">
+  
+  <!-- Canonical URL -->
+  <link rel="canonical" href="/link/${link.id}">
+  
+  <!-- JSON-LD structured data for single link -->
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebPage",
+      "name": "${escapeHtml(link.title)}",
+      "description": "${escapeHtml(pageDescription)}",
+      "url": "/link/${link.id}",
+      "datePublished": "${link.publishedAt}",
+      "mainEntity": {
+        "@type": "Article",
+        "headline": "${escapeHtml(link.title)}",
+        "description": "${escapeHtml(link.description)}",
+        "url": "${escapeHtml(link.url)}",
+        "datePublished": "${link.publishedAt}",
+        "author": {
+          "@type": "Organization",
+          "name": "${escapeHtml(settings.site_title)}"
+        },
+        "publisher": {
+          "@type": "Organization",
+          "name": "${escapeHtml(settings.site_title)}"
+        }${link.category ? `,
+        "articleSection": "${escapeHtml(link.category)}"` : ''}${link.tags.length > 0 ? `,
+        "keywords": [${link.tags.map(tag => `"${escapeHtml(tag)}"`).join(', ')}]` : ''}
+      },
+      "breadcrumb": {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Home",
+            "item": "/"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "${escapeHtml(link.title)}",
+            "item": "/link/${link.id}"
+          }
+        ]
+      }
+    }
+  </script>
+  
+  ${generateSingleLinkCSS()}
+</head>
+<body>
+  <header>
+    <div class="header-content">
+      <h1><a href="/">${escapeHtml(settings.site_title)}</a></h1>
+      <p class="subtitle">${escapeHtml(settings.site_description)}</p>
+    </div>
+  </header>
+  
+  <main class="single-link-main">
+    <nav class="breadcrumb">
+      <a href="/">Home</a> / <span>Link #${link.id}</span>
+    </nav>
+    
+    <article class="single-link-article" itemscope itemtype="https://schema.org/Article">
+      <header class="article-header">
+        <h1 itemprop="headline">${escapeHtml(link.title)}</h1>
+        <div class="article-meta">
+          <span class="domain">${escapeHtml(link.domain)}</span>
+          <time datetime="${link.publishedAt}" itemprop="datePublished">
+            ${new Date(link.publishedAt).toLocaleDateString('zh-CN')}
+          </time>
+          ${link.category ? `<span class="category-badge">${escapeHtml(link.category)}</span>` : ''}
+        </div>
+      </header>
+      
+      ${link.description ? `
+        <div class="article-description" itemprop="description">
+          <p>${escapeHtml(link.description)}</p>
+        </div>
+      ` : ''}
+      
+      <div class="article-link">
+        <a href="${escapeHtml(link.url)}" 
+           itemprop="url" 
+           target="_blank" 
+           rel="noopener noreferrer"
+           class="external-link">
+          <span class="link-icon">🔗</span>
+          Visit Original Link
+          <span class="external-icon">↗</span>
+        </a>
+      </div>
+      
+      ${link.tags.length > 0 ? `
+        <footer class="article-tags">
+          <strong>Tags:</strong>
+          ${link.tags.map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join('')}
+        </footer>
+      ` : ''}
+    </article>
+    
+    <aside class="related-navigation">
+      <h2>More Content</h2>
+      <p>Explore more curated links and content:</p>
+      <a href="/" class="back-link">← Browse All Links</a>
+      ${link.category ? `<a href="/?category=${encodeURIComponent(link.category)}" class="category-link">More ${escapeHtml(link.category)} Links</a>` : ''}
+    </aside>
+  </main>
+  
+  <footer class="single-link-footer">
+    <p>© ${new Date().getFullYear()} ${escapeHtml(settings.site_title)} - Curated Link Collection</p>
+  </footer>
+</body>
+</html>`
+}
+
+/**
+ * 生成单个链接页面的CSS样式
+ */
+function generateSingleLinkCSS(): string {
+  return `
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        line-height: 1.6;
+        color: #333;
+        margin: 0;
+        padding: 0;
+        background: #f8f9fa;
+      }
+      
+      header {
+        background: white;
+        border-bottom: 1px solid #dee2e6;
+        padding: 20px 0;
+        margin-bottom: 30px;
+      }
+      
+      .header-content {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 0 20px;
+        text-align: center;
+      }
+      
+      header h1 a {
+        color: #2c3e50;
+        text-decoration: none;
+        font-size: 1.8em;
+        font-weight: 600;
+      }
+      
+      .subtitle {
+        color: #6c757d;
+        margin-top: 5px;
+        font-size: 1.1em;
+      }
+      
+      .single-link-main {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 0 20px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      }
+      
+      .breadcrumb {
+        padding: 20px 20px 10px;
+        color: #6c757d;
+        font-size: 0.9em;
+      }
+      
+      .breadcrumb a {
+        color: #007bff;
+        text-decoration: none;
+      }
+      
+      .single-link-article {
+        padding: 20px;
+      }
+      
+      .article-header h1 {
+        color: #2c3e50;
+        margin-bottom: 15px;
+        font-size: 2em;
+        line-height: 1.3;
+      }
+      
+      .article-meta {
+        display: flex;
+        gap: 15px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+        font-size: 0.9em;
+        color: #6c757d;
+      }
+      
+      .domain {
+        font-weight: 500;
+        color: #495057;
+      }
+      
+      .category-badge {
+        background: #007bff;
+        color: white;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.8em;
+        font-weight: 500;
+      }
+      
+      .article-description {
+        margin: 25px 0;
+        padding: 20px;
+        background: #f8f9fa;
+        border-left: 4px solid #007bff;
+        border-radius: 4px;
+      }
+      
+      .article-description p {
+        margin: 0;
+        font-size: 1.1em;
+        line-height: 1.6;
+        color: #495057;
+      }
+      
+      .article-link {
+        margin: 30px 0;
+        text-align: center;
+      }
+      
+      .external-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: #28a745;
+        color: white;
+        text-decoration: none;
+        padding: 12px 24px;
+        border-radius: 6px;
+        font-weight: 500;
+        font-size: 1.1em;
+        transition: background-color 0.3s;
+      }
+      
+      .external-link:hover {
+        background: #218838;
+        text-decoration: none;
+        color: white;
+      }
+      
+      .link-icon, .external-icon {
+        font-size: 1.2em;
+      }
+      
+      .article-tags {
+        margin-top: 30px;
+        padding-top: 20px;
+        border-top: 1px solid #dee2e6;
+      }
+      
+      .tag {
+        display: inline-block;
+        background: #e9ecef;
+        color: #495057;
+        padding: 4px 8px;
+        margin: 2px 4px 2px 0;
+        border-radius: 3px;
+        font-size: 0.8em;
+      }
+      
+      .related-navigation {
+        margin-top: 40px;
+        padding: 20px;
+        background: #f8f9fa;
+        border-radius: 8px;
+      }
+      
+      .related-navigation h2 {
+        color: #495057;
+        margin-bottom: 10px;
+        font-size: 1.3em;
+      }
+      
+      .back-link, .category-link {
+        display: inline-block;
+        color: #007bff;
+        text-decoration: none;
+        margin: 5px 10px 5px 0;
+        padding: 8px 12px;
+        border: 1px solid #007bff;
+        border-radius: 4px;
+        font-size: 0.9em;
+        transition: all 0.3s;
+      }
+      
+      .back-link:hover, .category-link:hover {
+        background: #007bff;
+        color: white;
+        text-decoration: none;
+      }
+      
+      .single-link-footer {
+        text-align: center;
+        padding: 30px 20px;
+        color: #6c757d;
+        font-size: 0.9em;
+      }
+      
+      @media (max-width: 768px) {
+        .header-content, .single-link-main {
+          padding: 0 15px;
+        }
+        
+        .article-header h1 {
+          font-size: 1.6em;
+        }
+        
+        .article-meta {
+          flex-direction: column;
+          gap: 8px;
+        }
+        
+        .external-link {
+          font-size: 1em;
+          padding: 10px 20px;
+        }
+      }
+    </style>
+  `
+}
+
+/**
  * 生成基础CSS样式
  */
 function generateCSS() {
@@ -412,11 +951,27 @@ function generateCSS() {
 /**
  * 生成完整的SEO HTML页面
  */
-export async function generateBotHTML(database: BetterSQLite3Database, searchParams?: URLSearchParams): Promise<string> {
-  // 解析分类参数
-  const category = searchParams?.get('category') || undefined
+export async function generateBotHTML(database: BetterSQLite3Database, searchParams?: URLSearchParams, linkId?: number): Promise<string> {
+  // 解析查询参数
+  const filters: QueryFilters = {
+    category: searchParams?.get('category') || undefined,
+    tags: searchParams?.get('tags') || undefined,
+    search: searchParams?.get('search') || undefined,
+    linkId: linkId,
+  }
   
-  const data = await getBotPageData(database, category)
+  const data = await getBotPageData(database, filters)
+  
+  // 检查是否是不支持的功能页面
+  if ('unsupportedFeature' in data) {
+    return generateUnsupportedFeatureHTML(data as any)
+  }
+  
+  // 如果是单个链接页面，生成专门的HTML
+  if (linkId && data.links.length === 1) {
+    return generateSingleLinkHTML(data.links[0], data.settings)
+  }
+  
   const structuredData = generateStructuredData(data)
 
   return `<!DOCTYPE html>

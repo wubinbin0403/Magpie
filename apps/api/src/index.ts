@@ -97,6 +97,41 @@ app.route('/api/admin/settings', adminSettingsRouter) // GET/PUT /api/admin/sett
 app.route('/api/admin/tokens', adminTokensRouter)   // GET/POST /api/admin/tokens, DELETE /api/admin/tokens/:id
 app.route('/api/admin/categories', adminCategoriesRouter) // GET/POST /api/admin/categories, PUT/DELETE /api/admin/categories/:id
 
+// Link detail route handler
+app.get('/link/:id', async (c) => {
+  try {
+    const userAgent = c.req.header('User-Agent') || ''
+    const linkId = parseInt(c.req.param('id'))
+    
+    // Validate link ID
+    if (isNaN(linkId) || linkId <= 0) {
+      return c.html('<h1>Invalid Link ID</h1><p>The requested link ID is not valid.</p>', 400)
+    }
+    
+    if (isBot(userAgent)) {
+      // For bots/crawlers: return SEO-optimized static HTML for single link
+      console.log(`Bot detected on link page: ${userAgent.substring(0, 100)}...`)
+      const searchParams = new URL(c.req.url).searchParams
+      const html = await generateBotHTML(db, searchParams, linkId)
+      return c.html(html)
+    } else {
+      // For users: serve React SPA (React Router will handle client-side routing)
+      if (process.env.NODE_ENV === 'production') {
+        // In production: serve built React app
+        return c.html(await getReactAppHTML())
+      } else {
+        // In development: proxy to Vite dev server
+        const response = await fetch('http://localhost:3000/')
+        const html = await response.text()
+        return c.html(html)
+      }
+    }
+  } catch (error) {
+    console.error('Error serving link page:', error)
+    return c.html('<h1>Service Temporarily Unavailable</h1><p>Please try again later.</p>', 503)
+  }
+})
+
 // Category route handler
 app.get('/category/:name', async (c) => {
   try {
