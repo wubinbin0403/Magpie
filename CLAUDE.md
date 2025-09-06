@@ -80,6 +80,12 @@ doc/             # 完整设计文档
 - RESTful API 设计原则
 - 使用 Drizzle ORM 进行所有数据库操作
 
+### 类型系统和共享
+- **类型定义位置**: 所有 API 相关的类型定义统一放在 `packages/shared/src/api.ts` 中
+- **类型导入方式**: 前端和后端项目都通过 `import type { ... } from '@magpie/shared'` 导入类型
+- **依赖配置**: shared 包作为 `devDependencies` 添加到各项目的 package.json 中
+- **构建要求**: 修改 shared 包后需要运行 `pnpm build` 重新构建类型定义文件
+
 ### 设计规范
 - 在开发前端页面是，遵循最优的设计规范，设计一个简洁优雅的页面
 - **图标库**: 使用 heroicons 作为图标库。在需要使用图标时，选择这个图标库，不要尝试自行绘制SVG

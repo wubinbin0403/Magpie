@@ -4,7 +4,7 @@ import { testDrizzle } from './setup.js'
 import { links, apiTokens } from '../db/schema.js'
 import { eq } from 'drizzle-orm'
 import { createPendingLinkRouter } from '../routes/auth/pending-link.js'
-import type { PendingLinkResponse } from '../types/api.js'
+import type { PendingLinkResponse } from '@magpie/shared'
 
 describe('Auth Pending Link API', () => {
   let app: any

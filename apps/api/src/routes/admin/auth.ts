@@ -7,7 +7,7 @@ import { sendSuccess, sendError, notFound } from '../../utils/response.js'
 import { adminLoginSchema, adminInitSchema } from '../../utils/validation.js'
 import { hashPassword, verifyPassword, createAdminJWT, getClientIp } from '../../utils/auth.js'
 import { requireAdmin } from '../../middleware/admin.js'
-import type { AdminLoginResponse } from '../../types/api.js'
+import type { AdminLoginResponse } from '@magpie/shared'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 
 // Create admin auth router with optional database dependency injection

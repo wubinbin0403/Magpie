@@ -7,7 +7,7 @@ interface AdminSidebarProps {
   onClose?: () => void
 }
 
-export default function AdminSidebar({ pendingCount = 0, totalLinks = 0, isOpen = true, onClose }: AdminSidebarProps) {
+export default function AdminSidebar({ pendingCount = 0, isOpen = true, onClose }: AdminSidebarProps) {
   const location = useLocation()
   
   const getNavItemClass = (path: string) => {

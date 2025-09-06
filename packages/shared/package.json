@@ -2,8 +2,20 @@
   "name": "@magpie/shared",
   "version": "1.0.0",
   "description": "Shared TypeScript types and utilities for Magpie",
-  "main": "src/index.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "type": "module",
+  "files": [
+    "dist",
+    "src"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./src/index.ts"
+    }
+  },
   "scripts": {
     "build": "tsc",
     "test": "vitest run",

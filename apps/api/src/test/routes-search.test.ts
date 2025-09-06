@@ -7,7 +7,7 @@ import { links } from '../db/schema.js'
 import { eq, desc, asc, like, and, or, count, sql } from 'drizzle-orm'
 import { sendSuccess, sendError } from '../utils/response.js'
 import { searchQuerySchema, suggestionsQuerySchema, buildSearchDateFilter } from '../utils/validation.js'
-import type { SearchResponse, SearchResult, Suggestion } from '../types/api.js'
+import type { SearchResponse, SearchResult, Suggestion } from '@magpie/shared'
 
 // 创建搜索路由
 const createSearchApp = () => {

@@ -5,7 +5,7 @@ import { links } from '../../db/schema.js'
 import { eq, desc, asc, and, or, count, sql, isNull, getTableColumns } from 'drizzle-orm'
 import { sendSuccess, sendError } from '../../utils/response.js'
 import { searchQuerySchema, suggestionsQuerySchema, buildSearchDateFilter } from '../../utils/validation.js'
-import type { SearchResponse, SearchResult, Suggestion } from '../../types/api.js'
+import type { SearchResponse, SearchResult, Suggestion } from '@magpie/shared'
 
 const app = new Hono()
 

@@ -1,5 +1,5 @@
 import type { Context } from 'hono'
-import type { ApiResponse, SuccessResponse, ErrorResponse } from '../types/api.js'
+import type { ApiResponse, SuccessResponse, ErrorResponse } from '@magpie/shared'
 
 export function success<T = any>(
   data: T,

@@ -41,6 +41,9 @@ importers:
       '@hono/zod-validator':
         specifier: ^0.7.2
         version: 0.7.2(hono@4.9.4)(zod@3.25.76)
+      '@magpie/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       '@mozilla/readability':
         specifier: ^0.6.0
         version: 0.6.0

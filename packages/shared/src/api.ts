@@ -1,4 +1,4 @@
-// API 响应类型定义
+// API response types
 
 export interface BaseResponse {
   success: boolean;
@@ -22,7 +22,7 @@ export interface ErrorResponse extends BaseResponse {
 
 export type ApiResponse<T = any> = SuccessResponse<T> | ErrorResponse;
 
-// 分页相关类型
+// Pagination types
 export interface Pagination {
   page: number;
   limit: number;
@@ -32,7 +32,7 @@ export interface Pagination {
   hasPrev: boolean;
 }
 
-// 链接相关类型
+// Link types
 export interface Link {
   id: number;
   url: string;
@@ -83,7 +83,7 @@ export interface PendingLinkResponse {
   userTags?: string[];
 }
 
-// 统计相关类型
+// Stats types
 export interface CategoryStats {
   name: string;
   count: number;
@@ -118,7 +118,7 @@ export interface ActivityItem {
   timestamp: string;
 }
 
-// 搜索相关类型
+// Search types
 export interface SearchResult extends Link {
   score: number;
   highlights: {
@@ -142,7 +142,7 @@ export interface Suggestion {
   count?: number;
 }
 
-// 查询参数类型
+// Query parameter types
 export interface LinksQuery {
   page?: number;
   limit?: number;
@@ -190,7 +190,7 @@ export interface AdminPendingQuery {
   category?: string;
 }
 
-// 请求体类型
+// Request body types
 export interface ConfirmLinkRequest {
   title?: string;
   description: string;
@@ -274,7 +274,7 @@ export interface UpdateSettingsRequest {
   };
 }
 
-// 响应数据类型
+// Response data types
 export interface LinksResponse {
   links: Link[];
   pagination: Pagination;
@@ -326,7 +326,7 @@ export interface SettingsResponse {
     aboutUrl?: string;
   };
   ai: {
-    apiKey: string; // 脱敏显示
+    apiKey: string; // Masked display
     baseUrl: string;
     model: string;
     temperature: number;

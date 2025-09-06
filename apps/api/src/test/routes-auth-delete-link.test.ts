@@ -4,7 +4,7 @@ import { testDrizzle } from './setup.js'
 import { links, apiTokens } from '../db/schema.js'
 import { eq } from 'drizzle-orm'
 import { createDeleteLinkRouter } from '../routes/auth/delete-link.js'
-import type { DeleteLinkResponse } from '../types/api.js'
+import type { DeleteLinkResponse } from '@magpie/shared'
 
 describe('Auth Delete Link API', () => {
   let app: any

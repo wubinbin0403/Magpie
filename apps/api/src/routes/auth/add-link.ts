@@ -10,7 +10,7 @@ import { webScraper } from '../../services/web-scraper.js'
 import { readabilityScraper } from '../../services/readability-scraper.js'
 import { createAIAnalyzer, type AIAnalysisResult } from '../../services/ai-analyzer.js'
 import { getSettings } from '../../utils/settings.js'
-import type { AddLinkResponse } from '../../types/api.js'
+import type { AddLinkResponse } from '@magpie/shared'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 
 // Helper function to get unified auth data

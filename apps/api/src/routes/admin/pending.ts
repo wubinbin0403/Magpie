@@ -6,7 +6,7 @@ import { eq, desc, asc, count, and } from 'drizzle-orm'
 import { sendSuccess, sendError } from '../../utils/response.js'
 import { adminPendingQuerySchema } from '../../utils/validation.js'
 import { requireAdmin } from '../../middleware/admin.js'
-import type { PendingLink, Pagination } from '../../types/api.js'
+import type { PendingLink, Pagination } from '@magpie/shared'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 
 // Create admin pending links router with optional database dependency injection

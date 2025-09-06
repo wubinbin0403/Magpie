@@ -325,6 +325,30 @@ pnpm test
 - API 使用 RESTful 设计
 - 数据库操作使用 Drizzle ORM
 
+### 类型定义和共享
+项目采用 monorepo 架构，所有 API 相关的类型定义统一管理：
+
+- **类型定义位置**：`packages/shared/src/api.ts`
+- **包含内容**：
+  - API 请求和响应类型（`ApiResponse`, `LinksResponse`, `SearchResponse` 等）
+  - 数据模型类型（`Link`, `PendingLink`, `Pagination` 等）
+  - 查询参数类型（`LinksQuery`, `SearchQuery` 等）
+  - 统计数据类型（`CategoryStats`, `TagStats` 等）
+
+- **使用方式**：
+  ```typescript
+  // 在前端和后端项目中导入类型
+  import type { LinksResponse, ApiResponse, Link } from '@magpie/shared';
+  ```
+
+- **依赖配置**：
+  - 在 `apps/api/package.json` 和 `apps/web/package.json` 的 `devDependencies` 中添加 `"@magpie/shared": "workspace:*"`
+  - TypeScript 路径映射已配置为 `"@magpie/shared/*": ["../../packages/shared/src/*"]`
+
+- **构建要求**：
+  - 修改 `packages/shared` 中的类型后，需要运行 `pnpm build` 重新构建
+  - 确保前端和后端项目使用一致的类型定义
+
 ### Git 工作流
 - `master` - 主分支，用于发布
 - `develop` - 开发分支
