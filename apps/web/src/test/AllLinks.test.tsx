@@ -1,9 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import AllLinks from '../pages/admin/AllLinks'
 import { api } from '../utils/api'
+import { ApiResponse, LinksResponse } from '@magpie/shared'
 
 // Mock the api
 vi.mock('../utils/api', () => ({
@@ -48,41 +49,48 @@ describe('AllLinks', () => {
   let queryClient: QueryClient
   
   // Mock data
-  const mockLinks = {
+  const mockLinks: ApiResponse<LinksResponse> = {
     success: true,
     data: {
-      links: [
-        {
-          id: 1,
-          url: 'https://example.com/article-1',
-          title: 'Test Article 1',
-          domain: 'example.com',
-          description: 'This is a test article description',
-          category: 'Technology',
-          tags: ['react', 'testing'],
-          status: 'published' as const,
-          createdAt: 1640995200, // 2022-01-01 00:00:00 UTC
-          publishedAt: 1640995300,
-          readingTime: 5
+        links: [
+            {
+                id: 1,
+                url: 'https://example.com/article-1',
+                title: 'Test Article 1',
+                domain: 'example.com',
+                description: 'This is a test article description',
+                category: 'Technology',
+                tags: ['react', 'testing'],
+                createdAt: "1640995200", // 2022-01-01 00:00:00 UTC
+                publishedAt: "1640995300",
+                readingTime: 5
+            },
+            {
+                id: 2,
+                url: 'https://test.com/article-2',
+                title: 'Test Article 2',
+                domain: 'test.com',
+                description: 'Another test article',
+                category: 'Design',
+                tags: ['ui', 'design'],
+                createdAt: "1650995400",
+                publishedAt: "1650995400",
+            }
+        ],
+        pagination: {
+            page: 1,
+            limit: 20,
+            total: 2,
+            pages: 0,
+            hasNext: false,
+            hasPrev: false
         },
-        {
-          id: 2,
-          url: 'https://test.com/article-2',
-          title: 'Test Article 2',
-          domain: 'test.com',
-          description: 'Another test article',
-          category: 'Design',
-          tags: ['ui', 'design'],
-          status: 'pending' as const,
-          createdAt: 1640995400
+        filters: {
+            categories: [],
+            tags: [],
+            domains: undefined,
+            yearMonths: []
         }
-      ],
-      pagination: {
-        page: 1,
-        limit: 20,
-        total: 2,
-        totalPages: 1
-      }
     }
   }
 
@@ -95,7 +103,7 @@ describe('AllLinks', () => {
   beforeEach(() => {
     queryClient = new QueryClient({
       defaultOptions: {
-        queries: { retry: false, cacheTime: 0 },
+        queries: { retry: false },
         mutations: { retry: false }
       }
     })

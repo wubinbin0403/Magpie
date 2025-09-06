@@ -1,4 +1,4 @@
-import React, { useState, memo } from 'react'
+import { useState, memo } from 'react'
 import CategoryIcon from './CategoryIcon'
 
 interface Category {
@@ -136,7 +136,7 @@ const Sidebar = memo(function Sidebar({
                   ? 'text-magpie-200' 
                   : 'text-gray-400 group-hover:text-magpie-200'
               }`}>
-                {categories.reduce((sum, cat) => sum + cat.count, 0)}
+                {categories.reduce((sum, cat) => sum + (cat.count ?? 0), 0)}
               </span>
             </div>
             
@@ -153,7 +153,7 @@ const Sidebar = memo(function Sidebar({
           </button>
           
           {/* Individual categories - only show categories with count > 0 */}
-          {categories.filter(category => category.count > 0).map((category) => (
+          {categories.filter(category => (category.count ?? 0) > 0).map((category) => (
             <button
               key={category.name}
               onClick={() => onCategoryFilter(category.name)}
@@ -184,7 +184,7 @@ const Sidebar = memo(function Sidebar({
                     ? 'text-magpie-200' 
                     : 'text-gray-400 group-hover:text-magpie-200'
                 }`}>
-                  {category.count}
+                  {category.count ?? 0}
                 </span>
               </div>
               

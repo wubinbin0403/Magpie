@@ -180,7 +180,7 @@ export default function HomePage() {
   }
 
   const handleLoadMore = () => {
-    if (data?.data.pagination.hasNext) {
+    if (data && data.success && data.data.pagination.hasNext) {
       setPage(prev => prev + 1)
     }
   }
@@ -279,7 +279,7 @@ export default function HomePage() {
               <div className="space-y-8">
                 {displayLinks.length > 0 && Object.entries(groupedLinks)
                   .sort(([a], [b]) => b.localeCompare(a))
-                  .map(([key, group]) => (
+                  .map(([key, group]: [string, any]) => (
                     <MonthSection
                       key={key}
                       year={group.year}
@@ -287,7 +287,7 @@ export default function HomePage() {
                       count={group.links.length}
                     >
                       <div className="divide-y divide-base-300/10">
-                        {group.links.map(link => (
+                        {group.links.map((link: any) => (
                           <div 
                             key={link.id} 
                             className="group hover:bg-base-200/30 transition-colors duration-1000 ease-in-out -mx-4 lg:-mx-6 px-4 lg:px-6 py-4"
@@ -305,7 +305,7 @@ export default function HomePage() {
                   ))}
 
                 {/* 加载更多按钮，只在非ID搜索模式时显示 */}
-                {!linkId && data?.data.pagination.hasNext && (
+                {!linkId && data && data.success && data.data.pagination.hasNext && (
                   <LoadMoreButton
                     onLoadMore={handleLoadMore}
                     loading={isLoading && page > 1}

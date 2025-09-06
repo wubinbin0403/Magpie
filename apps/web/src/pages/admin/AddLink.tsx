@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import api from '../../utils/api'
+import { isSuccessResponse } from '../../utils/api-helpers'
 import ProcessingAnimation, { ProcessingStage } from '../../components/ProcessingAnimation'
 import CategoryBadge from '../../components/CategoryBadge'
 import TagList from '../../components/TagList'
@@ -29,7 +30,7 @@ export default function AddLink() {
     presetTags: ''
   })
   const [showAdvanced, setShowAdvanced] = useState(false)
-  const [processingItems, setProcessingItems] = useState<ProcessingStatus[]>([])
+  const [_processingItems, setProcessingItems] = useState<ProcessingStatus[]>([])
   const [pendingLinkId, setPendingLinkId] = useState<number | null>(null)
   const [isEditing, setIsEditing] = useState(false)
   const [editForm, setEditForm] = useState({
@@ -54,17 +55,18 @@ export default function AddLink() {
   const eventSourceRef = useRef<EventSource | null>(null)
 
   const queryClient = useQueryClient()
+  
+  // Note: pendingLinkData will be extracted after the query
 
   // Fetch categories
-  const { data: categoriesData, isLoading: categoriesLoading } = useQuery({
+  const { data: categoriesResponse, isLoading: categoriesLoading } = useQuery({
     queryKey: ['categories'],
-    queryFn: async () => {
-      const response = await api.getCategories()
-      return response.data
-    }
+    queryFn: () => api.getCategories()
   })
 
-  const categories = categoriesData || []
+  const categories = categoriesResponse && isSuccessResponse(categoriesResponse) 
+    ? categoriesResponse.data 
+    : []
 
   // Auto-clear messages after 5 seconds with animation
   useEffect(() => {
@@ -90,15 +92,16 @@ export default function AddLink() {
   }, [message])
 
   // Fetch pending link details when we have a pending link ID
-  const { data: pendingLinkData, isLoading: pendingLinkLoading } = useQuery({
+  const { data: pendingLinkResponse, isLoading: pendingLinkLoading } = useQuery({
     queryKey: ['pending-link', pendingLinkId],
-    queryFn: async () => {
-      if (!pendingLinkId) return null
-      const response = await api.getPendingLink(pendingLinkId)
-      return response.data
-    },
+    queryFn: () => api.getPendingLink(pendingLinkId!),
     enabled: !!pendingLinkId
   })
+  
+  // Extract pending link data safely
+  const pendingLinkData = pendingLinkResponse && isSuccessResponse(pendingLinkResponse)
+    ? pendingLinkResponse.data
+    : null
 
   // Add link mutation
   const addLinkMutation = useMutation({
@@ -128,6 +131,10 @@ export default function AddLink() {
           tags: linkData.presetTags || undefined
         })
 
+        if (!isSuccessResponse(response)) {
+          throw new Error(response.error?.message || 'Failed to add link')
+        }
+        
         const result = response.data
 
         // Update status based on response
@@ -143,7 +150,7 @@ export default function AddLink() {
                 }
               : item
           ))
-        } else if (result.id && result.status === 'pending') {
+        } else if (result.id && !linkData.skipConfirm) {
           // Link needs confirmation - set the pending link ID to trigger fetching details
           setPendingLinkId(result.id)
           
@@ -179,8 +186,8 @@ export default function AddLink() {
     },
     onSuccess: (result) => {
       // Check if AI analysis failed
-      const aiAnalysisFailed = result.data?.aiAnalysisFailed
-      const aiError = result.data?.aiError
+      const aiAnalysisFailed = result.aiAnalysisFailed
+      const aiError = result.aiError
       
       // Complete the processing animation with appropriate message
       setCurrentProcessing({
@@ -195,23 +202,23 @@ export default function AddLink() {
       setForm({ url: '', skipConfirm: false, presetCategory: '', presetTags: '' })
       
       // Show success message with AI status
-      if (result.data?.status === 'published') {
+      if (result.status === 'published') {
         setMessage({
-          type: aiAnalysisFailed ? 'warning' : 'success',
+          type: aiAnalysisFailed ? 'error' : 'success',
           text: aiAnalysisFailed 
             ? `链接已添加并发布，但AI分析失败：${aiError || '未知错误'}。内容基于原始信息生成。`
             : '链接已成功添加并发布！'
         })
       } else {
         setMessage({
-          type: aiAnalysisFailed ? 'warning' : 'info',
+          type: aiAnalysisFailed ? 'error' : 'info',
           text: aiAnalysisFailed 
             ? `链接已添加但AI分析失败：${aiError || '未知错误'}。请在下方手动编辑后发布。`
             : '链接已成功添加，请在下方确认后发布。'
         })
         // Set pending link ID for editing
-        if (result.data?.id) {
-          setPendingLinkId(result.data.id)
+        if (result.id) {
+          setPendingLinkId(result.id)
         }
       }
       
@@ -365,21 +372,23 @@ export default function AddLink() {
   }, [])
 
 
-  const clearProcessing = () => {
-    setProcessingItems([])
-  }
+  // Unused function - commenting out to fix build error
+  // const clearProcessing = () => {
+  //   setProcessingItems([])
+  // }
 
-  const retryProcessing = (id: string) => {
-    const item = processingItems.find(p => p.id === id)
-    if (item && item.url) {
-      addLinkMutation.mutate({
-        url: item.url,
-        skipConfirm: form.skipConfirm,
-        presetCategory: form.presetCategory,
-        presetTags: form.presetTags
-      })
-    }
-  }
+  // Unused function - commenting out to fix build error  
+  // const retryProcessing = (id: string) => {
+  //   const item = processingItems.find(p => p.id === id)
+  //   if (item && item.url) {
+  //     addLinkMutation.mutate({
+  //       url: item.url,
+  //       skipConfirm: form.skipConfirm,
+  //       presetCategory: form.presetCategory,
+  //       presetTags: form.presetTags
+  //     })
+  //   }
+  // }
 
   // Handle edit mode
   const handleStartEdit = () => {
@@ -474,27 +483,29 @@ export default function AddLink() {
     })
   }
 
-  const getStatusColor = (status: ProcessingStatus['status']) => {
-    switch (status) {
-      case 'processing': return 'text-blue-600'
-      case 'success': return 'text-green-600'
-      case 'failed': return 'text-red-600'
-      default: return 'text-gray-600'
-    }
-  }
+  // Unused function - commenting out to fix build error
+  // const getStatusColor = (status: ProcessingStatus['status']) => {
+  //   switch (status) {
+  //     case 'processing': return 'text-blue-600'
+  //     case 'success': return 'text-green-600'
+  //     case 'failed': return 'text-red-600'
+  //     default: return 'text-gray-600'
+  //   }
+  // }
 
-  const getStatusIcon = (status: ProcessingStatus['status']) => {
-    switch (status) {
-      case 'processing': 
-        return <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-      case 'success': 
-        return <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-      case 'failed': 
-        return <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-      default: 
-        return <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-    }
-  }
+  // Unused function - commenting out to fix build error
+  // const getStatusIcon = (status: ProcessingStatus['status']) => {
+  //   switch (status) {
+  //     case 'processing': 
+  //       return <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+  //     case 'success': 
+  //       return <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+  //     case 'failed': 
+  //       return <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+  //     default: 
+  //       return <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+  //   }
+  // }
 
   return (
     <>

@@ -41,9 +41,6 @@ importers:
       '@hono/zod-validator':
         specifier: ^0.7.2
         version: 0.7.2(hono@4.9.4)(zod@3.25.76)
-      '@magpie/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
       '@mozilla/readability':
         specifier: ^0.6.0
         version: 0.6.0
@@ -84,6 +81,9 @@ importers:
         specifier: ^3.22.4
         version: 3.25.76
     devDependencies:
+      '@magpie/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       '@types/bcrypt':
         specifier: ^5.0.2
         version: 5.0.2
@@ -166,6 +166,9 @@ importers:
         specifier: ^3.4.1
         version: 3.4.17
     devDependencies:
+      '@magpie/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       '@tailwindcss/line-clamp':
         specifier: ^0.4.4
         version: 0.4.4(tailwindcss@3.4.17)

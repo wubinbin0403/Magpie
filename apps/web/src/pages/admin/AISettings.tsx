@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import api from '../../utils/api'
+import { isSuccessResponse } from '../../utils/api-helpers'
 
 interface AISettings {
   apiKey: string
@@ -32,14 +33,17 @@ export default function AISettings() {
     queryKey: ['admin-settings'],
     queryFn: async () => {
       const response = await api.getSettings()
-      return response.data
+      return isSuccessResponse(response) ? response.data : null
     }
   })
 
   // Update local settings when data is loaded
   useEffect(() => {
     if (settingsData?.ai) {
-      setSettings(settingsData.ai)
+      setSettings({
+        ...settingsData.ai,
+        userInstructions: settingsData.ai.summaryPrompt || ''
+      })
       // Don't set the hidden token as originalApiKey
       if (isApiKeyConfigured(settingsData.ai.apiKey)) {
         setOriginalApiKey('***CONFIGURED***') // Internal flag
@@ -55,6 +59,9 @@ export default function AISettings() {
   const updateSettingsMutation = useMutation({
     mutationFn: async (newSettings: { ai: AISettings }) => {
       const response = await api.updateSettings(newSettings)
+      if (!isSuccessResponse(response)) {
+        throw new Error(response.error.message)
+      }
       return response.data
     },
     onSuccess: () => {
@@ -141,14 +148,14 @@ export default function AISettings() {
 
   const handleSave = useCallback(() => {
     // Only include API key if user has actually entered one
-    const settingsToSave = {
+    const settingsToSave: AISettings = {
       baseUrl: settings.baseUrl,
       model: settings.model,
       temperature: settings.temperature,
       userInstructions: settings.userInstructions,
-      // Only include API key if user has actually entered a real one
-      ...(apiKeyTouched && settings.apiKey && !settings.apiKey.includes('***') 
-         ? { apiKey: settings.apiKey } : {})
+      apiKey: (apiKeyTouched && settings.apiKey && !settings.apiKey.includes('***')) 
+        ? settings.apiKey 
+        : '' // Provide empty string as fallback
     }
     updateSettingsMutation.mutate({ ai: settingsToSave })
   }, [updateSettingsMutation, settings, apiKeyTouched])

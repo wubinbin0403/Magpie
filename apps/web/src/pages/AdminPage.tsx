@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import api from '../utils/api'
+import { isSuccessResponse } from '../utils/api-helpers'
 import AdminNavBar from '../components/AdminNavBar'
 import AdminSidebar from '../components/AdminSidebar'
 import AdminOverview from './admin/AdminOverview'
@@ -25,7 +26,7 @@ export default function AdminPage() {
     queryKey: ['admin-stats-summary'],
     queryFn: async () => {
       const response = await api.getStats()
-      return response.data
+      return isSuccessResponse(response) ? response.data : null
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: false

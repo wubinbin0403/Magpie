@@ -107,7 +107,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         return { 
           success: false, 
-          error: data.error?.message || 'Login failed' 
+          error: !data.success ? data.error.message : 'Login failed' 
         }
       }
     } catch (error) {
@@ -149,7 +149,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         return { 
           success: false, 
-          error: data.error?.message || 'Failed to initialize admin account' 
+          error: !data.success ? data.error.message : 'Failed to initialize admin account' 
         }
       }
     } catch (error) {

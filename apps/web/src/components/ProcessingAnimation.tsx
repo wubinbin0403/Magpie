@@ -47,23 +47,24 @@ export default function ProcessingAnimation({
     return 'node-idle'
   }
 
-  const getChevronClass = (lineStage: 'fetching' | 'analyzing', chevronIndex: number) => {
-    const baseClass = (() => {
-      if (stage === 'error') return 'chevron-error'
-      if (stage === lineStage) return 'chevron-active'
-      if (isActive(lineStage)) return 'chevron-completed'
-      return 'chevron-idle'
-    })()
-    
-    // Add waiting animation for idle stage
-    if (stage === 'idle') {
-      const globalIndex = lineStage === 'fetching' ? chevronIndex : chevronIndex + 5
-      const isWaiting = globalIndex === waitingChevronIndex
-      return `${baseClass} ${isWaiting ? 'chevron-waiting' : ''}`
-    }
-    
-    return baseClass
-  }
+  // Unused function - commented out to fix build
+  // const getChevronClass = (lineStage: 'fetching' | 'analyzing', chevronIndex: number) => {
+  //   const baseClass = (() => {
+  //     if (stage === 'error') return 'chevron-error'
+  //     if (stage === lineStage) return 'chevron-active'
+  //     if (isActive(lineStage)) return 'chevron-completed'
+  //     return 'chevron-idle'
+  //   })()
+  //   
+  //   // Add waiting animation for idle stage
+  //   if (stage === 'idle') {
+  //     const globalIndex = lineStage === 'fetching' ? chevronIndex : chevronIndex + 5
+  //     const isWaiting = globalIndex === waitingChevronIndex
+  //     return `${baseClass} ${isWaiting ? 'chevron-waiting' : ''}`
+  //   }
+  //   
+  //   return baseClass
+  // }
 
   const getChannelChevronClass = (chevronStage: 'fetching' | 'analyzing', chevronIndex: number) => {
     const baseClass = (() => {
@@ -85,7 +86,7 @@ export default function ProcessingAnimation({
 
   return (
     <div className="processing-animation-container">
-      <style jsx>{`
+      <style>{`
         .processing-animation-container {
           padding: 2rem;
           background: transparent;

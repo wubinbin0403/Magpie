@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '../../utils/api'
+import { isSuccessResponse } from '../../utils/api-helpers'
 import CategoryBadge from '../../components/CategoryBadge'
 import TagList from '../../components/TagList'
 
@@ -34,24 +35,24 @@ export default function PendingLinks() {
   const queryClient = useQueryClient()
 
   // Fetch pending links
-  const { data: pendingLinksData, isLoading, error } = useQuery({
+  const { data: pendingLinksResponse, isLoading, error } = useQuery({
     queryKey: ['pending-links'],
-    queryFn: async () => {
-      const response = await api.getPendingLinks()
-      return response.data
-    }
+    queryFn: () => api.getPendingLinks()
   })
+  
+  const pendingLinksData = pendingLinksResponse && isSuccessResponse(pendingLinksResponse)
+    ? pendingLinksResponse.data
+    : null
 
   // Fetch categories for the edit form
-  const { data: categoriesData } = useQuery({
+  const { data: categoriesResponse } = useQuery({
     queryKey: ['categories'],
-    queryFn: async () => {
-      const response = await api.getCategories()
-      return response.data
-    }
+    queryFn: () => api.getCategories()
   })
 
-  const categories = categoriesData || []
+  const categories = categoriesResponse && isSuccessResponse(categoriesResponse)
+    ? categoriesResponse.data
+    : []
 
   // Process the data to ensure proper format
   const pendingLinks: PendingLink[] = (pendingLinksData?.links || []).map((link: any) => ({
@@ -65,6 +66,9 @@ export default function PendingLinks() {
   const confirmMutation = useMutation({
     mutationFn: async (ids: number[]) => {
       const response = await api.batchPendingLinks(ids, 'confirm')
+      if (!isSuccessResponse(response)) {
+        throw new Error(response.error.message)
+      }
       return response.data
     },
     onSuccess: () => {
@@ -78,6 +82,9 @@ export default function PendingLinks() {
   const deleteMutation = useMutation({
     mutationFn: async (ids: number[]) => {
       const response = await api.batchPendingLinks(ids, 'delete')
+      if (!isSuccessResponse(response)) {
+        throw new Error(response.error.message)
+      }
       return response.data
     },
     onSuccess: () => {
@@ -98,6 +105,9 @@ export default function PendingLinks() {
         readingTime: data.readingTime,
         publish: true
       })
+      if (!isSuccessResponse(response)) {
+        throw new Error(response.error.message)
+      }
       return response.data
     },
     onSuccess: () => {
@@ -432,7 +442,7 @@ export default function PendingLinks() {
                     {editingId !== link.id && (
                       <div className="flex flex-wrap items-center gap-2 mb-4">
                         <CategoryBadge category={link.aiCategory} />
-                        <TagList tags={link.aiTags} maxVisible={8} />
+                        <TagList tags={Array.isArray(link.aiTags) ? link.aiTags : [link.aiTags]} maxVisible={8} />
                       </div>
                     )}
 

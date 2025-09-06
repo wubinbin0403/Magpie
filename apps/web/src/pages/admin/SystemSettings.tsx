@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '../../utils/api'
+import { isSuccessResponse } from '../../utils/api-helpers'
 import CategoryIcon from '../../components/CategoryIcon'
 import ConfirmDialog from '../../components/admin/ConfirmDialog'
 import {
@@ -172,7 +173,7 @@ export default function SystemSettings() {
     }
   })
   const [categories, setCategories] = useState<Category[]>([])
-  const [isDragging, setIsDragging] = useState(false)
+  const [_isDragging, setIsDragging] = useState(false)
   const [editingCategory, setEditingCategory] = useState<Category | null>(null)
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean
@@ -193,11 +194,11 @@ export default function SystemSettings() {
   )
 
   // Fetch settings
-  const { data: settingsData, isLoading, error } = useQuery({
+  const { data: settingsData, isLoading, error: _error } = useQuery({
     queryKey: ['system-settings'],
     queryFn: async () => {
       const response = await api.getSettings()
-      return response.data
+      return isSuccessResponse(response) ? response.data : null
     }
   })
 
@@ -206,7 +207,7 @@ export default function SystemSettings() {
     queryKey: ['admin-categories'],
     queryFn: async () => {
       const response = await api.getCategories()
-      return response.data
+      return isSuccessResponse(response) ? response.data : []
     }
   })
   
@@ -215,14 +216,20 @@ export default function SystemSettings() {
     queryKey: ['links-for-categories'],
     queryFn: async () => {
       const response = await api.getLinks({ page: 1, limit: 1 })
-      return response.data
+      return isSuccessResponse(response) ? response.data : null
     }
   })
 
   // Update local settings when API data is loaded
   useEffect(() => {
     if (settingsData) {
-      setSettings(settingsData)
+      setSettings({
+        ...settingsData,
+        site: {
+          ...settingsData.site,
+          aboutUrl: settingsData.site.aboutUrl || ''
+        }
+      } as any)
     }
   }, [settingsData])
 
@@ -238,14 +245,14 @@ export default function SystemSettings() {
             count: categoryFilter?.count || 0
           }
         })
-        setCategories(categoriesWithCounts)
+        setCategories(categoriesWithCounts as any)
       } else {
         // Set categories without counts initially
         const categoriesWithDefaultCounts = categoriesData.map(category => ({
           ...category,
           count: 0
         }))
-        setCategories(categoriesWithDefaultCounts)
+        setCategories(categoriesWithDefaultCounts as any)
       }
     } else if (Array.isArray(categoriesData)) {
       // Handle empty categories array
@@ -257,7 +264,7 @@ export default function SystemSettings() {
   const updateSettingsMutation = useMutation({
     mutationFn: async (newSettings: SystemSettings) => {
       const response = await api.updateSettings(newSettings)
-      return response.data
+      return isSuccessResponse(response) ? response.data : { updated: false }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['system-settings'] })
@@ -296,7 +303,7 @@ export default function SystemSettings() {
   const deleteCategoryMutation = useMutation({
     mutationFn: async (id: number) => {
       const response = await api.deleteCategory(id)
-      return response.data
+      return isSuccessResponse(response) ? response.data : { updated: false }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-categories'] })
@@ -312,7 +319,7 @@ export default function SystemSettings() {
   const reorderCategoriesMutation = useMutation({
     mutationFn: async (categoryIds: number[]) => {
       const response = await api.reorderCategories(categoryIds)
-      return response.data
+      return isSuccessResponse(response) ? response.data : { updated: false }
     }
     // onSuccess and onError are now handled in handleDragEnd
   })
@@ -868,7 +875,7 @@ export default function SystemSettings() {
                     <input
                       type="checkbox"
                       className="toggle toggle-sm toggle-primary"
-                      checked={!!(editingCategory as any).tempIsDefault ?? (editingCategory.name === settings.content.defaultCategory)}
+                      checked={!!(editingCategory as any).tempIsDefault || (editingCategory.name === settings.content.defaultCategory)}
                       onChange={(e) => {
                         setEditingCategory(prev => prev ? { 
                           ...prev, 

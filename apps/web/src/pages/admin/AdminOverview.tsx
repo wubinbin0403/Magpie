@@ -24,8 +24,8 @@ export default function AdminOverview() {
     queryKey: ['admin-stats-summary'],
     queryFn: async () => {
       // Get user's timezone offset in minutes (negative for UTC+)
-      const timezoneOffset = new Date().getTimezoneOffset()
-      return await api.getStats({ tz: -timezoneOffset })
+      // const timezoneOffset = new Date().getTimezoneOffset()
+      return await api.getStats()
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: false

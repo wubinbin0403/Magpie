@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../utils/api'
+import { isSuccessResponse } from '../../utils/api-helpers'
 import CategoryBadge from '../../components/CategoryBadge'
 import TagList from '../../components/TagList'
 import LinkEditForm from '../../components/LinkEditForm'
-import type { ApiResponse, AdminLinksResponse, AdminLink, Category } from '@magpie/shared'
+import type { ApiResponse, AdminLinksResponse, AdminLink } from '@magpie/shared'
 
 interface EditForm {
   title: string
@@ -56,20 +57,22 @@ export default function AllLinks() {
   // Fetch categories for editing
   const { data: categoriesData } = useQuery({
     queryKey: ['categories'],
-    queryFn: async () => {
-      const response = await api.getCategories()
-      return response.data
-    }
+    queryFn: () => api.getCategories()
   })
 
   const links = linksData?.success ? linksData.data.links : []
   const pagination = linksData?.success ? linksData.data.pagination : undefined
-  const categories = categoriesData || []
+  const categories = categoriesData && isSuccessResponse(categoriesData) 
+    ? categoriesData.data 
+    : []
 
   // Update link mutation
   const updateMutation = useMutation({
     mutationFn: async (data: { id: number; updates: Partial<EditForm> }) => {
       const response = await api.updateLink(data.id, data.updates)
+      if (!isSuccessResponse(response)) {
+        throw new Error(response.error.message)
+      }
       return response.data
     },
     onSuccess: () => {
@@ -83,6 +86,9 @@ export default function AllLinks() {
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
       const response = await api.deleteLink(id)
+      if (!isSuccessResponse(response)) {
+        throw new Error(response.error.message)
+      }
       return response.data
     },
     onSuccess: () => {

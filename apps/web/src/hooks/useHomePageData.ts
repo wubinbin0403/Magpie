@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import api from '../utils/api'
-import type { ApiResponse, LinksResponse } from '@magpie/shared'
 
 // 将复杂的数据获取逻辑提取到自定义Hook
 export function useHomePageData(
@@ -16,7 +15,7 @@ export function useHomePageData(
   const [previousLinks, setPreviousLinks] = useState<any[]>([])
 
   // Fetch links data
-  const { data, isLoading, error, refetch } = useQuery<ApiResponse<LinksResponse>>({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['links', page, selectedCategory, selectedTags, searchQuery, linkId],
     queryFn: async () => {
       const params: Record<string, string> = {
@@ -31,13 +30,13 @@ export function useHomePageData(
       return await api.getLinks(params)
     },
     enabled,
-    keepPreviousData: true,
+    placeholderData: (previousData) => previousData,
     staleTime: 1 * 60 * 1000,
   })
 
   // Update links when data changes
   useEffect(() => {
-    if (data?.success) {
+    if (data && data.success) {
       if (page === 1) {
         setAllLinks(data.data.links)
       } else {

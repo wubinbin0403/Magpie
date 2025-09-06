@@ -48,76 +48,76 @@ class ApiClient {
   }
 
   // Public endpoints
-  async getLinks(params?: Record<string, any>) {
+  async getLinks(params?: Record<string, any>): Promise<ApiResponse<import('@magpie/shared').LinksResponse>> {
     const queryString = params ? `?${new URLSearchParams(params).toString()}` : ''
-    return this.request(`/links${queryString}`)
+    return this.request<import('@magpie/shared').LinksResponse>(`/links${queryString}`)
   }
 
-  async searchLinks(query: string, params?: Record<string, any>) {
+  async searchLinks(query: string, params?: Record<string, any>): Promise<ApiResponse<import('@magpie/shared').SearchResponse>> {
     const searchParams = { q: query, ...params }
     const queryString = new URLSearchParams(searchParams).toString()
-    return this.request(`/search?${queryString}`)
+    return this.request<import('@magpie/shared').SearchResponse>(`/search?${queryString}`)
   }
 
-  async getStats() {
-    return this.request('/stats')
+  async getStats(): Promise<ApiResponse<import('@magpie/shared').StatsResponse>> {
+    return this.request<import('@magpie/shared').StatsResponse>('/stats')
   }
 
-  async getDomainStats(domain: string) {
-    return this.request(`/domains/${domain}/stats`)
+  async getDomainStats(domain: string): Promise<ApiResponse<import('@magpie/shared').DomainStatsResponse>> {
+    return this.request<import('@magpie/shared').DomainStatsResponse>(`/domains/${domain}/stats`)
   }
 
-  async getCategories() {
-    return this.request('/categories')
+  async getCategories(): Promise<ApiResponse<import('@magpie/shared').CategoriesResponse>> {
+    return this.request<import('@magpie/shared').CategoriesResponse>('/categories')
   }
 
   // Admin endpoints
-  async adminLogin(password: string) {
-    return this.request('/admin/login', {
+  async adminLogin(password: string): Promise<ApiResponse<import('@magpie/shared').AdminLoginResponse>> {
+    return this.request<import('@magpie/shared').AdminLoginResponse>('/admin/login', {
       method: 'POST',
       body: JSON.stringify({ password }),
       token: null, // Don't use existing token for login
     })
   }
 
-  async adminLogout() {
-    return this.request('/admin/logout', {
+  async adminLogout(): Promise<ApiResponse<import('@magpie/shared').AdminLogoutResponse>> {
+    return this.request<import('@magpie/shared').AdminLogoutResponse>('/admin/logout', {
       method: 'POST',
     })
   }
 
-  async adminInit(password: string) {
-    return this.request('/admin/init', {
+  async adminInit(password: string): Promise<ApiResponse<{ success: boolean }>> {
+    return this.request<{ success: boolean }>('/admin/init', {
       method: 'POST',
       body: JSON.stringify({ password }),
       token: null, // Don't use existing token for init
     })
   }
 
-  async getPendingLinks(params?: Record<string, any>) {
+  async getPendingLinks(params?: Record<string, any>): Promise<ApiResponse<import('@magpie/shared').LinksResponse>> {
     const queryString = params ? `?${new URLSearchParams(params).toString()}` : ''
-    return this.request(`/admin/pending${queryString}`)
+    return this.request<import('@magpie/shared').LinksResponse>(`/admin/pending${queryString}`)
   }
 
   // Get all links for admin (published, pending, deleted) with pagination and search
-  async getAllLinksAdmin(params?: Record<string, any>) {
+  async getAllLinksAdmin(params?: Record<string, any>): Promise<ApiResponse<import('@magpie/shared').AdminLinksResponse>> {
     const queryString = params ? `?${new URLSearchParams(params).toString()}` : ''
-    return this.request(`/admin/links${queryString}`)
+    return this.request<import('@magpie/shared').AdminLinksResponse>(`/admin/links${queryString}`)
   }
 
-  async batchPendingLinks(ids: number[], action: 'confirm' | 'delete' | 'reanalyze', params?: any) {
-    return this.request('/admin/pending/batch', {
+  async batchPendingLinks(ids: number[], action: 'confirm' | 'delete' | 'reanalyze', params?: any): Promise<ApiResponse<import('@magpie/shared').BatchOperationResponse>> {
+    return this.request<import('@magpie/shared').BatchOperationResponse>('/admin/pending/batch', {
       method: 'POST',
       body: JSON.stringify({ ids, action, params }),
     })
   }
 
-  async getSettings() {
-    return this.request('/admin/settings')
+  async getSettings(): Promise<ApiResponse<import('@magpie/shared').SettingsResponse>> {
+    return this.request<import('@magpie/shared').SettingsResponse>('/admin/settings')
   }
 
-  async updateSettings(settings: any) {
-    return this.request('/admin/settings', {
+  async updateSettings(settings: import('@magpie/shared').UpdateSettingsRequest): Promise<ApiResponse<import('@magpie/shared').UpdateSettingsResponse>> {
+    return this.request<import('@magpie/shared').UpdateSettingsResponse>('/admin/settings', {
       method: 'PUT',
       body: JSON.stringify(settings),
     })
@@ -130,62 +130,62 @@ class ApiClient {
     temperature: number
     summaryPrompt?: string
     categoryPrompt?: string
-  }) {
-    return this.request('/admin/settings/ai/test', {
+  }): Promise<ApiResponse<import('@magpie/shared').AITestResponseData>> {
+    return this.request<import('@magpie/shared').AITestResponseData>('/admin/settings/ai/test', {
       method: 'POST',
       body: testConfig ? JSON.stringify({ testConfig }) : undefined,
     })
   }
 
-  async getTokens() {
-    return this.request('/admin/tokens')
+  async getTokens(): Promise<ApiResponse<import('@magpie/shared').TokensResponse>> {
+    return this.request<import('@magpie/shared').TokensResponse>('/admin/tokens')
   }
 
-  async createToken(name?: string, expiresAt?: string) {
-    return this.request('/admin/tokens', {
+  async createToken(name?: string, expiresAt?: string): Promise<ApiResponse<{ token: string; id: number }>> {
+    return this.request<{ token: string; id: number }>('/admin/tokens', {
       method: 'POST',
       body: JSON.stringify({ name, expiresAt }),
     })
   }
 
-  async revokeToken(tokenId: number) {
-    return this.request(`/admin/tokens/${tokenId}`, {
+  async revokeToken(tokenId: number): Promise<ApiResponse<import('@magpie/shared').DeleteTokenResponse>> {
+    return this.request<import('@magpie/shared').DeleteTokenResponse>(`/admin/tokens/${tokenId}`, {
       method: 'DELETE',
     })
   }
 
-  async createCategory(name: string, description?: string, icon?: string) {
-    return this.request('/admin/categories', {
+  async createCategory(name: string, description?: string, icon?: string): Promise<ApiResponse<import('@magpie/shared').Category>> {
+    return this.request<import('@magpie/shared').Category>('/admin/categories', {
       method: 'POST',
       body: JSON.stringify({ name, description, icon }),
     })
   }
 
-  async updateCategory(id: number, updates: { name?: string; description?: string; icon?: string }) {
-    return this.request(`/admin/categories/${id}`, {
+  async updateCategory(id: number, updates: { name?: string; description?: string; icon?: string }): Promise<ApiResponse<import('@magpie/shared').Category>> {
+    return this.request<import('@magpie/shared').Category>(`/admin/categories/${id}`, {
       method: 'PUT',
       body: JSON.stringify(updates),
     })
   }
 
-  async deleteCategory(id: number) {
-    return this.request(`/admin/categories/${id}`, {
+  async deleteCategory(id: number): Promise<ApiResponse<{ success: boolean }>> {
+    return this.request<{ success: boolean }>(`/admin/categories/${id}`, {
       method: 'DELETE',
     })
   }
 
-  async reorderCategories(categoryIds: number[]) {
-    return this.request('/admin/categories/reorder', {
+  async reorderCategories(categoryIds: number[]): Promise<ApiResponse<{ success: boolean }>> {
+    return this.request<{ success: boolean }>('/admin/categories/reorder', {
       method: 'POST',
       body: JSON.stringify({ categoryIds }),
     })
   }
 
   // Auth endpoints (for adding/editing links)
-  async addLink(url: string, options?: { skipConfirm?: boolean; category?: string; tags?: string }) {
+  async addLink(url: string, options?: { skipConfirm?: boolean; category?: string; tags?: string }): Promise<ApiResponse<import('@magpie/shared').AddLinkResponse>> {
     const params = { url, ...options }
     const queryString = new URLSearchParams(params as any).toString()
-    return this.request(`/links/add?${queryString}`)
+    return this.request<import('@magpie/shared').AddLinkResponse>(`/links/add?${queryString}`)
   }
 
   // Add link with JSON response (for frontend use)
@@ -193,8 +193,8 @@ class ApiClient {
     skipConfirm?: boolean; 
     category?: string; 
     tags?: string 
-  }) {
-    return this.request('/links', {
+  }): Promise<ApiResponse<import('@magpie/shared').AddLinkResponse>> {
+    return this.request<import('@magpie/shared').AddLinkResponse>('/links', {
       method: 'POST',
       body: JSON.stringify({ 
         url, 
@@ -206,8 +206,8 @@ class ApiClient {
   }
 
 
-  async getPendingLink(id: number) {
-    return this.request(`/links/${id}/pending`)
+  async getPendingLink(id: number): Promise<ApiResponse<import('@magpie/shared').PendingLinkResponse>> {
+    return this.request<import('@magpie/shared').PendingLinkResponse>(`/links/${id}/pending`)
   }
 
   async confirmLink(id: number, data: {
@@ -217,15 +217,15 @@ class ApiClient {
     tags: string[]
     readingTime?: number
     publish?: boolean
-  }) {
-    return this.request(`/links/${id}/confirm`, {
+  }): Promise<ApiResponse<import('@magpie/shared').ConfirmLinkResponse>> {
+    return this.request<import('@magpie/shared').ConfirmLinkResponse>(`/links/${id}/confirm`, {
       method: 'POST',
       body: JSON.stringify(data),
     })
   }
 
-  async deleteLink(id: number) {
-    return this.request(`/admin/links/${id}`, {
+  async deleteLink(id: number): Promise<ApiResponse<import('@magpie/shared').DeleteLinkResponse>> {
+    return this.request<import('@magpie/shared').DeleteLinkResponse>(`/admin/links/${id}`, {
       method: 'DELETE',
     })
   }
@@ -236,8 +236,8 @@ class ApiClient {
     category?: string
     tags?: string[]
     status?: string
-  }) {
-    return this.request(`/admin/links/${id}`, {
+  }): Promise<ApiResponse<import('@magpie/shared').AdminLink>> {
+    return this.request<import('@magpie/shared').AdminLink>(`/admin/links/${id}`, {
       method: 'PUT',
       body: JSON.stringify(updates),
     })

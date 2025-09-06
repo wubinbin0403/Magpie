@@ -1,16 +1,17 @@
 import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import api from '../utils/api'
-import type { ApiResponse, LinksResponse, Category } from '@magpie/shared'
+import { isSuccessResponse } from '../utils/api-helpers'
+import type { ApiResponse, LinksResponse } from '@magpie/shared'
 
 interface SidebarData {
-  categories: (Category & { count: number })[]
+  categories: { id: number; name: string; slug: string; icon: string; description?: string; displayOrder: number; count: number }[]
   tags: { name: string; count: number }[]
 }
 
 // 将sidebar数据处理逻辑提取到自定义Hook  
 export function useSidebarData(
-  selectedCategory: string | null,
+  _selectedCategory: string | null,
   linksData: ApiResponse<LinksResponse> | undefined
 ) {
   const [sidebarData, setSidebarData] = useState<SidebarData>({ 
@@ -19,20 +20,21 @@ export function useSidebarData(
   })
 
   // Fetch categories data
-  const { data: categoriesData } = useQuery({
+  const { data: categoriesResponse } = useQuery({
     queryKey: ['categories'],
-    queryFn: async () => {
-      const response = await api.getCategories()
-      return response.data
-    },
+    queryFn: () => api.getCategories(),
     staleTime: 5 * 60 * 1000,
   })
+  
+  const categoriesData = categoriesResponse && isSuccessResponse(categoriesResponse) 
+    ? categoriesResponse.data 
+    : []
 
   // 简化的sidebar数据更新逻辑
   useEffect(() => {
-    if (!Array.isArray(categoriesData)) return
+    if (!Array.isArray(categoriesData) || categoriesData.length === 0) return
 
-    if (linksData?.success && linksData.data.filters) {
+    if (linksData && isSuccessResponse(linksData) && linksData.data.filters) {
       // 有links数据时，合并计数信息
       const categoriesWithCounts = categoriesData.map(category => {
         const categoryFilter = linksData.data.filters.categories.find(
@@ -60,7 +62,7 @@ export function useSidebarData(
         tags: []
       })
     }
-  }, [categoriesData, linksData?.success, linksData?.data.filters])
+  }, [categoriesData, linksData, sidebarData.categories.length])
 
-  return { sidebarData, categoriesData }
+  return { sidebarData }
 }
