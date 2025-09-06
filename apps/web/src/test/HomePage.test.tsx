@@ -16,9 +16,23 @@ vi.mock('../utils/api', () => ({
 
 // Mock child components to isolate HomePage testing
 vi.mock('../components/NavBar', () => ({
-  default: ({ onSearch }: { onSearch: (query: string) => void }) => (
+  default: ({ 
+    onSearch, 
+    onLogoClick, 
+    initialSearchQuery 
+  }: { 
+    onSearch: (query: string) => void
+    onLogoClick?: () => void
+    initialSearchQuery?: string 
+  }) => (
     <div data-testid="navbar">
       <button onClick={() => onSearch('test query')}>Search</button>
+      {onLogoClick && (
+        <button data-testid="logo-button" onClick={onLogoClick}>
+          Logo
+        </button>
+      )}
+      <span data-testid="search-query">{initialSearchQuery || ''}</span>
     </div>
   )
 }))

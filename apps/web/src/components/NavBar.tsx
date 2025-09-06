@@ -3,12 +3,19 @@ import { Link } from 'react-router-dom'
 
 interface NavBarProps {
   onSearch: (query: string) => void
+  onLogoClick?: () => void
+  initialSearchQuery?: string
 }
 
-export default function NavBar({ onSearch }: NavBarProps) {
-  const [searchQuery, setSearchQuery] = useState('')
+export default function NavBar({ onSearch, onLogoClick, initialSearchQuery = '' }: NavBarProps) {
+  const [searchQuery, setSearchQuery] = useState(initialSearchQuery)
   const [isSearchFocused, setIsSearchFocused] = useState(false)
   const searchInputRef = useRef<HTMLInputElement>(null)
+
+  // Sync search query when initialSearchQuery changes
+  useEffect(() => {
+    setSearchQuery(initialSearchQuery)
+  }, [initialSearchQuery])
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
@@ -67,17 +74,31 @@ export default function NavBar({ onSearch }: NavBarProps) {
           </div>
 
           {/* Logo */}
-          <Link to="/" className="btn btn-ghost hover:bg-white/10 group">
-            <div className="flex items-center gap-2">
-              <img 
-                src="/magpie-icon.png" 
-                alt="Magpie" 
-                className="h-10 max-w-10 object-contain transition-transform duration-500 group-hover:[transform:rotateY(180deg)]"
-                style={{ transformStyle: 'preserve-3d' }}
-              />
-              <span className="text-white text-xl font-bold">Magpie</span>
-            </div>
-          </Link>
+          {onLogoClick ? (
+            <button onClick={onLogoClick} className="btn btn-ghost hover:bg-white/10 group">
+              <div className="flex items-center gap-2">
+                <img 
+                  src="/magpie-icon.png" 
+                  alt="Magpie" 
+                  className="h-10 max-w-10 object-contain transition-transform duration-500 group-hover:[transform:rotateY(180deg)]"
+                  style={{ transformStyle: 'preserve-3d' }}
+                />
+                <span className="text-white text-xl font-bold">Magpie</span>
+              </div>
+            </button>
+          ) : (
+            <Link to="/" className="btn btn-ghost hover:bg-white/10 group">
+              <div className="flex items-center gap-2">
+                <img 
+                  src="/magpie-icon.png" 
+                  alt="Magpie" 
+                  className="h-10 max-w-10 object-contain transition-transform duration-500 group-hover:[transform:rotateY(180deg)]"
+                  style={{ transformStyle: 'preserve-3d' }}
+                />
+                <span className="text-white text-xl font-bold">Magpie</span>
+              </div>
+            </Link>
+          )}
 
         </div>
 

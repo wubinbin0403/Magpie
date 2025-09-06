@@ -185,6 +185,17 @@ export default function HomePage() {
     }
   }
 
+  const handleLogoClick = () => {
+    // Clear all filters and navigate to home page
+    preserveLinksAndFilter(() => {
+      setSelectedCategory(null)
+      setSelectedTags([])
+      setSearchQuery('')
+      // Clear URL parameters
+      navigate('/', { replace: true })
+    })
+  }
+
   // 初始加载状态
   if (isLoading && displayLinks.length === 0 && !data) {
     return (
@@ -203,6 +214,8 @@ export default function HomePage() {
       <div className="min-h-screen bg-base-100">
         <NavBar 
           onSearch={handleSearch}
+          onLogoClick={handleLogoClick}
+          initialSearchQuery={searchQuery}
         />
         
         <div className="flex flex-col items-center justify-center gap-4 pt-20">
@@ -222,6 +235,8 @@ export default function HomePage() {
     <div className="min-h-screen bg-base-100">
       <NavBar 
         onSearch={handleSearch}
+        onLogoClick={handleLogoClick}
+        initialSearchQuery={searchQuery}
       />
       
       {/* 桌面端侧边栏 */}

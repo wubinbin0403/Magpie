@@ -5,14 +5,27 @@ import { BrowserRouter } from 'react-router-dom'
 import NavBar from '../components/NavBar'
 
 // Mock the router
-const NavBarWithRouter = ({ onSearch }: { onSearch: (query: string) => void }) => (
+const NavBarWithRouter = ({ 
+  onSearch, 
+  onLogoClick,
+  initialSearchQuery 
+}: { 
+  onSearch: (query: string) => void
+  onLogoClick?: () => void
+  initialSearchQuery?: string
+}) => (
   <BrowserRouter>
-    <NavBar onSearch={onSearch} />
+    <NavBar 
+      onSearch={onSearch} 
+      onLogoClick={onLogoClick} 
+      initialSearchQuery={initialSearchQuery} 
+    />
   </BrowserRouter>
 )
 
 describe('NavBar', () => {
   const mockOnSearch = vi.fn()
+  const mockOnLogoClick = vi.fn()
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -335,6 +348,131 @@ describe('NavBar', () => {
       render(<NavBarWithRouter onSearch={mockOnSearch} />)
       
       expect(screen.getByTitle('Archive')).toBeInTheDocument()
+    })
+  })
+
+  describe('Logo Click Functionality', () => {
+    it('should render logo as Link when onLogoClick is not provided', () => {
+      render(<NavBarWithRouter onSearch={mockOnSearch} />)
+      
+      const logoLink = screen.getByText('Magpie').closest('a')
+      expect(logoLink).toBeInTheDocument()
+      expect(logoLink).toHaveAttribute('href', '/')
+    })
+
+    it('should render logo as button when onLogoClick is provided', () => {
+      render(<NavBarWithRouter onSearch={mockOnSearch} onLogoClick={mockOnLogoClick} />)
+      
+      const logoButton = screen.getByText('Magpie').closest('button')
+      expect(logoButton).toBeInTheDocument()
+      expect(logoButton).toHaveClass('btn', 'btn-ghost', 'hover:bg-white/10', 'group')
+    })
+
+    it('should call onLogoClick when logo button is clicked', async () => {
+      const user = userEvent.setup()
+      render(<NavBarWithRouter onSearch={mockOnSearch} onLogoClick={mockOnLogoClick} />)
+      
+      const logoButton = screen.getByText('Magpie').closest('button')!
+      
+      await user.click(logoButton)
+      
+      expect(mockOnLogoClick).toHaveBeenCalledTimes(1)
+    })
+
+    it('should preserve logo styling when rendered as button', () => {
+      render(<NavBarWithRouter onSearch={mockOnSearch} onLogoClick={mockOnLogoClick} />)
+      
+      const logoButton = screen.getByText('Magpie').closest('button')!
+      const logoImage = screen.getByAltText('Magpie')
+      const logoText = screen.getByText('Magpie')
+      
+      expect(logoButton).toHaveClass('btn', 'btn-ghost', 'hover:bg-white/10', 'group')
+      expect(logoImage).toHaveClass('group-hover:[transform:rotateY(180deg)]')
+      expect(logoImage).toHaveAttribute('src', '/magpie-icon.png')
+      expect(logoText).toHaveClass('text-white', 'text-xl', 'font-bold')
+    })
+  })
+
+  describe('Search Text Synchronization', () => {
+    it('should initialize search input with initialSearchQuery', () => {
+      const initialQuery = 'initial search'
+      render(<NavBarWithRouter 
+        onSearch={mockOnSearch} 
+        initialSearchQuery={initialQuery} 
+      />)
+      
+      const searchInput = screen.getByPlaceholderText('搜索链接...') as HTMLInputElement
+      expect(searchInput.value).toBe(initialQuery)
+    })
+
+    it('should update search input when initialSearchQuery changes', () => {
+      const initialQuery = 'first query'
+      const { rerender } = render(<NavBarWithRouter 
+        onSearch={mockOnSearch} 
+        initialSearchQuery={initialQuery} 
+      />)
+      
+      let searchInput = screen.getByPlaceholderText('搜索链接...') as HTMLInputElement
+      expect(searchInput.value).toBe(initialQuery)
+      
+      // Re-render with new initial query
+      const newQuery = 'updated query'
+      rerender(<NavBarWithRouter 
+        onSearch={mockOnSearch} 
+        initialSearchQuery={newQuery} 
+      />)
+      
+      searchInput = screen.getByPlaceholderText('搜索链接...') as HTMLInputElement
+      expect(searchInput.value).toBe(newQuery)
+    })
+
+    it('should handle empty initialSearchQuery', () => {
+      render(<NavBarWithRouter onSearch={mockOnSearch} initialSearchQuery="" />)
+      
+      const searchInput = screen.getByPlaceholderText('搜索链接...') as HTMLInputElement
+      expect(searchInput.value).toBe('')
+    })
+
+    it('should handle undefined initialSearchQuery', () => {
+      render(<NavBarWithRouter onSearch={mockOnSearch} initialSearchQuery={undefined} />)
+      
+      const searchInput = screen.getByPlaceholderText('搜索链接...') as HTMLInputElement
+      expect(searchInput.value).toBe('')
+    })
+
+    it('should allow user to override synchronized search text', async () => {
+      const user = userEvent.setup()
+      const initialQuery = 'synced query'
+      render(<NavBarWithRouter 
+        onSearch={mockOnSearch} 
+        initialSearchQuery={initialQuery} 
+      />)
+      
+      const searchInput = screen.getByPlaceholderText('搜索链接...') as HTMLInputElement
+      expect(searchInput.value).toBe(initialQuery)
+      
+      // User clears and types new query
+      await user.clear(searchInput)
+      await user.type(searchInput, 'user typed query')
+      
+      expect(searchInput.value).toBe('user typed query')
+    })
+
+    it('should sync search text and still submit correctly', async () => {
+      const user = userEvent.setup()
+      const initialQuery = 'github'
+      render(<NavBarWithRouter 
+        onSearch={mockOnSearch} 
+        initialSearchQuery={initialQuery} 
+      />)
+      
+      const searchInput = screen.getByPlaceholderText('搜索链接...') as HTMLInputElement
+      expect(searchInput.value).toBe(initialQuery)
+      
+      // Submit without changing the value
+      await user.type(searchInput, '{enter}')
+      
+      expect(mockOnSearch).toHaveBeenCalledWith(initialQuery)
     })
   })
 })
