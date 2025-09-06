@@ -13,6 +13,10 @@ export function useHomePageData(
 ) {
   const [allLinks, setAllLinks] = useState<any[]>([])
   const [previousLinks, setPreviousLinks] = useState<any[]>([])
+  const [previousQueryKey, setPreviousQueryKey] = useState<string>('')
+
+  // Create a stable query key for comparison
+  const currentQueryKey = `${selectedCategory || ''}-${selectedTags.join(',')}-${searchQuery}-${linkId || ''}`
 
   // Fetch links data
   const { data, isLoading, error, refetch } = useQuery({
@@ -34,13 +38,26 @@ export function useHomePageData(
     staleTime: 1 * 60 * 1000,
   })
 
+  // Reset links when query parameters change (excluding page)
+  useEffect(() => {
+    if (currentQueryKey !== previousQueryKey) {
+      setAllLinks([])
+      setPreviousQueryKey(currentQueryKey)
+    }
+  }, [currentQueryKey, previousQueryKey])
+
   // Update links when data changes
   useEffect(() => {
     if (data && data.success) {
       if (page === 1) {
         setAllLinks(data.data.links)
       } else {
-        setAllLinks(prev => [...prev, ...data.data.links])
+        // Only append new links if they don't already exist (deduplication)
+        setAllLinks(prev => {
+          const existingIds = new Set(prev.map(link => link.id))
+          const newLinks = data.data.links.filter((link: any) => !existingIds.has(link.id))
+          return [...prev, ...newLinks]
+        })
       }
     }
   }, [data, page])
