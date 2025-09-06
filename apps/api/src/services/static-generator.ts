@@ -159,7 +159,7 @@ async function generateRSSFeed(database: BetterSQLite3Database<any> = db) {
       <description>${description}</description>
       <category>${escapeXml(category)}</category>
       <pubDate>${publishedDate}</pubDate>
-      <guid isPermaLink="false">${siteConfig.baseUrl}/link/${link.id}</guid>`
+      <guid isPermaLink="true">${siteConfig.baseUrl}/link/${link.id}</guid>`
 
     // Add tags as categories
     tags.forEach((tag: string) => {
@@ -201,16 +201,10 @@ async function generateJSONFeed(database: BetterSQLite3Database<any> = db) {
         id: `${siteConfig.baseUrl}/link/${link.id}`,
         url: link.url,
         title: link.title || 'Untitled',
-        content_text: link.finalDescription || '',
         summary: link.finalDescription || '',
         date_published: link.publishedAt ? new Date(link.publishedAt * 1000).toISOString() : new Date().toISOString(),
-        tags: [link.finalCategory, ...tags].filter(Boolean),
-        external_url: link.url,
-        _magpie: {
-          category: link.finalCategory,
-          click_count: link.clickCount,
-          internal_link: `${siteConfig.baseUrl}/link/${link.id}`
-        }
+        tags: tags,
+        category: link.finalCategory
       }
     })
   }

@@ -140,6 +140,7 @@ export const batchOperationSchema = z.object({
   params: z.object({
     category: z.string().max(100).optional(),
     tags: z.array(z.string().max(50)).optional(),
+    description: z.string().max(1000).optional(),
   }).optional(),
 })
 

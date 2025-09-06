@@ -209,17 +209,17 @@ describe('Static File Generator Service', () => {
       expect(firstItem.id).toContain('/link/')
       expect(firstItem.url).toBe('https://example.com/article2') // Should be most recent first
       expect(firstItem.title).toBe('Test Article 2')
-      expect(firstItem.content_text).toBe('Another test article about design')
       expect(firstItem.summary).toBe('Another test article about design')
       expect(firstItem.date_published).toBeDefined()
       expect(Array.isArray(firstItem.tags)).toBe(true)
-      expect(firstItem.tags).toContain('设计')
       expect(firstItem.tags).toContain('design')
       expect(firstItem.tags).toContain('ui')
-      expect(firstItem.external_url).toBe('https://example.com/article2')
-      expect(firstItem._magpie).toBeDefined()
-      expect(firstItem._magpie.category).toBe('设计')
-      expect(firstItem._magpie.click_count).toBe(3)
+      expect(firstItem.category).toBe('设计')
+      
+      // Verify removed fields are not present
+      expect(firstItem.content_text).toBeUndefined()
+      expect(firstItem.external_url).toBeUndefined()
+      expect(firstItem._magpie).toBeUndefined()
     })
   })
 
