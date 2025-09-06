@@ -124,7 +124,7 @@ function createConfirmLinkRouter(database = db) {
       const updateData: any = {
         // Update user-provided or AI-generated content
         userDescription: description,
-        userCategory: category || link.aiCategory,
+        userCategory: (category && category.trim()) || link.aiCategory,
         userTags: tags ? JSON.stringify(tags) : link.aiTags,
         
         updatedAt: now
