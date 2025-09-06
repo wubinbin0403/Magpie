@@ -2,19 +2,7 @@ import { useState } from 'react'
 import api from '../utils/api'
 import CategoryBadge from './CategoryBadge'
 import TagList from './TagList'
-
-interface Link {
-  id: number
-  url: string
-  title: string
-  description: string
-  category: string
-  tags: string[]
-  domain: string
-  publishedAt: string
-  createdAt: string
-  readingTime?: number // AI estimated reading time in minutes
-}
+import type { Link } from '@magpie/shared'
 
 interface LinkCardProps {
   link: Link
@@ -45,8 +33,8 @@ export default function LinkCard({ link, onTitleClick, onTagClick, selectedTags 
     }
   }
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
+  const formatDate = (timestamp: number) => {
+    const date = new Date(timestamp * 1000)
     const now = new Date()
     
     // 计算日期差异（只考虑日期，不考虑时间）
@@ -76,8 +64,8 @@ export default function LinkCard({ link, onTitleClick, onTagClick, selectedTags 
     })
   }
 
-  const formatFullDate = (dateString: string) => {
-    const date = new Date(dateString)
+  const formatFullDate = (timestamp: number) => {
+    const date = new Date(timestamp * 1000)
     return date.toLocaleString('zh-CN', {
       year: 'numeric',
       month: 'long',

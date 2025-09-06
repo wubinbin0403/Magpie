@@ -145,8 +145,8 @@ app.get('/', zValidator('query', linksQuerySchema), async (c) => {
       tags: link.tags ? JSON.parse(link.tags) : [],
       domain: link.domain,
       readingTime: link.readingTime || undefined,
-      publishedAt: link.publishedAt ? new Date(link.publishedAt * 1000).toISOString() : '',
-      createdAt: new Date(link.createdAt * 1000).toISOString(),
+      publishedAt: link.publishedAt || 0,
+      createdAt: link.createdAt,
     }))
     
     const pages = Math.ceil(total / limit)
@@ -286,8 +286,8 @@ app.get('/:id', zValidator('param', idParamSchema), async (c) => {
       tags: link.tags ? JSON.parse(link.tags) : [],
       domain: link.domain,
       readingTime: link.readingTime || undefined,
-      publishedAt: link.publishedAt ? new Date(link.publishedAt * 1000).toISOString() : '',
-      createdAt: new Date(link.createdAt * 1000).toISOString(),
+      publishedAt: link.publishedAt || 0,
+      createdAt: link.createdAt,
     }
     
     return sendSuccess(c, formattedLink)

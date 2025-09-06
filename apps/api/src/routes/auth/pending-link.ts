@@ -136,7 +136,7 @@ app.get('/:id/pending', requireApiTokenOrAdminSession(database), zValidator('par
       aiAnalysisFailed: link.aiAnalysisFailed === 1,
       aiError: link.aiError || undefined,
       domain: link.domain,
-      createdAt: new Date(link.createdAt * 1000).toISOString(),
+      createdAt: link.createdAt,
     }
     
     // User editable fields - only include if they have values

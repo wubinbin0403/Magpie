@@ -42,8 +42,8 @@ export interface Link {
   tags: string[];
   domain: string;
   readingTime?: number; // AI estimated reading time in minutes
-  publishedAt: string;
-  createdAt: string;
+  publishedAt: number;
+  createdAt: number;
 }
 
 export interface PendingLink {
@@ -56,7 +56,7 @@ export interface PendingLink {
   aiTags: string[];
   aiReadingTime?: number; // AI estimated reading time in minutes
   domain: string;
-  createdAt: string;
+  createdAt: number;
   userDescription?: string;
   userCategory?: string;
   userTags?: string[];
@@ -77,7 +77,7 @@ export interface PendingLinkResponse {
   aiAnalysisFailed?: boolean;
   aiError?: string;
   domain: string;
-  createdAt: string;
+  createdAt: number;
   userDescription?: string;
   userCategory?: string;
   userTags?: string[];

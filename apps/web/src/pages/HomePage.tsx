@@ -106,7 +106,7 @@ export default function HomePage() {
   // 使用useMemo优化分组计算
   const groupedLinks = useMemo(() => {
     return displayLinks.reduce((groups, link) => {
-      const date = new Date(link.publishedAt)
+      const date = new Date(link.publishedAt * 1000)
       const key = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`
       
       if (!groups[key]) {

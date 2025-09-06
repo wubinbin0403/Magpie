@@ -151,8 +151,8 @@ app.get('/', zValidator('query', searchQuerySchema), async (c) => {
         tags: link.tags ? JSON.parse(link.tags) : [],
         domain: link.domain,
         readingTime: link.readingTime || undefined,
-        publishedAt: link.publishedAt ? new Date(link.publishedAt * 1000).toISOString() : '',
-        createdAt: new Date(link.createdAt * 1000).toISOString(),
+        publishedAt: link.publishedAt || 0,
+        createdAt: link.createdAt,
         score: Math.abs(Number(link.rank) || 0), // FTS5 rank score (absolute value, lower is better)
         highlights: {}
       }

@@ -84,8 +84,8 @@ describe('AllLinks', () => {
         description: 'This is a test article description',
         category: 'Technology',
         tags: ['react', 'testing'],
-        createdAt: 1640995200000,
-        publishedAt: 1640995300000,
+        createdAt: 1640995200,
+        publishedAt: 1640995300,
         readingTime: 5
       }),
       createMockAdminLink({
@@ -96,8 +96,8 @@ describe('AllLinks', () => {
         description: 'Another test article',
         category: 'Design',
         tags: ['ui', 'design'],
-        createdAt: 1650995400000,
-        publishedAt: 1650995400000,
+        createdAt: 1650995400,
+        publishedAt: 1650995400,
       })
     ],
     pagination: {

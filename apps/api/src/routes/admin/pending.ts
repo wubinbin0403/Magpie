@@ -104,7 +104,7 @@ function createAdminPendingRouter(database = db) {
         aiAnalysisFailed: link.aiAnalysisFailed === 1,
         aiError: link.aiError || undefined,
         domain: link.domain,
-        createdAt: new Date(link.createdAt * 1000).toISOString(),
+        createdAt: link.createdAt,
         userDescription: link.userDescription || undefined,
         userCategory: link.userCategory || undefined,
         userTags: link.userTags ? JSON.parse(link.userTags) : undefined,

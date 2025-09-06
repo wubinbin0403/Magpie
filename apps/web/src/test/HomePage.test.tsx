@@ -129,8 +129,8 @@ describe('HomePage', () => {
           category: '技术',
           tags: ['javascript', 'react'],
           domain: 'example.com',
-          publishedAt: '2024-01-15T10:00:00Z',
-          createdAt: '2024-01-15T10:00:00Z'
+          publishedAt: 1705312800,
+          createdAt: 1705312800
         },
         {
           id: 2,
@@ -140,8 +140,8 @@ describe('HomePage', () => {
           category: '设计',
           tags: ['ui', 'ux'],
           domain: 'example.com',
-          publishedAt: '2024-01-10T10:00:00Z',
-          createdAt: '2024-01-10T10:00:00Z'
+          publishedAt: 1704880800,
+          createdAt: 1704880800
         }
       ],
       pagination: {

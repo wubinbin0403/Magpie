@@ -18,8 +18,8 @@ describe('LinkCard', () => {
     category: '技术',
     tags: ['javascript', 'react', 'testing', 'frontend'],
     domain: 'example.com',
-    publishedAt: '2024-01-15T10:30:00Z',
-    createdAt: '2024-01-15T10:30:00Z',
+    publishedAt: 1705314600,
+    createdAt: 1705314600,
     readingTime: 5
   }
 
@@ -122,7 +122,7 @@ describe('LinkCard', () => {
     it('should show "昨天" for yesterday', () => {
       const yesterdayLink = {
         ...mockLink,
-        publishedAt: '2024-01-19T10:30:00Z' // Yesterday
+        publishedAt: 1705660200 // Yesterday
       }
       render(<LinkCard {...defaultProps} link={yesterdayLink} />)
       
@@ -132,7 +132,7 @@ describe('LinkCard', () => {
     it('should show weeks for recent weeks', () => {
       const twoWeeksAgoLink = {
         ...mockLink,
-        publishedAt: '2024-01-06T10:30:00Z' // 2 weeks ago
+        publishedAt: 1704537000 // 2 weeks ago
       }
       render(<LinkCard {...defaultProps} link={twoWeeksAgoLink} />)
       
@@ -142,7 +142,7 @@ describe('LinkCard', () => {
     it('should show months for older dates', () => {
       const oldLink = {
         ...mockLink,
-        publishedAt: '2023-11-15T10:30:00Z' // Several months ago
+        publishedAt: 1700044200 // Several months ago
       }
       render(<LinkCard {...defaultProps} link={oldLink} />)
       
