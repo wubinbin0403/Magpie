@@ -22,11 +22,11 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 
-// Constants - 最常见的链接话题图标
+// Constants - 最常见的链接话题图标 (HeroIcons kebab-case 格式)
 const ICON_OPTIONS = [
-  'folder', 'code', 'book', 'news', 'video', 'music', 'image', 
-  'web', 'tech', 'business', 'shopping', 'game', 'education', 
-  'finance', 'tool', 'heart', 'star', 'home'
+  'folder', 'code-bracket', 'book-open', 'newspaper', 'video-camera', 'musical-note', 'photo', 
+  'globe-alt', 'cpu-chip', 'building-office-2', 'shopping-bag', 'puzzle-piece', 'academic-cap', 
+  'banknotes', 'wrench-screwdriver', 'heart', 'star', 'home'
 ] as const
 
 interface SystemSettings {

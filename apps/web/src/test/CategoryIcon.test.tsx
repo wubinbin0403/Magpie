@@ -13,8 +13,9 @@ describe('CategoryIcon', () => {
       expect(iconElement).toHaveClass('w-5', 'h-5')
     })
 
-    it('should render correct icon for common aliases', () => {
-      const aliases = [
+    it('should render fallback icon for unknown aliases (post-alias-removal)', () => {
+      // These were previously supported aliases, now they should fallback to FolderIcon
+      const formerAliases = [
         'code',
         'book', 
         'news',
@@ -31,9 +32,10 @@ describe('CategoryIcon', () => {
         'tool'
       ]
       
-      aliases.forEach(alias => {
+      formerAliases.forEach(alias => {
         const { unmount } = render(<CategoryIcon icon={alias} />)
         
+        // Should render SVG (fallback FolderIcon since no aliases exist)
         const iconElement = document.querySelector('svg')
         expect(iconElement).toBeInTheDocument()
         expect(iconElement).toHaveClass('w-5', 'h-5')
@@ -59,7 +61,7 @@ describe('CategoryIcon', () => {
 
   describe('Props Handling', () => {
     it('should apply custom className', () => {
-      render(<CategoryIcon icon="code" className="w-8 h-8 text-red-500" />)
+      render(<CategoryIcon icon="code-bracket" className="w-8 h-8 text-red-500" />)
       
       const iconElement = document.querySelector('svg')
       expect(iconElement).toHaveClass('w-8', 'h-8', 'text-red-500')
@@ -67,7 +69,7 @@ describe('CategoryIcon', () => {
     })
 
     it('should apply default className when none provided', () => {
-      render(<CategoryIcon icon="code" />)
+      render(<CategoryIcon icon="code-bracket" />)
       
       const iconElement = document.querySelector('svg')
       expect(iconElement).toHaveClass('w-5', 'h-5')
@@ -75,7 +77,7 @@ describe('CategoryIcon', () => {
 
     it('should apply custom styles', () => {
       const customStyle = { color: 'red', fontSize: '24px' }
-      render(<CategoryIcon icon="code" style={customStyle} />)
+      render(<CategoryIcon icon="academic-cap" style={customStyle} />)
       
       const iconElement = document.querySelector('svg')
       expect(iconElement).toHaveStyle('color: rgb(255, 0, 0); font-size: 24px;')
@@ -85,7 +87,7 @@ describe('CategoryIcon', () => {
       const customStyle = { color: 'blue' }
       render(
         <CategoryIcon 
-          icon="code" 
+          icon="academic-cap" 
           className="w-6 h-6" 
           style={customStyle} 
         />
@@ -98,16 +100,16 @@ describe('CategoryIcon', () => {
   })
 
   describe('Icon Mapping Logic', () => {
-    it('should prioritize alias mappings over raw icon names', () => {
-      // 'code' should map to 'CodeBracketIcon', not try to convert 'code' to 'CodeIcon'
-      const { container } = render(<CategoryIcon icon="code" />)
+    it('should convert kebab-case to PascalCase + Icon', () => {
+      // 'code-bracket' should convert to 'CodeBracketIcon' and find the icon
+      const { container } = render(<CategoryIcon icon="code-bracket" />)
       
       const iconElement = container.querySelector('svg')
       expect(iconElement).toBeInTheDocument()
     })
 
-    it('should handle case-insensitive aliases', () => {
-      render(<CategoryIcon icon="CODE" />)
+    it('should handle uppercase in kebab-case names', () => {
+      render(<CategoryIcon icon="ACADEMIC-CAP" />)
       
       const iconElement = document.querySelector('svg')
       expect(iconElement).toBeInTheDocument()
@@ -145,13 +147,13 @@ describe('CategoryIcon', () => {
 
   describe('Performance and Memoization', () => {
     it('should memoize icon component based on icon name', () => {
-      const { rerender } = render(<CategoryIcon icon="code" />)
+      const { rerender } = render(<CategoryIcon icon="academic-cap" />)
       
       const firstIconElement = document.querySelector('svg')
       expect(firstIconElement).toBeInTheDocument()
       
       // Rerender with same icon - should use memoized result
-      rerender(<CategoryIcon icon="code" className="w-6 h-6" />)
+      rerender(<CategoryIcon icon="academic-cap" className="w-6 h-6" />)
       
       const secondIconElement = document.querySelector('svg')
       expect(secondIconElement).toBeInTheDocument()
@@ -159,12 +161,12 @@ describe('CategoryIcon', () => {
     })
 
     it('should recalculate when icon name changes', () => {
-      const { rerender } = render(<CategoryIcon icon="code" />)
+      const { rerender } = render(<CategoryIcon icon="academic-cap" />)
       
       expect(document.querySelector('svg')).toBeInTheDocument()
       
       // Change icon name - should recalculate
-      rerender(<CategoryIcon icon="book" />)
+      rerender(<CategoryIcon icon="book-open" />)
       
       expect(document.querySelector('svg')).toBeInTheDocument()
     })
@@ -172,7 +174,7 @@ describe('CategoryIcon', () => {
 
   describe('Accessibility', () => {
     it('should render as SVG element', () => {
-      render(<CategoryIcon icon="code" />)
+      render(<CategoryIcon icon="academic-cap" />)
       
       const iconElement = document.querySelector('svg')
       expect(iconElement).toBeInTheDocument()
@@ -181,18 +183,18 @@ describe('CategoryIcon', () => {
     it('should be keyboard accessible when used in interactive contexts', () => {
       render(
         <button>
-          <CategoryIcon icon="code" />
-          <span>Code Category</span>
+          <CategoryIcon icon="academic-cap" />
+          <span>Academic Category</span>
         </button>
       )
       
       const button = document.querySelector('button')
       expect(button).toBeInTheDocument()
-      expect(button?.textContent).toContain('Code Category')
+      expect(button?.textContent).toContain('Academic Category')
     })
 
     it('should have proper SVG attributes', () => {
-      render(<CategoryIcon icon="code" />)
+      render(<CategoryIcon icon="academic-cap" />)
       
       const iconElement = document.querySelector('svg')
       expect(iconElement).toHaveAttribute('aria-hidden', 'true')
@@ -200,17 +202,18 @@ describe('CategoryIcon', () => {
     })
   })
 
-  describe('Common Icon Aliases Coverage', () => {
-    it('should support all documented icon aliases', () => {
-      const commonAliases = [
-        'code', 'book', 'news', 'video', 'music', 'image', 'web', 'tech', 
-        'business', 'shopping', 'game', 'education', 'finance', 'tool', 
-        'email', 'mail', 'location', 'search', 'settings', 'edit', 'trash', 
-        'shield', 'lock', 'chat', 'terminal', 'document', 'science'
+  describe('Common Valid HeroIcons Coverage', () => {
+    it('should support common valid HeroIcons kebab-case names', () => {
+      const validHeroIcons = [
+        'folder', 'academic-cap', 'book-open', 'newspaper', 'video-camera', 'musical-note', 'photo', 
+        'globe-alt', 'cpu-chip', 'building-office-2', 'shopping-bag', 'puzzle-piece', 
+        'banknotes', 'wrench-screwdriver', 'envelope', 'map-pin', 'magnifying-glass', 
+        'cog-6-tooth', 'pencil', 'trash', 'shield-check', 'lock-closed', 'chat-bubble-left-right', 
+        'command-line', 'document-text', 'beaker'
       ]
       
-      commonAliases.forEach(alias => {
-        const { unmount } = render(<CategoryIcon icon={alias} />)
+      validHeroIcons.forEach(iconName => {
+        const { unmount } = render(<CategoryIcon icon={iconName} />)
         
         const iconElement = document.querySelector('svg')
         expect(iconElement).toBeInTheDocument()
