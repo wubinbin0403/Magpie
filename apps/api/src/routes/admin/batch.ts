@@ -35,9 +35,19 @@ function createAdminBatchRouter(database = db) {
       let failed = 0
       let skipped = 0
 
-      // Get all links to process
+      // Get all links to process with required fields
       const existingLinks = await database
-        .select()
+        .select({
+          id: links.id,
+          status: links.status,
+          userDescription: links.userDescription,
+          aiSummary: links.aiSummary,
+          originalDescription: links.originalDescription,
+          userCategory: links.userCategory,
+          aiCategory: links.aiCategory,
+          userTags: links.userTags,
+          aiTags: links.aiTags,
+        })
         .from(links)
         .where(inArray(links.id, ids))
 
@@ -63,10 +73,12 @@ function createAdminBatchRouter(database = db) {
                 continue
               }
 
-              // Prepare final values for publishing
-              const finalDescription = params?.category ? 
-                (link.userDescription || link.aiSummary || link.originalDescription || '') :
-                (link.userDescription || link.aiSummary || link.originalDescription || '')
+              // Prepare final values for publishing with proper fallback logic
+              const finalDescription = params?.description || 
+                link.userDescription || 
+                link.aiSummary || 
+                link.originalDescription || 
+                ''
               
               const finalCategory = params?.category || 
                 link.userCategory || 
@@ -91,18 +103,15 @@ function createAdminBatchRouter(database = db) {
               }
               const finalTags = JSON.stringify(tagsToUse)
 
-              // Update to published status - set user fields if they were provided via params
+              // Update to published status - ALWAYS set user fields to ensure data is available
               const updateData: any = {
                 status: 'published',
                 publishedAt: now,
                 updatedAt: now,
-              }
-              
-              if (params?.category) {
-                updateData.userCategory = finalCategory
-              }
-              if (params?.tags && params.tags.length > 0) {
-                updateData.userTags = finalTags
+                // Always set user fields to preserve AI analysis results
+                userDescription: finalDescription,
+                userCategory: finalCategory,
+                userTags: finalTags,
               }
               
               await database

@@ -352,5 +352,84 @@ describe('Admin Batch Operations API (/api/admin/pending/batch)', () => {
       expect(data.data.processed).toBe(0)
       expect(data.data.skipped).toBe(1)
     })
+
+    it('should preserve AI analysis data when confirming without params', async () => {
+      // Create pending links with AI analysis data
+      const now = Math.floor(Date.now() / 1000)
+      const linkResults = await testDrizzle
+        .insert(links)
+        .values([
+          {
+            url: 'https://example.com/ai-preserved1',
+            domain: 'example.com',
+            title: 'AI Preserved Link 1',
+            originalDescription: 'Original description 1',
+            aiSummary: 'AI generated summary 1',
+            aiCategory: 'AI-category-1',
+            aiTags: JSON.stringify(['ai-tag1', 'ai-tag2']),
+            status: 'pending',
+            createdAt: now,
+          },
+          {
+            url: 'https://example.com/ai-preserved2',
+            domain: 'example.com',
+            title: 'AI Preserved Link 2',
+            originalDescription: 'Original description 2',
+            aiSummary: 'AI generated summary 2',
+            aiCategory: 'AI-category-2',
+            aiTags: JSON.stringify(['ai-tag3', 'ai-tag4']),
+            status: 'pending',
+            createdAt: now,
+          }
+        ])
+        .returning({ id: links.id })
+
+      const linkIds = linkResults.map(r => r.id)
+
+      // Confirm without providing any params - should use AI data
+      const response = await app.request('/batch', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${adminToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          ids: linkIds,
+          action: 'confirm'
+          // No params provided - should fallback to AI data
+        })
+      })
+      const data = await response.json() as any
+
+      expect(response.status).toBe(200)
+      expect(data.success).toBe(true)
+      expect(data.data.processed).toBe(2)
+      expect(data.data.results).toHaveLength(2)
+
+      // Verify links are published with AI data preserved in user fields
+      const dbLink1 = await testDrizzle
+        .select()
+        .from(links)
+        .where(eq(links.id, linkIds[0]))
+        .limit(1)
+
+      expect(dbLink1[0].status).toBe('published')
+      expect(dbLink1[0].userDescription).toBe('AI generated summary 1') // AI summary should be copied to userDescription
+      expect(dbLink1[0].userCategory).toBe('AI-category-1') // AI category should be copied to userCategory
+      expect(JSON.parse(dbLink1[0].userTags || '[]')).toEqual(['ai-tag1', 'ai-tag2']) // AI tags should be copied to userTags
+      expect(dbLink1[0].publishedAt).toBeGreaterThanOrEqual(now)
+
+      const dbLink2 = await testDrizzle
+        .select()
+        .from(links)
+        .where(eq(links.id, linkIds[1]))
+        .limit(1)
+
+      expect(dbLink2[0].status).toBe('published')
+      expect(dbLink2[0].userDescription).toBe('AI generated summary 2')
+      expect(dbLink2[0].userCategory).toBe('AI-category-2')
+      expect(JSON.parse(dbLink2[0].userTags || '[]')).toEqual(['ai-tag3', 'ai-tag4'])
+      expect(dbLink2[0].publishedAt).toBeGreaterThanOrEqual(now)
+    })
   })
 })
