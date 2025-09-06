@@ -350,3 +350,208 @@ export interface AITestResponse {
     tags: string[];
   };
 }
+
+// ==================== ADDITIONAL API TYPES ====================
+
+// Stream types (for add-link-stream)
+export interface StreamStatusMessage {
+  stage: 'fetching' | 'analyzing' | 'completed' | 'error';
+  message: string;
+  progress?: number;
+  data?: {
+    title?: string;
+    wordCount?: number;
+    scrapingFailed?: boolean;
+    summary?: string;
+    category?: string;
+    tags?: string[];
+    id?: number;
+    url?: string;
+    description?: string;
+    status?: string;
+  };
+  error?: string;
+}
+
+// Admin query parameter types
+export interface AdminLinksQuery {
+  page?: number;
+  limit?: number;
+  search?: string;
+  status?: 'all' | 'published' | 'pending' | 'deleted';
+  sort?: 'newest' | 'oldest' | 'title' | 'domain';
+  category?: string;
+  domain?: string;
+}
+
+export interface AdminTokensQuery {
+  page?: number;
+  limit?: number;
+  status?: 'active' | 'revoked';
+}
+
+// Admin data types
+export interface AdminLink {
+  id: number;
+  url: string;
+  title: string;
+  domain: string;
+  description: string;
+  category: string;
+  tags: string[];
+  status: 'published' | 'pending' | 'deleted';
+  createdAt: number;
+  publishedAt?: number;
+  readingTime?: number;
+}
+
+export interface AdminLinksResponse {
+  links: AdminLink[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+export interface ApiToken {
+  id: number;
+  token: string;
+  name?: string;
+  prefix: string;
+  status: 'active' | 'revoked';
+  usageCount: number;
+  lastUsedAt?: number;
+  lastUsedIp?: string;
+  createdAt: number;
+  revokedAt?: number;
+}
+
+export interface TokensResponse {
+  tokens: ApiToken[];
+  pagination: Pagination;
+}
+
+// Category management types
+export interface Category {
+  id: number;
+  name: string;
+  slug: string;
+  icon: string;
+  description?: string;
+  displayOrder: number;
+  isActive: number;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface CreateCategoryRequest {
+  name: string;
+  slug?: string;
+  icon?: string;
+  description?: string;
+  displayOrder?: number;
+  isActive?: number;
+}
+
+export interface UpdateCategoryRequest extends Partial<CreateCategoryRequest> {}
+
+export interface ReorderCategoriesRequest {
+  categoryIds: number[];
+}
+
+export interface PublicCategory {
+  id: number;
+  name: string;
+  slug: string;
+  icon: string;
+  description?: string;
+  displayOrder: number;
+  linkCount: number;
+}
+
+// Batch operations types
+export interface BatchOperationResult {
+  id: number;
+  success: boolean;
+  error?: string;
+}
+
+export interface BatchOperationResponse {
+  processed: number;
+  failed: number;
+  skipped: number;
+  total: number;
+  results: BatchOperationResult[];
+}
+
+// Domain stats types
+export interface DomainStatsResponse {
+  domain: string;
+  count: number;
+  latestPublished?: string;
+  latestTitle?: string;
+}
+
+// AI test enhancement types
+export interface AITestConfig {
+  apiKey?: string;
+  baseUrl?: string;
+  model?: string;
+  temperature?: number;
+  userInstructions?: string;
+}
+
+export interface AITestRequest {
+  testConfig?: AITestConfig;
+}
+
+export interface AITestResponseData {
+  connected: boolean;
+  model: string;
+  baseUrl: string;
+  responseTime: number;
+  testAnalysis?: {
+    summary: string;
+    category: string;
+    tags: string[];
+    language: string;
+    sentiment: string;
+    readingTime: number;
+  };
+}
+
+// Additional admin response types
+export interface AdminLogoutResponse {
+  loggedOut: boolean;
+}
+
+export interface AdminCheckResponse {
+  exists: boolean;
+}
+
+export interface AdminVerifyResponse {
+  valid: boolean;
+  user: {
+    role: 'admin';
+    permissions: string[];
+  };
+}
+
+export interface UpdateSettingsResponse {
+  updated: boolean;
+}
+
+export interface DeleteTokenResponse {
+  id: number;
+  status: string;
+}
+
+// Additional request body types
+export interface AddLinkBody {
+  url: string;
+  category?: string;
+  tags?: string;
+  skipConfirm?: boolean;
+}

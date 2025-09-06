@@ -349,6 +349,125 @@ pnpm test
   - 修改 `packages/shared` 中的类型后，需要运行 `pnpm build` 重新构建
   - 确保前端和后端项目使用一致的类型定义
 
+### 类型安全的 API 调用
+
+项目提供了一个完全类型安全的 API 客户端，位于 `packages/shared/src/api-client.ts`：
+
+#### 基本用法
+
+```typescript
+// 创建 API 客户端实例
+import { MagpieApiClient } from '@magpie/shared'
+
+const api = new MagpieApiClient('http://localhost:3001', 'your-api-token')
+
+// 获取链接列表 - 完全类型安全
+const response = await api.getLinks({ page: 1, limit: 10, category: 'tech' })
+if (response.success) {
+  // response.data 的类型是 LinksResponse
+  const links = response.data.links        // Link[]
+  const pagination = response.data.pagination  // Pagination
+}
+
+// 搜索链接
+const searchResult = await api.searchLinks({
+  q: 'typescript',
+  category: 'tech',
+  limit: 20
+})
+
+// 流式添加链接
+await api.addLinkStream(
+  { url: 'https://example.com', category: 'tech' },
+  (message) => {
+    // message 的类型是 StreamStatusMessage
+    console.log(`Stage: ${message.stage}, Progress: ${message.progress}%`)
+    if (message.stage === 'completed' && message.data) {
+      console.log('Link added:', message.data.title)
+    }
+  }
+)
+```
+
+#### 前端集成示例
+
+```typescript
+// React Hook 示例
+import { useQuery } from '@tanstack/react-query'
+import { createApiClient, type LinksQuery } from '@magpie/shared'
+
+const api = createApiClient(process.env.VITE_API_URL)
+
+export function useLinks(query: LinksQuery) {
+  return useQuery({
+    queryKey: ['links', query],
+    queryFn: async () => {
+      const response = await api.getLinks(query)
+      if (!response.success) {
+        throw new Error(response.error.message)
+      }
+      return response.data  // 类型是 LinksResponse
+    }
+  })
+}
+
+// 使用
+function LinksList() {
+  const { data, isLoading } = useLinks({ page: 1, limit: 10 })
+  
+  if (isLoading) return <div>Loading...</div>
+  
+  return (
+    <div>
+      {data?.links.map(link => (  // link 类型是 Link
+        <div key={link.id}>
+          <h3>{link.title}</h3>
+          <p>{link.description}</p>
+          <span>Category: {link.category}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+```
+
+#### 管理员 API 示例
+
+```typescript
+// 管理员操作
+const adminApi = new MagpieApiClient(baseUrl, adminToken)
+
+// 批量操作
+const batchResult = await adminApi.batchOperation({
+  ids: [1, 2, 3],
+  action: 'confirm',
+  params: { category: 'tech' }
+})
+
+// 令牌管理
+const tokens = await adminApi.getTokens({ status: 'active' })
+const newToken = await adminApi.createToken({ 
+  name: 'My API Token',
+  expiresAt: '2024-12-31T23:59:59Z'
+})
+```
+
+#### 错误处理
+
+所有 API 方法都返回统一的 `ApiResponse<T>` 类型：
+
+```typescript
+const response = await api.getLinks()
+
+if (response.success) {
+  // 成功：response.data 包含返回数据
+  const links = response.data.links
+} else {
+  // 失败：response.error 包含错误信息
+  console.error(`Error ${response.error.code}: ${response.error.message}`)
+}
+```
+
 ### Git 工作流
 - `master` - 主分支，用于发布
 - `develop` - 开发分支
