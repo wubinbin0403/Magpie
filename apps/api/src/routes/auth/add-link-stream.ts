@@ -10,6 +10,7 @@ import { webScraper } from '../../services/web-scraper.js'
 import { readabilityScraper } from '../../services/readability-scraper.js'
 import { createAIAnalyzer, type AIAnalysisResult } from '../../services/ai-analyzer.js'
 import { getSettings } from '../../utils/settings.js'
+import type { StreamStatusMessage } from '@magpie/shared'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 
 // Helper function to get unified auth data
@@ -44,13 +45,7 @@ function getAuthData(c: any) {
 }
 
 // Status message types
-interface StatusMessage {
-  stage: 'fetching' | 'analyzing' | 'completed' | 'error'
-  message: string
-  progress?: number
-  data?: any
-  error?: string
-}
+// Using StreamStatusMessage from @magpie/shared
 
 // Create streaming add link router
 function createAddLinkStreamRouter(database = db) {
@@ -71,7 +66,7 @@ function createAddLinkStreamRouter(database = db) {
             stage: 'fetching',
             message: '正在连接到目标网站...',
             progress: 10
-          } as StatusMessage)
+          } as StreamStatusMessage)
         })
 
         // Step 1: Scrape web content
@@ -84,7 +79,7 @@ function createAddLinkStreamRouter(database = db) {
               stage: 'fetching',
               message: '正在获取网页内容...',
               progress: 30
-            } as StatusMessage)
+            } as StreamStatusMessage)
           })
 
           // Try Readability scraper first, fallback to original scraper if needed
@@ -136,7 +131,7 @@ function createAddLinkStreamRouter(database = db) {
                   wordCount: scrapedContent.wordCount,
                   scrapingFailed: true
                 }
-              } as StatusMessage)
+              } as StreamStatusMessage)
             })
           } else {
             await stream.writeSSE({
@@ -148,7 +143,7 @@ function createAddLinkStreamRouter(database = db) {
                   title: scrapedContent.title,
                   wordCount: scrapedContent.wordCount
                 }
-              } as StatusMessage)
+              } as StreamStatusMessage)
             })
           }
         } catch (error) {
@@ -158,7 +153,7 @@ function createAddLinkStreamRouter(database = db) {
               stage: 'error',
               message: '处理过程中出现严重错误',
               error: String(error)
-            } as StatusMessage)
+            } as StreamStatusMessage)
           })
           
           await logOperation(
@@ -186,7 +181,7 @@ function createAddLinkStreamRouter(database = db) {
                 stage: 'analyzing',
                 message: '内容抓取失败，跳过AI分析',
                 progress: 60
-              } as StatusMessage)
+              } as StreamStatusMessage)
             })
             
             // Use fallback analysis for failed scraping
@@ -204,7 +199,7 @@ function createAddLinkStreamRouter(database = db) {
                 stage: 'analyzing',
                 message: '使用基础分析，请在确认页面手动输入信息',
                 progress: 80
-              } as StatusMessage)
+              } as StreamStatusMessage)
             })
           } else {
             await stream.writeSSE({
@@ -212,7 +207,7 @@ function createAddLinkStreamRouter(database = db) {
                 stage: 'analyzing',
                 message: '正在进行AI智能分析...',
                 progress: 60
-              } as StatusMessage)
+              } as StreamStatusMessage)
             })
 
             const settings = await getSettings(database)
@@ -233,7 +228,7 @@ function createAddLinkStreamRouter(database = db) {
                   stage: 'analyzing',
                   message: 'AI服务未配置，使用基础分析',
                   progress: 80
-                } as StatusMessage)
+                } as StreamStatusMessage)
               })
             } else {
               const aiAnalyzer = await createAIAnalyzer(settings)
@@ -243,7 +238,7 @@ function createAddLinkStreamRouter(database = db) {
                   stage: 'analyzing',
                   message: '正在生成智能摘要...',
                   progress: 70
-                } as StatusMessage)
+                } as StreamStatusMessage)
               })
               
               aiAnalysis = await aiAnalyzer.analyze(scrapedContent)
@@ -258,7 +253,7 @@ function createAddLinkStreamRouter(database = db) {
                     category: aiAnalysis.category,
                     tags: aiAnalysis.tags
                   }
-                } as StatusMessage)
+                } as StreamStatusMessage)
               })
             }
           }
@@ -280,7 +275,7 @@ function createAddLinkStreamRouter(database = db) {
               stage: 'analyzing',
               message: 'AI分析失败，使用基础分析',
               progress: 80
-            } as StatusMessage)
+            } as StreamStatusMessage)
           })
         }
 
@@ -360,7 +355,7 @@ function createAddLinkStreamRouter(database = db) {
               status: linkData.status,
               scrapingFailed: scrapingFailed
             }
-          } as StatusMessage)
+          } as StreamStatusMessage)
         })
 
       } catch (error) {
@@ -371,7 +366,7 @@ function createAddLinkStreamRouter(database = db) {
             stage: 'error',
             message: '处理过程中出现错误',
             error: String(error)
-          } as StatusMessage)
+          } as StreamStatusMessage)
         })
         
         await logOperation(
