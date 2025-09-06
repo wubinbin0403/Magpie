@@ -4,7 +4,32 @@ import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import AllLinks from '../pages/admin/AllLinks'
 import { api } from '../utils/api'
-import { ApiResponse, LinksResponse } from '@magpie/shared'
+import type { AdminLinksResponse, AdminLink, SuccessResponse, CategoriesResponse } from '@magpie/shared'
+
+// 创建类型安全的测试辅助函数
+function createMockApiResponse<T>(data: T): SuccessResponse<T> {
+  return {
+    success: true,
+    data,
+    timestamp: new Date().toISOString()
+  }
+}
+
+function createMockAdminLink(overrides: Partial<AdminLink> = {}): AdminLink {
+  return {
+    id: 1,
+    url: 'https://example.com',
+    title: 'Test Article',
+    domain: 'example.com',
+    description: 'Test description',
+    category: 'Tech',
+    tags: ['javascript'],
+    status: 'published',
+    createdAt: Date.now(),
+    publishedAt: Date.now(),
+    ...overrides
+  }
+}
 
 // Mock the api
 vi.mock('../utils/api', () => ({
@@ -49,56 +74,66 @@ describe('AllLinks', () => {
   let queryClient: QueryClient
   
   // Mock data
-  const mockLinks: ApiResponse<LinksResponse> = {
-    success: true,
-    data: {
-        links: [
-            {
-                id: 1,
-                url: 'https://example.com/article-1',
-                title: 'Test Article 1',
-                domain: 'example.com',
-                description: 'This is a test article description',
-                category: 'Technology',
-                tags: ['react', 'testing'],
-                createdAt: "1640995200", // 2022-01-01 00:00:00 UTC
-                publishedAt: "1640995300",
-                readingTime: 5
-            },
-            {
-                id: 2,
-                url: 'https://test.com/article-2',
-                title: 'Test Article 2',
-                domain: 'test.com',
-                description: 'Another test article',
-                category: 'Design',
-                tags: ['ui', 'design'],
-                createdAt: "1650995400",
-                publishedAt: "1650995400",
-            }
-        ],
-        pagination: {
-            page: 1,
-            limit: 20,
-            total: 2,
-            pages: 0,
-            hasNext: false,
-            hasPrev: false
-        },
-        filters: {
-            categories: [],
-            tags: [],
-            domains: undefined,
-            yearMonths: []
-        }
+  const mockAdminLinksResponse = createMockApiResponse<AdminLinksResponse>({
+    links: [
+      createMockAdminLink({
+        id: 1,
+        url: 'https://example.com/article-1',
+        title: 'Test Article 1',
+        domain: 'example.com',
+        description: 'This is a test article description',
+        category: 'Technology',
+        tags: ['react', 'testing'],
+        createdAt: 1640995200000,
+        publishedAt: 1640995300000,
+        readingTime: 5
+      }),
+      createMockAdminLink({
+        id: 2,
+        url: 'https://test.com/article-2',
+        title: 'Test Article 2',
+        domain: 'test.com',
+        description: 'Another test article',
+        category: 'Design',
+        tags: ['ui', 'design'],
+        createdAt: 1650995400000,
+        publishedAt: 1650995400000,
+      })
+    ],
+    pagination: {
+      page: 1,
+      limit: 20,
+      total: 2,
+      totalPages: 1
     }
-  }
+  })
 
-  const mockCategories = [
-    { id: 1, name: 'Technology' },
-    { id: 2, name: 'Design' },
-    { id: 3, name: 'Business' }
-  ]
+  const mockCategoriesResponse = createMockApiResponse<CategoriesResponse>([
+    { 
+      id: 1, 
+      name: 'Technology', 
+      slug: 'technology',
+      icon: 'code',
+      displayOrder: 1,
+      linkCount: 5
+    },
+    { 
+      id: 2, 
+      name: 'Design', 
+      slug: 'design',
+      icon: 'palette',
+      displayOrder: 2,
+      linkCount: 3
+    },
+    { 
+      id: 3, 
+      name: 'Business', 
+      slug: 'business',
+      icon: 'briefcase',
+      displayOrder: 3,
+      linkCount: 2
+    }
+  ])
 
   beforeEach(() => {
     queryClient = new QueryClient({
@@ -112,10 +147,10 @@ describe('AllLinks', () => {
     vi.clearAllMocks()
     
     // Setup default mock responses
-    vi.mocked(api.getAllLinksAdmin).mockResolvedValue(mockLinks)
-    vi.mocked(api.getCategories).mockResolvedValue({ data: mockCategories })
-    vi.mocked(api.updateLink).mockResolvedValue({ data: { success: true } })
-    vi.mocked(api.deleteLink).mockResolvedValue({ data: { success: true } })
+    vi.mocked(api.getAllLinksAdmin).mockResolvedValue(mockAdminLinksResponse)
+    vi.mocked(api.getCategories).mockResolvedValue(mockCategoriesResponse)
+    vi.mocked(api.updateLink).mockResolvedValue(createMockApiResponse(createMockAdminLink()))
+    vi.mocked(api.deleteLink).mockResolvedValue(createMockApiResponse({ success: true, message: 'Link deleted successfully' }))
   })
 
   const renderWithQueryClient = (component: React.ReactElement) => {
@@ -352,17 +387,17 @@ describe('AllLinks', () => {
 
     it('should show restore button for deleted links', async () => {
       const deletedLinkMock = {
-        ...mockLinks,
+        ...mockAdminLinksResponse,
         data: {
-          ...mockLinks.data,
+          ...mockAdminLinksResponse.data,
           links: [{
-            ...mockLinks.data.links[0],
+            ...mockAdminLinksResponse.data.links[0],
             status: 'deleted' as const
           }]
         }
       }
       
-      vi.mocked(api.getAllLinksAdmin).mockResolvedValue(deletedLinkMock)
+      vi.mocked(api.getAllLinksAdmin).mockResolvedValue(deletedLinkMock as any)
       
       renderWithQueryClient(<AllLinks />)
       
@@ -376,17 +411,17 @@ describe('AllLinks', () => {
       const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
       
       const deletedLinkMock = {
-        ...mockLinks,
+        ...mockAdminLinksResponse,
         data: {
-          ...mockLinks.data,
+          ...mockAdminLinksResponse.data,
           links: [{
-            ...mockLinks.data.links[0],
+            ...mockAdminLinksResponse.data.links[0],
             status: 'deleted' as const
           }]
         }
       }
       
-      vi.mocked(api.getAllLinksAdmin).mockResolvedValue(deletedLinkMock)
+      vi.mocked(api.getAllLinksAdmin).mockResolvedValue(deletedLinkMock as any)
       
       const user = userEvent.setup()
       renderWithQueryClient(<AllLinks />)
@@ -421,11 +456,11 @@ describe('AllLinks', () => {
 
     it('should show empty state when no links are found', async () => {
       vi.mocked(api.getAllLinksAdmin).mockResolvedValue({
-        ...mockLinks,
+        ...mockAdminLinksResponse,
         data: {
-          ...mockLinks.data,
+          ...mockAdminLinksResponse.data,
           links: [],
-          pagination: { ...mockLinks.data.pagination, total: 0 }
+          pagination: { ...mockAdminLinksResponse.data.pagination, total: 0 }
         }
       })
       
@@ -452,9 +487,9 @@ describe('AllLinks', () => {
   describe('Pagination', () => {
     it('should show pagination when there are multiple pages', async () => {
       const mockWithPagination = {
-        ...mockLinks,
+        ...mockAdminLinksResponse,
         data: {
-          ...mockLinks.data,
+          ...mockAdminLinksResponse.data,
           pagination: {
             page: 1,
             limit: 20,

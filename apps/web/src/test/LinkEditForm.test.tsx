@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import LinkEditForm from '../components/LinkEditForm'
 
@@ -126,7 +126,7 @@ describe('LinkEditForm', () => {
     })
 
     it('should update tags field', async () => {
-      const user = userEvent.setup()
+      // const user = userEvent.setup() // not used in this test
       render(<LinkEditForm {...defaultProps} />)
       
       const tagsInput = screen.getByPlaceholderText('标签1, 标签2, 标签3')

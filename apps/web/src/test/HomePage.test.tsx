@@ -27,8 +27,8 @@ vi.mock('../components/Sidebar', () => ({
   default: ({ 
     categories, 
     tags, 
-    selectedCategory, 
-    selectedTags, 
+    selectedCategory: _selectedCategory, 
+    selectedTags: _selectedTags, 
     onCategoryFilter, 
     onTagFilter 
   }: any) => (
@@ -176,7 +176,7 @@ describe('HomePage', () => {
   beforeEach(() => {
     queryClient = new QueryClient({
       defaultOptions: {
-        queries: { retry: false, cacheTime: 0, staleTime: 0 },
+        queries: { retry: false, gcTime: 0, staleTime: 0 },
         mutations: { retry: false },
       },
     })
@@ -187,9 +187,9 @@ describe('HomePage', () => {
     // Setup default API responses
     vi.mocked(api.default.getCategories).mockResolvedValue({
       success: true,
-      data: mockCategories
-    })
-    vi.mocked(api.default.getLinks).mockResolvedValue(mockLinksResponse)
+      data: mockCategories.map(cat => ({ ...cat, linkCount: 0 }))
+    } as any)
+    vi.mocked(api.default.getLinks).mockResolvedValue(mockLinksResponse as any)
   })
 
   const renderHomePage = () => {
@@ -232,6 +232,7 @@ describe('HomePage', () => {
     it('should show empty content when no links but data exists', async () => {
       vi.mocked(api.default.getLinks).mockResolvedValue({
         ...mockLinksResponse,
+        success: true as const,
         data: {
           ...mockLinksResponse.data,
           links: [],
@@ -368,13 +369,12 @@ describe('HomePage', () => {
     it('should show empty state when no data returned', async () => {
       // Mock to return no data at all
       vi.mocked(api.default.getLinks).mockResolvedValue({
-        success: false,
-        data: {
-          links: [],
-          pagination: { page: 1, limit: 20, total: 0, pages: 0, hasNext: false, hasPrev: false },
-          filters: { categories: [], tags: [], domains: [], yearMonths: [] }
+        success: false as const,
+        error: {
+          code: 'TEST_ERROR',
+          message: 'Test error message'
         }
-      })
+      } as any)
 
       renderHomePage()
 

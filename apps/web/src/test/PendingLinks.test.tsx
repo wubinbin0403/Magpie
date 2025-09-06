@@ -82,13 +82,13 @@ describe('PendingLinks', () => {
     // Setup default API mocks
     vi.mocked(api.getPendingLinks).mockResolvedValue({
       success: true,
-      data: mockPendingLinksData
-    })
+      data: { ...mockPendingLinksData, filters: { categories: [], tags: [], yearMonths: [] } }
+    } as any)
 
     vi.mocked(api.getCategories).mockResolvedValue({
       success: true,
-      data: mockCategories
-    })
+      data: mockCategories.map(cat => ({ ...cat, slug: cat.name, icon: 'folder', displayOrder: 1, linkCount: 0 }))
+    } as any)
   })
 
   const renderWithQueryClient = (component: React.ReactElement) => {
@@ -113,7 +113,7 @@ describe('PendingLinks', () => {
       // Create a query client that never resolves to test loading state
       const slowQueryClient = new QueryClient({
         defaultOptions: {
-          queries: { retry: false, cacheTime: 0 },
+          queries: { retry: false, gcTime: 0 },
           mutations: { retry: false }
         }
       })
@@ -147,8 +147,8 @@ describe('PendingLinks', () => {
     it('should show empty state when no pending links', async () => {
       vi.mocked(api.getPendingLinks).mockResolvedValue({
         success: true,
-        data: { ...mockPendingLinksData, links: [] }
-      })
+        data: { ...mockPendingLinksData, links: [], filters: { categories: [], tags: [], yearMonths: [] } }
+      } as any)
 
       renderWithQueryClient(<PendingLinks />)
       

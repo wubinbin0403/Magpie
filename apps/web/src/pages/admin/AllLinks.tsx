@@ -138,7 +138,7 @@ export default function AllLinks() {
   }
 
   const formatDate = (timestamp: number) => {
-    const date = new Date(timestamp * 1000)
+    const date = new Date(timestamp)
     return date.toLocaleString('zh-CN', {
       year: 'numeric',
       month: '2-digit',
