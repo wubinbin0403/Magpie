@@ -1,28 +1,14 @@
 import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
-import { z } from 'zod'
 import { db } from '../../db/index.js'
 import { apiTokens } from '../../db/schema.js'
 import { eq, desc, and } from 'drizzle-orm'
 import { sendSuccess, sendError, notFound } from '../../utils/response.js'
+import { tokensQuerySchema, createTokenSchema, idParamSchema } from '../../utils/validation.js'
 import { requireAdmin } from '../../middleware/admin.js'
 import crypto from 'crypto'
+import type { ApiToken, TokensResponse, AdminTokensQuery } from '@magpie/shared'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
-
-// Schema definitions
-const tokensQuerySchema = z.object({
-  page: z.coerce.number().min(1).default(1),
-  limit: z.coerce.number().min(1).max(100).default(20),
-  status: z.enum(['active', 'revoked']).optional(),
-})
-
-const createTokenSchema = z.object({
-  name: z.string().optional(),
-})
-
-const idParamSchema = z.object({
-  id: z.coerce.number().min(1),
-})
 
 // Create admin tokens router with optional database dependency injection
 function createAdminTokensRouter(database = db) {

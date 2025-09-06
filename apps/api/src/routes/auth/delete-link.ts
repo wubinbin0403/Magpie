@@ -7,6 +7,7 @@ import { sendSuccess, sendError, notFound } from '../../utils/response.js'
 import { idParamSchema } from '../../utils/validation.js'
 import { requireApiToken, logOperation } from '../../middleware/auth.js'
 import { triggerStaticGeneration } from '../../services/static-generator.js'
+import { getUnifiedAuthData } from '../../types/hono-context.js'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 
 // Create delete link router with optional database dependency injection
@@ -30,8 +31,7 @@ function createDeleteLinkRouter(database = db) {
     
     try {
       const { id } = c.req.valid('param')
-      const tokenData = (c as any).get('tokenData') as { id: number } | undefined
-      const clientIp = (c as any).get('clientIp') as string
+      const authData = getUnifiedAuthData(c)
 
       // Get link details first
       const linkResult = await database
@@ -51,10 +51,10 @@ function createDeleteLinkRouter(database = db) {
           'links',
           id,
           { reason: 'not_found' },
-          tokenData?.id,
-          undefined,
-          clientIp,
-          c.req.header('user-agent'),
+          authData?.tokenId,
+          authData?.userId,
+          authData?.clientIp || 'unknown',
+          authData?.userAgent,
           'failed',
           'Link not found'
         )
@@ -71,10 +71,10 @@ function createDeleteLinkRouter(database = db) {
           'links',
           id,
           { reason: 'already_deleted', url: link.url },
-          tokenData?.id,
-          undefined,
-          clientIp,
-          c.req.header('user-agent'),
+          authData?.tokenId,
+          authData?.userId,
+          authData?.clientIp || 'unknown',
+          authData?.userAgent,
           'failed',
           'Link is already deleted'
         )
@@ -105,10 +105,10 @@ function createDeleteLinkRouter(database = db) {
           title: link.title,
           previous_status: link.status
         },
-        tokenData?.id,
-        undefined,
-        clientIp,
-        c.req.header('user-agent'),
+        authData?.tokenId,
+        authData?.userId,
+        authData?.clientIp || 'unknown',
+        authData?.userAgent,
         'success',
         undefined,
         duration
@@ -123,18 +123,17 @@ function createDeleteLinkRouter(database = db) {
 
     } catch (error) {
       const duration = Date.now() - startTime
-      const tokenData = (c as any).get('tokenData') as { id: number } | undefined
-      const clientIp = (c as any).get('clientIp') as string
+      const authData = getUnifiedAuthData(c)
       
       await logOperation(
         'link_delete',
         'links',
         undefined,
         { error: String(error) },
-        tokenData?.id,
-        undefined,
-        clientIp,
-        c.req.header('user-agent'),
+        authData?.tokenId,
+        authData?.userId,
+        authData?.clientIp || 'unknown',
+        authData?.userAgent,
         'failed',
         String(error),
         duration

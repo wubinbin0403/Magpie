@@ -7,22 +7,8 @@ import { sendSuccess, sendError, notFound } from '../../utils/response.js'
 import { adminLinksQuerySchema, idParamSchema, updateLinkSchema } from '../../utils/validation.js'
 import { requireAdmin } from '../../middleware/admin.js'
 import { triggerStaticGeneration } from '../../services/static-generator.js'
+import type { AdminLink, AdminLinksResponse } from '@magpie/shared'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
-
-// Admin link type
-interface AdminLink {
-  id: number
-  url: string
-  title: string
-  domain: string
-  description: string
-  category: string
-  tags: string[]
-  status: 'published' | 'pending' | 'deleted'
-  createdAt: number
-  publishedAt?: number
-  readingTime?: number
-}
 
 // Create admin links router with optional database dependency injection
 export function createAdminLinksRouter(database = db) {

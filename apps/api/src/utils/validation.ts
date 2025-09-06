@@ -122,6 +122,13 @@ export const adminLinksQuerySchema = z.object({
   domain: z.string().optional(),
 })
 
+// Tokens 相关验证模式
+export const tokensQuerySchema = z.object({
+  page: z.coerce.number().min(1).default(1),
+  limit: z.coerce.number().min(1).max(100).default(20),
+  status: z.enum(['active', 'revoked']).optional(),
+})
+
 export const createTokenSchema = z.object({
   name: z.string().max(100).optional(),
   expiresAt: z.string().datetime().optional(),
@@ -149,6 +156,7 @@ export const updateSettingsSchema = z.object({
     temperature: z.number().min(0).max(2).optional(),
     summaryPrompt: z.string().max(1000).optional(),
     categoryPrompt: z.string().max(1000).optional(),
+    userInstructions: z.string().max(1000).optional(),
   }).optional(),
   content: z.object({
     defaultCategory: z.string().max(100).optional(),

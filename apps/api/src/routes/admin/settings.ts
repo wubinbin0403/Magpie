@@ -1,35 +1,15 @@
 import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
-import { z } from 'zod'
 import { db } from '../../db/index.js'
 import { settings } from '../../db/schema.js'
 import { eq } from 'drizzle-orm'
 import { sendSuccess, sendError } from '../../utils/response.js'
+import { updateSettingsSchema } from '../../utils/validation.js'
 import { requireAdmin } from '../../middleware/admin.js'
 import { getSettings, setSetting } from '../../utils/settings.js'
 import { createAIAnalyzer } from '../../services/ai-analyzer.js'
+import type { SettingsResponse, UpdateSettingsRequest, AITestRequest, AITestResponseData } from '@magpie/shared'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
-
-// Schema definitions
-const updateSettingsSchema = z.object({
-  site: z.object({
-    title: z.string().optional(),
-    description: z.string().optional(),
-    aboutUrl: z.string().optional(),
-  }).optional(),
-  ai: z.object({
-    apiKey: z.string().optional(),
-    baseUrl: z.string().url().optional(),
-    model: z.string().optional(),
-    temperature: z.number().min(0).max(2).optional(),
-    userInstructions: z.string().optional(),
-  }).optional(),
-  content: z.object({
-    defaultCategory: z.string().optional(),
-    categories: z.array(z.string()).optional(),
-    itemsPerPage: z.number().min(1).max(100).optional(),
-  }).optional(),
-})
 
 // Create admin settings router with optional database dependency injection
 function createAdminSettingsRouter(database = db) {
