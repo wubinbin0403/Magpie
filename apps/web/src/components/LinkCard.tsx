@@ -196,7 +196,7 @@ export default function LinkCard({ link, onTitleClick, onTagClick, selectedTags 
 
         {/* Description */}
         {link.description && (
-          <p className="text-base-content/80 text-sm leading-relaxed mb-4 line-clamp-3 max-w-[80%] lg:max-w-[61.8%]">
+          <p className="text-base-content/80 text-sm leading-relaxed mb-4 max-w-[80%] lg:max-w-[61.8%]">
             {link.description}
           </p>
         )}
