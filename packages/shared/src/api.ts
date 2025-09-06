@@ -265,8 +265,7 @@ export interface UpdateSettingsRequest {
     baseUrl?: string;
     model?: string;
     temperature?: number;
-    summaryPrompt?: string;
-    categoryPrompt?: string;
+    userInstructions?: string;
   };
   content?: {
     defaultCategory?: string;
@@ -331,8 +330,7 @@ export interface SettingsResponse {
     baseUrl: string;
     model: string;
     temperature: number;
-    summaryPrompt: string;
-    categoryPrompt: string;
+    userInstructions: string;
   };
   content: {
     defaultCategory: string;

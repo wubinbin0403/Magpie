@@ -41,8 +41,11 @@ export default function AISettings() {
   useEffect(() => {
     if (settingsData?.ai) {
       setSettings({
-        ...settingsData.ai,
-        userInstructions: settingsData.ai.summaryPrompt || ''
+        apiKey: settingsData.ai.apiKey || '',
+        baseUrl: settingsData.ai.baseUrl || 'https://api.openai.com/v1',
+        model: settingsData.ai.model || 'gpt-3.5-turbo',
+        temperature: settingsData.ai.temperature || 0.7,
+        userInstructions: settingsData.ai.userInstructions || ''
       })
       // Don't set the hidden token as originalApiKey
       if (isApiKeyConfigured(settingsData.ai.apiKey)) {
