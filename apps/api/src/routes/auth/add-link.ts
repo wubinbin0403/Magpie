@@ -10,6 +10,7 @@ import { webScraper } from '../../services/web-scraper.js'
 import { readabilityScraper } from '../../services/readability-scraper.js'
 import { createAIAnalyzer, type AIAnalysisResult } from '../../services/ai-analyzer.js'
 import { getSettings } from '../../utils/settings.js'
+import { buildLinkData } from '../../utils/link-data-builder.js'
 import type { AddLinkResponse } from '@magpie/shared'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 
@@ -301,32 +302,23 @@ app.get('/add', requireApiTokenOrAdminSession(database), zValidator('query', add
     }
 
     // Create final data
-    const finalCategory = category || aiAnalysis.category
-    const finalTags = tags ? tags.split(',').map(t => t.trim()) : aiAnalysis.tags
-    const finalDescription = aiAnalysis.summary
+    const finalTags = tags ? tags.split(',').map(t => t.trim()) : null
 
     // Create link record
     const now = Math.floor(Date.now() / 1000)
     
-    const linkData = {
+    const linkData = buildLinkData({
       url,
       domain,
-      title: scrapedContent.title,
-      originalDescription: scrapedContent.description,
-      aiSummary: aiAnalysis.summary,
-      aiCategory: aiAnalysis.category,
-      aiTags: JSON.stringify(aiAnalysis.tags),
-      aiReadingTime: aiAnalysis.readingTime,
-      aiAnalysisFailed: aiAnalysisFailed ? 1 : 0,
-      aiError: aiError || null,
-      // For skipConfirm (published), ensure all user fields are set
-      userDescription: skipConfirm ? finalDescription : null,
-      userCategory: skipConfirm ? finalCategory : null,
-      userTags: skipConfirm ? JSON.stringify(finalTags) : null,
-      status: skipConfirm ? 'published' as const : 'pending' as const,
-      createdAt: now,
-      publishedAt: skipConfirm ? now : undefined,
-    }
+      scrapedContent,
+      aiAnalysis,
+      aiAnalysisFailed: aiAnalysisFailed || false,
+      aiError,
+      skipConfirm,
+      category,
+      tags: finalTags,
+      now
+    })
 
     const result = await database.insert(links).values(linkData).returning({ id: links.id })
     const linkId = result[0].id
@@ -336,7 +328,7 @@ app.get('/add', requireApiTokenOrAdminSession(database), zValidator('query', add
       'link_add',
       'links',
       linkId,
-      { url, skipConfirm, finalCategory, finalTags },
+      { url, skipConfirm, category, tags: finalTags },
       authData.tokenId,
       authData.userId,
       authData.clientIp,
@@ -351,10 +343,10 @@ app.get('/add', requireApiTokenOrAdminSession(database), zValidator('query', add
       const response: AddLinkResponse = {
         id: linkId,
         url,
-        title: scrapedContent.title,
-        description: finalDescription,
-        category: finalCategory,
-        tags: finalTags,
+        title: linkData.title || '',
+        description: linkData.userDescription || linkData.aiSummary || '',
+        category: linkData.userCategory || linkData.aiCategory || '',
+        tags: finalTags || [],
         status: 'published',
         scrapingFailed,
         aiAnalysisFailed,
@@ -433,25 +425,18 @@ app.post('/', requireApiTokenOrAdminSession(database), zValidator('json', addLin
 
     // For skipConfirm (published), ensure all user fields are set
     // For pending links, user fields can be null and will be set during confirmation
-    const linkData = {
+    const linkData = buildLinkData({
       url,
       domain,
-      title: scrapedContent.title || '',
-      originalDescription: scrapedContent.description || '',
-      aiSummary: aiAnalysis.summary,
-      aiCategory: aiAnalysis.category,
-      aiTags: JSON.stringify(aiAnalysis.tags),
-      aiReadingTime: aiAnalysis.readingTime,
-      aiAnalysisFailed: aiAnalysisFailed ? 1 : 0,
-      aiError: aiError || null,
-      userDescription: skipConfirm ? aiAnalysis.summary : null,
-      userCategory: skipConfirm ? (category || aiAnalysis.category) : (category || null),
-      userTags: skipConfirm ? JSON.stringify(userTags || aiAnalysis.tags) : (userTags ? JSON.stringify(userTags) : null),
-      status: skipConfirm ? 'published' : 'pending',
-      publishedAt: skipConfirm ? now : null,
-      createdAt: now,
-      updatedAt: now
-    }
+      scrapedContent,
+      aiAnalysis,
+      aiAnalysisFailed: aiAnalysisFailed || false,
+      aiError,
+      skipConfirm,
+      category,
+      tags: userTags,
+      now
+    })
 
     // Insert into database
     const insertResult = await database
@@ -494,8 +479,8 @@ app.post('/', requireApiTokenOrAdminSession(database), zValidator('json', addLin
         category: linkData.userCategory!,
         tags: JSON.parse(linkData.userTags!),
         status: 'published',
-        scrapingFailed: scrapingFailed,
-        aiAnalysisFailed,
+        scrapingFailed: scrapingFailed || false,
+        aiAnalysisFailed: aiAnalysisFailed || false,
         aiError
       }
       

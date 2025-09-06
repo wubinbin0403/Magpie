@@ -2,6 +2,7 @@ import { OpenAI } from 'openai'
 import type { ScrapedContent } from './web-scraper.js'
 
 export interface AIAnalysisResult {
+  title?: string
   summary: string
   category: string
   tags: string[]
@@ -37,9 +38,10 @@ const DEFAULT_PROMPT_TEMPLATE = `你是一个专业的内容分析助手，可�
 **重要：你必须严格按照以下JSON格式返回结果，不要添加任何其他文本、解释或格式：**
 
 {
+  "title": "根据输入的标题，生成简洁明确的中文新标题；如果输入标题合理，可以直接使用或翻译使用，否则基于内容生成",
   "summary": "简洁明了的3-4句话摘要，除非指定了其他语言，否则使用中文",
   "category": "从以下分类中选择最合适的一个：{categories}",
-  "tags": ["3-5个相关标签的字符串数组"],
+  "tags": ["中文的3-5个相关标签的字符串数组"],
   "language": "检测到的语言代码(zh, en, ja等)",
   "sentiment": "positive, neutral, 或 negative",
   "readingTime": 基于{wordCount}字的文章，按每分钟225字计算阅读时间(分钟数，整数，至少1分钟)
@@ -234,6 +236,7 @@ export class AIAnalyzer {
   private validateAndSanitize(result: AIAnalysisResult, content: ScrapedContent): AIAnalysisResult {
     // Validate required fields
     const sanitized: AIAnalysisResult = {
+      title: this.sanitizeText(result.title) || undefined, // Use AI title if available
       summary: this.sanitizeText(result.summary) || content.description || 'Content summary not available',
       category: this.validateCategory(result.category),
       tags: this.validateTags(result.tags),

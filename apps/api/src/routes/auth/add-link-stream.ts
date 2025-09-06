@@ -10,6 +10,7 @@ import { webScraper } from '../../services/web-scraper.js'
 import { readabilityScraper } from '../../services/readability-scraper.js'
 import { createAIAnalyzer, type AIAnalysisResult } from '../../services/ai-analyzer.js'
 import { getSettings } from '../../utils/settings.js'
+import { buildLinkData } from '../../utils/link-data-builder.js'
 import type { StreamStatusMessage } from '@magpie/shared'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 
@@ -283,23 +284,19 @@ function createAddLinkStreamRouter(database = db) {
         const now = Math.floor(Date.now() / 1000)
         const userTags = tags ? tags.split(',').map(t => t.trim()).filter(t => t.length > 0) : null
 
-        const linkData = {
+        const linkData = buildLinkData({
           url,
           domain,
-          title: scrapedContent.title || '',
-          originalDescription: scrapedContent.description || '',
-          aiSummary: aiAnalysis.summary,
-          aiCategory: aiAnalysis.category,
-          aiTags: JSON.stringify(aiAnalysis.tags),
-          aiReadingTime: aiAnalysis.readingTime,
-          userDescription: null,
-          userCategory: category || null,
-          userTags: userTags ? JSON.stringify(userTags) : null,
-          status: skipConfirm ? 'published' : 'pending',
-          publishedAt: skipConfirm ? now : null,
-          createdAt: now,
-          updatedAt: now
-        }
+          scrapedContent,
+          aiAnalysis,
+          aiAnalysisFailed: false, // Stream mode doesn't track AI failures separately
+          aiError: null,
+          skipConfirm,
+          category,
+          tags: userTags,
+          now,
+          forceUserFields: true // Use stream-specific user field handling
+        })
 
         // Insert into database
         const insertResult = await database
@@ -348,7 +345,7 @@ function createAddLinkStreamRouter(database = db) {
             data: {
               id: linkId,
               url,
-              title: scrapedContent.title || '',
+              title: linkData.title || '',
               description: linkData.userDescription || linkData.aiSummary!,
               category: linkData.userCategory || linkData.aiCategory!,
               tags: linkData.userTags ? JSON.parse(linkData.userTags) : JSON.parse(linkData.aiTags!),
