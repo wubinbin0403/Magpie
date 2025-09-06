@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import api from '../../utils/api'
+import type { ApiResponse, StatsResponse } from '@magpie/shared'
 
 interface Stats {
   totalLinks: number
@@ -16,49 +17,28 @@ interface Stats {
   }[]
 }
 
-interface StatsResponse {
-  success: boolean
-  data: {
-    totalLinks: number
-    publishedLinks: number
-    pendingLinks: number
-    totalCategories: number
-    totalTags: number
-    recentActivity: {
-      type: 'link_added' | 'link_published' | 'link_deleted'
-      title: string
-      url?: string
-      timestamp: string
-    }[]
-    popularTags: { name: string; count: number }[]
-    popularDomains: { name: string; count: number }[]
-    monthlyStats: { year: number; month: number; count: number }[]
-  }
-}
-
 export default function AdminOverview() {
   const queryClient = useQueryClient()
   
-  const { data: statsData, isLoading } = useQuery<StatsResponse>({
+  const { data: statsData, isLoading } = useQuery<ApiResponse<StatsResponse>>({
     queryKey: ['admin-stats-summary'],
     queryFn: async () => {
       // Get user's timezone offset in minutes (negative for UTC+)
       const timezoneOffset = new Date().getTimezoneOffset()
-      const response = await api.getStats({ tz: -timezoneOffset })
-      return response.data
+      return await api.getStats({ tz: -timezoneOffset })
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: false
   })
 
   // Transform API data to match component interface
-  const stats: Stats | undefined = statsData ? {
-    totalLinks: statsData.totalLinks,
-    pendingLinks: statsData.pendingLinks,
-    monthlyNew: statsData.monthlyStats?.[statsData.monthlyStats.length - 1]?.count || 0,
-    totalCategories: statsData.totalCategories,
-    totalTags: statsData.totalTags,
-    recentActivity: statsData.recentActivity
+  const stats: Stats | undefined = statsData?.success ? {
+    totalLinks: statsData.data.totalLinks,
+    pendingLinks: statsData.data.pendingLinks,
+    monthlyNew: statsData.data.monthlyStats?.[statsData.data.monthlyStats.length - 1]?.count || 0,
+    totalCategories: statsData.data.totalCategories,
+    totalTags: statsData.data.totalTags,
+    recentActivity: statsData.data.recentActivity
   } : undefined
 
   const getActivityIcon = (type: string) => {

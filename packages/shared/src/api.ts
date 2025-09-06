@@ -548,6 +548,9 @@ export interface DeleteTokenResponse {
   status: string;
 }
 
+// Response types for individual endpoints
+export interface CategoriesResponse extends Array<PublicCategory> {}
+
 // Additional request body types
 export interface AddLinkBody {
   url: string;

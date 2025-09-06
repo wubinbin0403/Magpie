@@ -8,18 +8,7 @@ import EmptyState from '../components/EmptyState'
 import LoadMoreButton from '../components/LoadMoreButton'
 import { useHomePageData } from '../hooks/useHomePageData'
 import { useSidebarData } from '../hooks/useSidebarData'
-// Link 接口定义  
-interface Link {
-  id: number
-  title: string
-  url: string
-  description: string
-  publishedAt: string
-  category: string
-  tags: string[]
-  domain: string
-  readingTime?: number // AI estimated reading time in minutes
-}
+import type { Link } from '@magpie/shared'
 
 interface MonthGroup {
   year: number

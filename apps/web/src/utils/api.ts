@@ -1,3 +1,5 @@
+import type { ApiResponse } from '@magpie/shared'
+
 const API_BASE_URL = '/api'
 
 interface ApiOptions extends RequestInit {
@@ -12,7 +14,7 @@ class ApiClient {
   private async request<T>(
     endpoint: string,
     options: ApiOptions = {}
-  ): Promise<T> {
+  ): Promise<ApiResponse<T>> {
     const { token, headers = {}, ...restOptions } = options
     const authToken = token !== undefined ? token : this.getAuthToken()
 

@@ -1,23 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import api from '../utils/api'
-// LinksResponse 接口定义
-interface LinksResponse {
-  success: boolean
-  data: {
-    links: any[]
-    pagination: {
-      hasNext: boolean
-      page: number
-      total: number
-      pages: number
-    }
-    filters: {
-      categories: { name: string; count: number }[]
-      tags: { name: string; count: number }[]
-    }
-  }
-}
+import type { ApiResponse, LinksResponse } from '@magpie/shared'
 
 // 将复杂的数据获取逻辑提取到自定义Hook
 export function useHomePageData(
@@ -32,7 +16,7 @@ export function useHomePageData(
   const [previousLinks, setPreviousLinks] = useState<any[]>([])
 
   // Fetch links data
-  const { data, isLoading, error, refetch } = useQuery<LinksResponse>({
+  const { data, isLoading, error, refetch } = useQuery<ApiResponse<LinksResponse>>({
     queryKey: ['links', page, selectedCategory, selectedTags, searchQuery, linkId],
     queryFn: async () => {
       const params: Record<string, string> = {

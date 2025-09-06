@@ -1,42 +1,17 @@
 import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import api from '../utils/api'
-// LinksResponse 接口定义
-interface LinksResponse {
-  success: boolean
-  data: {
-    links: any[]
-    pagination: {
-      hasNext: boolean
-      page: number
-      total: number  
-      pages: number
-    }
-    filters: {
-      categories: { name: string; count: number }[]
-      tags: { name: string; count: number }[]
-    }
-  }
-}
+import type { ApiResponse, LinksResponse, Category } from '@magpie/shared'
 
 interface SidebarData {
-  categories: {
-    id: number
-    name: string
-    slug: string
-    icon: string
-    color?: string
-    description?: string
-    displayOrder: number
-    count: number
-  }[]
+  categories: (Category & { count: number })[]
   tags: { name: string; count: number }[]
 }
 
 // 将sidebar数据处理逻辑提取到自定义Hook  
 export function useSidebarData(
   selectedCategory: string | null,
-  linksData: LinksResponse | undefined
+  linksData: ApiResponse<LinksResponse> | undefined
 ) {
   const [sidebarData, setSidebarData] = useState<SidebarData>({ 
     categories: [], 

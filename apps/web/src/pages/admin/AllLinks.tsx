@@ -4,37 +4,7 @@ import { api } from '../../utils/api'
 import CategoryBadge from '../../components/CategoryBadge'
 import TagList from '../../components/TagList'
 import LinkEditForm from '../../components/LinkEditForm'
-
-interface AdminLink {
-  id: number
-  url: string
-  title: string
-  domain: string
-  description: string
-  category: string
-  tags: string[]
-  status: 'published' | 'pending' | 'deleted'
-  createdAt: number
-  publishedAt?: number
-  readingTime?: number
-}
-
-interface AdminLinksResponse {
-  success: boolean
-  data: {
-    links: AdminLink[]
-    pagination: {
-      page: number
-      limit: number
-      total: number
-      totalPages: number
-    }
-    filters?: {
-      categories: any[]
-      tags: string[]
-    }
-  }
-}
+import type { ApiResponse, AdminLinksResponse, AdminLink, Category } from '@magpie/shared'
 
 interface EditForm {
   title: string
@@ -61,7 +31,7 @@ export default function AllLinks() {
   const pageSize = 20
 
   // Fetch all links with pagination and filters
-  const { data: linksData, isLoading, error } = useQuery<AdminLinksResponse>({
+  const { data: linksData, isLoading, error } = useQuery<ApiResponse<AdminLinksResponse>>({
     queryKey: ['admin-all-links', currentPage, searchQuery, statusFilter],
     queryFn: async () => {
       const params: any = {
@@ -77,8 +47,7 @@ export default function AllLinks() {
         params.status = statusFilter
       }
       
-      const response = await api.getAllLinksAdmin(params)
-      return response.data
+      return await api.getAllLinksAdmin(params)
     },
     staleTime: 30 * 1000, // 30 seconds
     refetchOnWindowFocus: false
@@ -93,8 +62,8 @@ export default function AllLinks() {
     }
   })
 
-  const links = linksData?.links || []
-  const pagination = linksData?.pagination
+  const links = linksData?.success ? linksData.data.links : []
+  const pagination = linksData?.success ? linksData.data.pagination : undefined
   const categories = categoriesData || []
 
   // Update link mutation
