@@ -234,3 +234,8 @@ config/keys.*
 # Generated migration files (commented out to track FTS5 migrations)
 # apps/api/drizzle/*.sql
 # apps/api/drizzle/meta/
+
+# Generated SEO files (dynamically created)
+apps/api/static/sitemap.xml
+apps/api/static/feed.xml
+apps/api/static/feed.json
