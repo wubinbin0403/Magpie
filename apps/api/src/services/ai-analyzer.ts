@@ -120,7 +120,8 @@ export class AIAnalyzer {
       const aiResponse = response.choices[0]?.message?.content?.trim()
       
       if (!aiResponse) {
-        throw new Error('Empty response from AI service')
+        console.warn('Empty response from AI service, falling back to default analysis')
+        return this.generateFallbackAnalysis(content)
       }
 
       // Parse JSON response

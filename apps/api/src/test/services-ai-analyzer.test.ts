@@ -38,6 +38,7 @@ describe('AIAnalyzer Service', () => {
       title: 'Test Article Title',
       description: 'This is a test article description',
       content: 'This is the main content of the test article. It contains multiple paragraphs with detailed information.',
+      domain: 'example.com',
       wordCount: 18,
       language: 'en'
     }

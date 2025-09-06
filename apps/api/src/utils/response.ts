@@ -37,7 +37,7 @@ export function sendSuccess<T = any>(
   message?: string,
   status: number = 200
 ) {
-  return c.json(success(data, message), status)
+  return c.json(success(data, message), status as any)
 }
 
 export function sendError(
@@ -47,7 +47,7 @@ export function sendError(
   details?: any,
   status: number = 400
 ) {
-  return c.json(error(code, message, details), status)
+  return c.json(error(code, message, details), status as any)
 }
 
 // 常用错误响应

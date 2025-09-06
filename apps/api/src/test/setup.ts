@@ -11,7 +11,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Test database setup
 let testDb: ReturnType<typeof Database>;
-let testDrizzle: ReturnType<typeof drizzle>;
+let testDrizzle: ReturnType<typeof drizzle<typeof schema>>;
 
 // Create a unique test database for each test run
 const testDbPath = path.join(__dirname, `test_${Date.now()}_${Math.random().toString(36).substring(7)}.db`);

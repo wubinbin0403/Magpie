@@ -5,6 +5,7 @@ export interface ScrapedContent {
   title: string
   description: string
   content: string
+  domain: string
   author?: string
   publishDate?: string
   siteName?: string
@@ -53,6 +54,7 @@ export class WebScraper {
       const result = {
         url,
         contentType,
+        domain: urlObj.hostname,
         ...content
       }
       
@@ -117,7 +119,7 @@ export class WebScraper {
     return 'article'
   }
 
-  private async extractContent($: cheerio.CheerioAPI, contentType: ScrapedContent['contentType'], url: string): Promise<Omit<ScrapedContent, 'url' | 'contentType'>> {
+  private async extractContent($: cheerio.CheerioAPI, contentType: ScrapedContent['contentType'], url: string): Promise<Omit<ScrapedContent, 'url' | 'contentType' | 'domain'>> {
     switch (contentType) {
       case 'article':
         return this.extractArticleContent($, url)
@@ -149,7 +151,10 @@ export class WebScraper {
     const language = this.extractLanguage($)
     const tags = this.extractTags($)
     
+    const urlObj = new URL(url)
+    
     return {
+      domain: urlObj.hostname,
       title: this.cleanText(title),
       description: this.cleanText(description),
       content: this.cleanText(content, this.options.maxContentLength),
@@ -187,7 +192,10 @@ export class WebScraper {
       }
     }
     
+    const urlObj = new URL(url)
+    
     return {
+      domain: urlObj.hostname,
       title: this.cleanText(title),
       description: this.cleanText(description),
       content: this.cleanText(content, this.options.maxContentLength),
@@ -202,7 +210,10 @@ export class WebScraper {
     const title = this.extractTitle($) || url.split('/').pop()?.replace('.pdf', '') || 'PDF Document'
     const description = this.extractDescription($) || 'PDF document'
     
+    const urlObj = new URL(url)
+    
     return {
+      domain: urlObj.hostname,
       title: this.cleanText(title),
       description: this.cleanText(description),
       content: this.cleanText(description),
@@ -214,7 +225,10 @@ export class WebScraper {
     const title = this.extractTitle($) || url.split('/').pop() || 'Image'
     const description = this.extractDescription($) || 'Image content'
     
+    const urlObj = new URL(url)
+    
     return {
+      domain: urlObj.hostname,
       title: this.cleanText(title),
       description: this.cleanText(description),
       content: this.cleanText(description),
@@ -223,7 +237,10 @@ export class WebScraper {
   }
 
   private extractGenericContent($: cheerio.CheerioAPI, url: string): Omit<ScrapedContent, 'url' | 'contentType'> {
+    const urlObj = new URL(url)
+    
     return {
+      domain: urlObj.hostname,
       title: this.cleanText(this.extractTitle($)),
       description: this.cleanText(this.extractDescription($)),
       content: this.cleanText(this.extractMainContent($), this.options.maxContentLength),

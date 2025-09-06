@@ -54,6 +54,7 @@ describe('WebScraper Service', () => {
 
       expect(result).toEqual({
         url: 'https://example.com/article',
+        domain: 'example.com',
         contentType: 'article',
         title: 'OG Test Title',
         description: 'OG test description',

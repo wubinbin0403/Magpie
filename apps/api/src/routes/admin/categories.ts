@@ -176,7 +176,7 @@ function createAdminCategoriesRouter(database = db) {
     } catch (error) {
       console.error('Error creating category:', error)
       
-      if (error.message.includes('UNIQUE constraint failed')) {
+      if (error instanceof Error && error.message.includes('UNIQUE constraint failed')) {
         return sendError(c, 'DUPLICATE_ERROR', 'Category name or slug already exists', undefined, 409)
       }
       
@@ -275,7 +275,7 @@ function createAdminCategoriesRouter(database = db) {
     } catch (error) {
       console.error('Error updating category:', error)
       
-      if (error.message.includes('UNIQUE constraint failed')) {
+      if (error instanceof Error && error.message.includes('UNIQUE constraint failed')) {
         return sendError(c, 'DUPLICATE_ERROR', 'Category name or slug already exists', undefined, 409)
       }
       
@@ -322,7 +322,7 @@ function createAdminCategoriesRouter(database = db) {
       
       // Get default category to move links to
       let defaultCategory = 'General'
-      if (defaultCategorySetting.length > 0) {
+      if (defaultCategorySetting.length > 0 && defaultCategorySetting[0].value) {
         defaultCategory = defaultCategorySetting[0].value
       }
       

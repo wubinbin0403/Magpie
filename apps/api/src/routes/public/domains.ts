@@ -64,7 +64,7 @@ function createDomainsRouter(database = db) {
       const response = {
         domain,
         count,
-        latestPublished: latestLink[0] ? new Date(latestLink[0].publishedAt * 1000).toISOString() : null,
+        latestPublished: latestLink[0] && latestLink[0].publishedAt ? new Date(latestLink[0].publishedAt * 1000).toISOString() : null,
         latestTitle: latestLink[0]?.title || null
       }
 

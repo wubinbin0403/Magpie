@@ -2,6 +2,7 @@
 
 import { db } from './index.js';
 import { settings, apiTokens, links, categories } from './schema.js';
+import * as schema from './schema.js';
 import { eq, sql } from 'drizzle-orm';
 import crypto from 'crypto';
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
@@ -84,7 +85,20 @@ const DEFAULT_CATEGORIES = [
 ] as const;
 
 // Sample links for development environment
-const SAMPLE_LINKS = [
+interface SampleLink {
+  url: string;
+  domain: string;
+  title: string;
+  originalDescription: string;
+  aiSummary: string;
+  aiCategory: string;
+  aiTags: string;
+  userCategory: string | null;
+  userTags: string | null;
+  status: string;
+}
+
+const SAMPLE_LINKS: SampleLink[] = [
   // Pending links for testing admin confirmation flow
   {
     url: 'https://astro.build/blog/astro-4.5/',

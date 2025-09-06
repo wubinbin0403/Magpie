@@ -281,7 +281,7 @@ export interface LinksResponse {
   filters: {
     categories: CategoryStats[];
     tags: TagStats[];
-    domains: DomainStats[];
+    domains?: DomainStats[];
     yearMonths: YearMonthStats[];
   };
 }

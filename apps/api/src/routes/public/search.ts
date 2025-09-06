@@ -2,7 +2,7 @@ import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
 import { db } from '../../db/index.js'
 import { links } from '../../db/schema.js'
-import { eq, desc, asc, and, or, count, sql, isNull } from 'drizzle-orm'
+import { eq, desc, asc, and, or, count, sql, isNull, getTableColumns } from 'drizzle-orm'
 import { sendSuccess, sendError } from '../../utils/response.js'
 import { searchQuerySchema, suggestionsQuerySchema, buildSearchDateFilter } from '../../utils/validation.js'
 import type { SearchResponse, SearchResult, Suggestion } from '../../types/api.js'
@@ -80,7 +80,25 @@ app.get('/', zValidator('query', searchQuerySchema), async (c) => {
     
     // 添加额外的筛选条件
     if (joinWhereClause) {
-      baseQuery = baseQuery.where(and(sql`links_fts MATCH ${ftsQuery}`, joinWhereClause))
+      // Instead of calling where twice, rebuild the query with combined conditions
+      const combinedWhereClause = and(sql`links_fts MATCH ${ftsQuery}`, joinWhereClause)
+      baseQuery = db
+        .select({
+          id: links.id,
+          url: links.url,
+          title: links.title,
+          description: links.userDescription,
+          category: links.userCategory,
+          tags: links.userTags,
+          domain: links.domain,
+          readingTime: links.aiReadingTime,
+          publishedAt: links.publishedAt,
+          createdAt: links.createdAt,
+          rank: sql`links_fts.rank`.as('rank')
+        })
+        .from(sql`links_fts`)
+        .innerJoin(links, sql`links.id = links_fts.rowid`)
+        .where(combinedWhereClause)
     }
     
     // 获取总数 - 使用相同的查询条件
@@ -91,7 +109,13 @@ app.get('/', zValidator('query', searchQuerySchema), async (c) => {
       .where(sql`links_fts MATCH ${ftsQuery}`)
     
     if (joinWhereClause) {
-      countQuery = countQuery.where(and(sql`links_fts MATCH ${ftsQuery}`, joinWhereClause))
+      // Instead of calling where twice, rebuild the query with combined conditions
+      const combinedWhereClause = and(sql`links_fts MATCH ${ftsQuery}`, joinWhereClause)
+      countQuery = db
+        .select({ count: count() })
+        .from(sql`links_fts`)
+        .innerJoin(links, sql`links.id = links_fts.rowid`)
+        .where(combinedWhereClause)
     }
     
     const totalResult = await countQuery
@@ -127,9 +151,9 @@ app.get('/', zValidator('query', searchQuerySchema), async (c) => {
         tags: link.tags ? JSON.parse(link.tags) : [],
         domain: link.domain,
         readingTime: link.readingTime || undefined,
-        publishedAt: new Date(link.publishedAt * 1000).toISOString(),
+        publishedAt: link.publishedAt ? new Date(link.publishedAt * 1000).toISOString() : '',
         createdAt: new Date(link.createdAt * 1000).toISOString(),
-        score: Math.abs(link.rank || 0), // FTS5 rank score (absolute value, lower is better)
+        score: Math.abs(Number(link.rank) || 0), // FTS5 rank score (absolute value, lower is better)
         highlights: {}
       }
       

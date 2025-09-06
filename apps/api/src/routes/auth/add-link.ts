@@ -69,6 +69,8 @@ function createFallbackContent(url: string): {
   content: any;
   aiAnalysis: AIAnalysisResult;
   scrapingFailed: boolean;
+  aiAnalysisFailed?: boolean;
+  aiError?: string;
 } {
   const domain = extractDomain(url)
   
@@ -347,19 +349,16 @@ app.get('/add', requireApiTokenOrAdminSession(database), zValidator('query', add
     if (skipConfirm) {
       // Return JSON for API calls
       const response: AddLinkResponse = {
-        success: true,
-        data: {
-          id: linkId,
-          url,
-          title: scrapedContent.title,
-          description: finalDescription,
-          category: finalCategory,
-          tags: finalTags,
-          status: 'published',
-          scrapingFailed,
-          aiAnalysisFailed,
-          aiError
-        }
+        id: linkId,
+        url,
+        title: scrapedContent.title,
+        description: finalDescription,
+        category: finalCategory,
+        tags: finalTags,
+        status: 'published',
+        scrapingFailed,
+        aiAnalysisFailed,
+        aiError
       }
       return c.json(response)
     } else {

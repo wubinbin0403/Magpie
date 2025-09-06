@@ -105,6 +105,7 @@ describe('Add Link Integration Tests', () => {
         title: 'Advanced JavaScript Techniques',
         description: 'Learn advanced JavaScript patterns and techniques',
         content: 'This article covers advanced JavaScript concepts including closures, promises, and async/await patterns.',
+        domain: 'example.com',
         wordCount: 150,
         language: 'en',
         author: 'John Doe',
@@ -214,6 +215,7 @@ describe('Add Link Integration Tests', () => {
         title: 'Test Article',
         description: 'Test description',
         content: 'Test content',
+        domain: 'example.com',
         wordCount: 50,
         language: 'en'
       }
@@ -267,6 +269,7 @@ describe('Add Link Integration Tests', () => {
         title: 'Test Article',
         description: 'Test description',
         content: 'Test content',
+        domain: 'example.com',
         wordCount: 50,
         language: 'en'
       }
@@ -304,6 +307,7 @@ describe('Add Link Integration Tests', () => {
         title: 'Article for Review',
         description: 'Article that needs review',
         content: 'Content to be reviewed',
+        domain: 'example.com',
         wordCount: 80,
         language: 'en'
       }

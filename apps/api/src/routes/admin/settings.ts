@@ -269,6 +269,7 @@ function createAdminSettingsRouter(database = db) {
         // Test analysis with sample content
         const sampleContent = {
           url: 'https://example.com/test-article',
+          domain: 'example.com',
           contentType: 'article' as const,
           title: 'Test AI Analysis',
           description: 'This is a test article for AI analysis capabilities.',

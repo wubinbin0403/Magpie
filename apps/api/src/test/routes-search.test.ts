@@ -123,7 +123,7 @@ const createSearchApp = () => {
           tags: link.tags ? JSON.parse(link.tags) : [],
           domain: link.domain,
           readingTime: link.readingTime || undefined,
-          publishedAt: new Date(link.publishedAt * 1000).toISOString(),
+          publishedAt: link.publishedAt ? new Date(link.publishedAt * 1000).toISOString() : '',
           createdAt: new Date(link.createdAt * 1000).toISOString(),
           score: 1.0 - (index * 0.01), // 简单的相关性得分
           highlights: {}

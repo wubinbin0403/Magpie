@@ -66,7 +66,7 @@ describe('Public Categories API', () => {
         status: 'published',
         createdAt: now,
         publishedAt: now,
-        searchText: 'tech article programming',
+        updatedAt: now,
         clickCount: 0,
       },
       {
@@ -80,7 +80,7 @@ describe('Public Categories API', () => {
         status: 'published',
         createdAt: now,
         publishedAt: now,
-        searchText: 'tech article javascript',
+        updatedAt: now,
         clickCount: 0,
       },
       {
@@ -94,7 +94,7 @@ describe('Public Categories API', () => {
         status: 'published',
         createdAt: now,
         publishedAt: now,
-        searchText: 'design article ui',
+        updatedAt: now,
         clickCount: 0,
       },
       {
@@ -107,7 +107,7 @@ describe('Public Categories API', () => {
         userTags: JSON.stringify(['tech']),
         status: 'pending', // Pending, should not count
         createdAt: now,
-        searchText: 'pending article tech',
+        updatedAt: now,
         clickCount: 0,
       },
     ])
@@ -145,7 +145,7 @@ describe('Public Categories API', () => {
       expect(categoriesList[1].linkCount).toBe(1) // 1 published design article
       
       // Should not include inactive categories
-      expect(categoriesList.find(cat => cat.name === '工具')).toBeUndefined()
+      expect(categoriesList.find((cat: any) => cat.name === '工具')).toBeUndefined()
     })
     
     it('should handle categories with no links', async () => {
@@ -170,7 +170,7 @@ describe('Public Categories API', () => {
       const categoriesList = body.data
       
       expect(categoriesList).toHaveLength(3)
-      const otherCategory = categoriesList.find(cat => cat.name === '其他')
+      const otherCategory = categoriesList.find((cat: any) => cat.name === '其他')
       expect(otherCategory).toBeDefined()
       expect(otherCategory.linkCount).toBe(0)
     })

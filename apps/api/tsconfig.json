@@ -5,6 +5,7 @@
     "rootDir": "./src",
     "noEmit": false,
     "allowImportingTsExtensions": false,
+    "lib": ["ES2023", "DOM"],
     "paths": {
       "@/*": ["./src/*"],
       "@magpie/shared/*": ["../../packages/shared/src/*"]

@@ -97,7 +97,7 @@ async function generateSitemap(database: BetterSQLite3Database<any> = db) {
   </url>`
 
   publishedLinks.forEach(link => {
-    const publishedDate = new Date(link.publishedAt * 1000).toISOString()
+    const publishedDate = link.publishedAt ? new Date(link.publishedAt * 1000).toISOString() : new Date().toISOString()
     xml += `
   <url>
     <loc>${siteConfig.baseUrl}/link/${link.id}</loc>
@@ -137,7 +137,7 @@ async function generateRSSFeed(database: BetterSQLite3Database<any> = db) {
     <generator>Magpie Static Generator</generator>`
 
   recentLinks.forEach(link => {
-    const publishedDate = new Date(link.publishedAt * 1000).toUTCString()
+    const publishedDate = link.publishedAt ? new Date(link.publishedAt * 1000).toUTCString() : new Date().toUTCString()
     const tags = link.finalTags ? JSON.parse(link.finalTags) : []
     
     // Escape XML special characters
@@ -203,7 +203,7 @@ async function generateJSONFeed(database: BetterSQLite3Database<any> = db) {
         title: link.title || 'Untitled',
         content_text: link.finalDescription || '',
         summary: link.finalDescription || '',
-        date_published: new Date(link.publishedAt * 1000).toISOString(),
+        date_published: link.publishedAt ? new Date(link.publishedAt * 1000).toISOString() : new Date().toISOString(),
         tags: [link.finalCategory, ...tags].filter(Boolean),
         external_url: link.url,
         _magpie: {

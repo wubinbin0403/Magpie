@@ -26,7 +26,7 @@ export class ReadabilityScraper {
   async scrape(url: string): Promise<ScrapedContent> {
     try {
       // Validate URL
-      const urlObj = new URL(url)
+      const parsedUrl = new URL(url)
       
       // Fetch the webpage
       const html = await this.fetchHtml(url)
@@ -58,8 +58,11 @@ export class ReadabilityScraper {
       const language = this.extractLanguage(document)
       const tags = this.extractTags(document)
       
+      const urlObj = new URL(url)
+      
       const result: ScrapedContent = {
         url,
+        domain: urlObj.hostname,
         contentType,
         title: this.cleanText(article.title || this.extractTitle(document)),
         description: this.cleanText(this.extractDescription(document)),
@@ -125,15 +128,18 @@ export class ReadabilityScraper {
     const description = this.extractDescription(document)
     const content = this.extractGenericContent(document)
     
+    const urlObj = new URL(url)
+    
     return {
       url,
+      domain: urlObj.hostname,
       contentType,
       title: this.cleanText(title),
       description: this.cleanText(description),
       content: this.cleanText(content, this.options.maxContentLength),
-      author: this.extractAuthor(document),
+      author: this.extractAuthor(document) || undefined,
       publishDate: this.extractPublishDate(document),
-      siteName: this.extractSiteName(document),
+      siteName: this.extractSiteName(document) || undefined,
       language: this.extractLanguage(document),
       tags: this.extractTags(document),
       wordCount: this.countWords(content)
@@ -213,12 +219,14 @@ export class ReadabilityScraper {
 
   private extractSiteName(document: Document): string | undefined {
     return document.querySelector('meta[property="og:site_name"]')?.getAttribute('content') ||
-           document.querySelector('meta[name="application-name"]')?.getAttribute('content')
+           document.querySelector('meta[name="application-name"]')?.getAttribute('content') ||
+           undefined
   }
 
   private extractLanguage(document: Document): string | undefined {
     return document.documentElement.getAttribute('lang') ||
-           document.querySelector('meta[http-equiv="content-language"]')?.getAttribute('content')
+           document.querySelector('meta[http-equiv="content-language"]')?.getAttribute('content') ||
+           undefined
   }
 
   private extractTags(document: Document): string[] | undefined {

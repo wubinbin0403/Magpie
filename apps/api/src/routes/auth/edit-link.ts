@@ -34,8 +34,8 @@ function createEditLinkRouter(database = db) {
       try {
         const { id } = c.req.valid('param')
         const updateData = c.req.valid('json')
-        const tokenData = c.get('tokenData')
-        const clientIp = c.get('clientIp')
+        const tokenData = (c as any).get('tokenData') as { id: number } | undefined
+        const clientIp = (c as any).get('clientIp') as string
 
         // Get link details first
         const linkResult = await database
@@ -155,8 +155,8 @@ function createEditLinkRouter(database = db) {
 
       } catch (error) {
         const duration = Date.now() - startTime
-        const tokenData = c.get('tokenData')
-        const clientIp = c.get('clientIp')
+        const tokenData = (c as any).get('tokenData') as { id: number } | undefined
+        const clientIp = (c as any).get('clientIp') as string
         
         await logOperation(
           'link_update',

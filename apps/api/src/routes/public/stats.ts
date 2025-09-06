@@ -114,7 +114,7 @@ export function createStatsRouter(database = db) {
       type: 'link_published',
       title: item.title || 'Untitled',
       url: item.url,
-      timestamp: new Date(item.publishedAt * 1000).toISOString()
+      timestamp: item.publishedAt ? new Date(item.publishedAt * 1000).toISOString() : ''
     }))
 
     // 获取月度统计 (最近12个月)

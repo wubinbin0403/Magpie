@@ -19,7 +19,7 @@ describe('Authentication Middleware', () => {
       expect(result?.tokenValue).toBeTruthy();
       
       // Test the middleware
-      const verification = await verifyApiToken(result!.tokenValue, undefined, testDrizzle);
+      const verification = await verifyApiToken(result!.tokenValue!, undefined, testDrizzle);
       
       expect(verification.valid).toBe(true);
       expect(verification.tokenData).toBeTruthy();
@@ -48,9 +48,9 @@ describe('Authentication Middleware', () => {
           status: 'revoked',
           revokedAt: Math.floor(Date.now() / 1000)
         })
-        .where(eq(apiTokens.token, tokenValue));
+        .where(eq(apiTokens.token, tokenValue!));
       
-      const verification = await verifyApiToken(tokenValue, undefined, testDrizzle);
+      const verification = await verifyApiToken(tokenValue!, undefined, testDrizzle);
       
       expect(verification.valid).toBe(false);
       expect(verification.error).toBe('TOKEN_REVOKED');
@@ -81,14 +81,14 @@ describe('Authentication Middleware', () => {
       const testIp = '127.0.0.1';
       
       // Verify token with IP tracking  
-      const verification = await verifyApiToken(tokenValue, testIp, testDrizzle);
+      const verification = await verifyApiToken(tokenValue!, testIp, testDrizzle);
       expect(verification.valid).toBe(true);
       
       // Check that usage stats were updated
       const tokenData = await testDrizzle
         .select()
         .from(apiTokens)
-        .where(eq(apiTokens.token, tokenValue))
+        .where(eq(apiTokens.token, tokenValue!))
         .limit(1);
       
       expect(tokenData).toHaveLength(1);

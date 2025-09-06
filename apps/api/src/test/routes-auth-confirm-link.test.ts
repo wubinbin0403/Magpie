@@ -125,7 +125,7 @@ describe('Auth Confirm Link API', () => {
       expect(dbLink[0].status).toBe('published')
       expect(dbLink[0].userDescription).toBe('User confirmed description')
       expect(dbLink[0].userCategory).toBe('programming')
-      expect(JSON.parse(dbLink[0].userTags)).toEqual(['react', 'javascript'])
+      expect(JSON.parse(dbLink[0].userTags!)).toEqual(['react', 'javascript'])
       expect(dbLink[0].title).toBe('Updated Title') // Title should be updated
       expect(dbLink[0].publishedAt).toBeTruthy()
     })
@@ -302,7 +302,7 @@ describe('Auth Confirm Link API', () => {
 
       expect(dbLink[0].userDescription).toBe('User description')
       expect(dbLink[0].userCategory || dbLink[0].aiCategory).toBe('ai-category') // AI value used
-      const tags = dbLink[0].userTags ? JSON.parse(dbLink[0].userTags) : JSON.parse(dbLink[0].aiTags)
+      const tags = dbLink[0].userTags ? JSON.parse(dbLink[0].userTags) : JSON.parse(dbLink[0].aiTags!)
       expect(tags).toEqual(['ai', 'defaults']) // AI values used
     })
   })

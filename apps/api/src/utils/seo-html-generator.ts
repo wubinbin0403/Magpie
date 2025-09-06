@@ -1,7 +1,10 @@
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import { links } from '../db/schema.js'
-import { eq, desc, count, and } from 'drizzle-orm'
+import { eq, desc, count, and, type SQL } from 'drizzle-orm'
 import { getSettings } from './settings.js'
+import * as schema from '../db/schema.js'
+
+type DatabaseType = BetterSQLite3Database<typeof schema>
 
 /**
  * SEO静态HTML生成器
@@ -40,7 +43,7 @@ interface QueryFilters {
 /**
  * 获取爬虫页面所需的数据
  */
-export async function getBotPageData(database: BetterSQLite3Database, filters?: QueryFilters) {
+export async function getBotPageData(database: DatabaseType, filters?: QueryFilters) {
   try {
     // 检查是否有不支持的查询参数
     const unsupportedParams = []
@@ -61,18 +64,22 @@ export async function getBotPageData(database: BetterSQLite3Database, filters?: 
     }
 
     // 构建查询条件
-    let whereConditions = eq(links.status, 'published')
+    let whereConditions: SQL<unknown> = eq(links.status, 'published')
     let linkLimit = 50
     let orderBy = desc(links.publishedAt)
     
     if (filters?.linkId) {
       // 如果指定了链接ID，只获取该链接
-      whereConditions = and(whereConditions, eq(links.id, filters.linkId))
+      const linkIdCondition = eq(links.id, filters.linkId)
+      const combined = and(whereConditions, linkIdCondition)
+      if (combined) whereConditions = combined
       linkLimit = 1
       // 对于单个链接，不需要排序
     } else if (filters?.category) {
       // 如果有分类过滤，添加分类条件
-      whereConditions = and(whereConditions, eq(links.userCategory, filters.category))
+      const categoryCondition = eq(links.userCategory, filters.category)
+      const combined = and(whereConditions, categoryCondition)
+      if (combined) whereConditions = combined
     }
 
     // 获取已发布链接
@@ -101,7 +108,7 @@ export async function getBotPageData(database: BetterSQLite3Database, filters?: 
       category: link.category || '',
       tags: link.tags ? JSON.parse(link.tags) : [],
       domain: link.domain,
-      publishedAt: new Date(link.publishedAt * 1000).toISOString(),
+      publishedAt: link.publishedAt ? new Date(link.publishedAt * 1000).toISOString() : new Date().toISOString(),
     }))
 
     // 获取分类统计
@@ -116,14 +123,14 @@ export async function getBotPageData(database: BetterSQLite3Database, filters?: 
       .orderBy(desc(count(links.id)))
 
     const categories: CategoryData[] = categoryStats
-      .filter(cat => cat.name)
+      .filter((cat): cat is { name: string; count: number } => cat.name !== null)
       .map(cat => ({
         name: cat.name,
         count: cat.count,
       }))
 
     // 获取站点设置
-    const settings = await getSettings(database)
+    const settings = await getSettings(database as BetterSQLite3Database<typeof schema>)
     const siteSettings: SiteSettings = {
       site_title: settings.site_title || 'Magpie - 链接收藏',
       site_description: settings.site_description || '收集和分享有趣的链接和内容',
@@ -951,7 +958,7 @@ function generateCSS() {
 /**
  * 生成完整的SEO HTML页面
  */
-export async function generateBotHTML(database: BetterSQLite3Database, searchParams?: URLSearchParams, linkId?: number): Promise<string> {
+export async function generateBotHTML(database: DatabaseType, searchParams?: URLSearchParams, linkId?: number): Promise<string> {
   // 解析查询参数
   const filters: QueryFilters = {
     category: searchParams?.get('category') || undefined,

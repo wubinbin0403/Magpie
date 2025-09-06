@@ -45,7 +45,7 @@ describe('Static File Generator Service', () => {
         status: 'published',
         createdAt: now - 3600,
         publishedAt: now - 3600,
-        searchText: 'test article technology tech',
+        updatedAt: now - 3600,
         clickCount: 5,
       },
       {
@@ -59,7 +59,7 @@ describe('Static File Generator Service', () => {
         status: 'published',
         createdAt: now - 1800,
         publishedAt: now - 1800,
-        searchText: 'test article design ui',
+        updatedAt: now - 1800,
         clickCount: 3,
       },
       {
@@ -71,7 +71,7 @@ describe('Static File Generator Service', () => {
         userCategory: '其他',
         status: 'pending',
         createdAt: now,
-        searchText: 'draft article',
+        updatedAt: now,
         clickCount: 0,
       }
     ])
@@ -165,7 +165,6 @@ describe('Static File Generator Service', () => {
           status: 'published',
           createdAt: now,
           publishedAt: now,
-          searchText: 'special characters test',
           clickCount: 0,
         }
       ])

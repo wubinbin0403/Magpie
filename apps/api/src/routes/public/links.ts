@@ -145,7 +145,7 @@ app.get('/', zValidator('query', linksQuerySchema), async (c) => {
       tags: link.tags ? JSON.parse(link.tags) : [],
       domain: link.domain,
       readingTime: link.readingTime || undefined,
-      publishedAt: new Date(link.publishedAt * 1000).toISOString(),
+      publishedAt: link.publishedAt ? new Date(link.publishedAt * 1000).toISOString() : '',
       createdAt: new Date(link.createdAt * 1000).toISOString(),
     }))
     
@@ -217,7 +217,7 @@ app.get('/', zValidator('query', linksQuerySchema), async (c) => {
 
     // 处理年月统计
     const yearMonthStats = yearMonthData.map(item => {
-      const date = new Date(item.publishedAt * 1000)
+      const date = item.publishedAt ? new Date(item.publishedAt * 1000) : new Date()
       return {
         year: date.getFullYear(),
         month: date.getMonth() + 1,
@@ -226,8 +226,12 @@ app.get('/', zValidator('query', linksQuerySchema), async (c) => {
     })
 
     const filters = {
-      categories: categoryStats,
+      categories: categoryStats.map(cat => ({
+        name: cat.name || 'Uncategorized',
+        count: cat.count
+      })),
       tags: tagStats,
+      domains: undefined, // TODO: Add domain stats implementation
       yearMonths: yearMonthStats,
     }
     
@@ -282,7 +286,7 @@ app.get('/:id', zValidator('param', idParamSchema), async (c) => {
       tags: link.tags ? JSON.parse(link.tags) : [],
       domain: link.domain,
       readingTime: link.readingTime || undefined,
-      publishedAt: new Date(link.publishedAt * 1000).toISOString(),
+      publishedAt: link.publishedAt ? new Date(link.publishedAt * 1000).toISOString() : '',
       createdAt: new Date(link.createdAt * 1000).toISOString(),
     }
     

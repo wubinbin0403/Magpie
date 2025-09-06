@@ -150,7 +150,12 @@ function createAdminAuthRouter(database = db) {
   // GET /api/admin/verify - Verify admin token (protected endpoint)
   app.get('/verify', requireAdmin(database), async (c) => {
     try {
-      const adminData = c.get('adminData')
+      const adminData = (c as any).get('adminData') as {
+        id: number;
+        username: string;
+        role: string;
+        user: any;
+      }
       
       return sendSuccess(c, {
         valid: true,
