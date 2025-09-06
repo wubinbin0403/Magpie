@@ -409,4 +409,136 @@ describe('LinkEditForm', () => {
       expect(screen.getByRole('option', { name: '选择分类' })).toBeInTheDocument()
     })
   })
+
+  describe('Reading Time Field', () => {
+    it('should show reading time field by default', () => {
+      render(<LinkEditForm {...defaultProps} />)
+      
+      expect(screen.getByText('预估阅读时间')).toBeInTheDocument()
+      expect(screen.getByPlaceholderText('预估阅读时间')).toBeInTheDocument()
+      expect(screen.getByText('分钟')).toBeInTheDocument()
+    })
+
+    it('should show reading time value when provided in initial data', () => {
+      const propsWithReadingTime = {
+        ...defaultProps,
+        initialData: {
+          ...defaultProps.initialData,
+          readingTime: 5
+        }
+      }
+      
+      render(<LinkEditForm {...propsWithReadingTime} />)
+      
+      expect(screen.getByDisplayValue('5')).toBeInTheDocument()
+    })
+
+    it('should update reading time field', async () => {
+      const user = userEvent.setup()
+      render(<LinkEditForm {...defaultProps} />)
+      
+      const readingTimeInput = screen.getByPlaceholderText('预估阅读时间')
+      await user.type(readingTimeInput, '10')
+      
+      expect(screen.getByDisplayValue('10')).toBeInTheDocument()
+    })
+
+    it('should clear reading time field', async () => {
+      const user = userEvent.setup()
+      const propsWithReadingTime = {
+        ...defaultProps,
+        initialData: {
+          ...defaultProps.initialData,
+          readingTime: 5
+        }
+      }
+      
+      render(<LinkEditForm {...propsWithReadingTime} />)
+      
+      const readingTimeInput = screen.getByDisplayValue('5')
+      await user.clear(readingTimeInput)
+      
+      expect(readingTimeInput).toHaveValue(null)
+    })
+
+    it('should have correct input attributes for reading time', () => {
+      render(<LinkEditForm {...defaultProps} />)
+      
+      const readingTimeInput = screen.getByPlaceholderText('预估阅读时间')
+      expect(readingTimeInput).toHaveAttribute('type', 'number')
+      expect(readingTimeInput).toHaveAttribute('min', '1')
+      expect(readingTimeInput).toHaveAttribute('max', '1440')
+    })
+
+    it('should call onSave with reading time data', async () => {
+      const user = userEvent.setup()
+      const onSave = vi.fn()
+      
+      render(<LinkEditForm {...defaultProps} onSave={onSave} />)
+      
+      const readingTimeInput = screen.getByPlaceholderText('预估阅读时间')
+      await user.type(readingTimeInput, '15')
+      
+      const saveButton = screen.getByRole('button', { name: /保存/ })
+      await user.click(saveButton)
+      
+      expect(onSave).toHaveBeenCalledWith({
+        title: 'Test Article',
+        description: 'Test description',
+        category: 'Technology',
+        tags: ['react', 'testing'],
+        status: 'published',
+        readingTime: 15
+      })
+    })
+
+    it('should call onSave without reading time when field is empty', async () => {
+      const user = userEvent.setup()
+      const onSave = vi.fn()
+      
+      render(<LinkEditForm {...defaultProps} onSave={onSave} />)
+      
+      const saveButton = screen.getByRole('button', { name: /保存/ })
+      await user.click(saveButton)
+      
+      expect(onSave).toHaveBeenCalledWith({
+        title: 'Test Article',
+        description: 'Test description',
+        category: 'Technology',
+        tags: ['react', 'testing'],
+        status: 'published',
+        readingTime: undefined
+      })
+    })
+
+    it('should handle reading time updates after initial data changes', () => {
+      const propsWithReadingTime = {
+        ...defaultProps,
+        initialData: {
+          ...defaultProps.initialData,
+          readingTime: 5
+        }
+      }
+      
+      const { rerender } = render(<LinkEditForm {...propsWithReadingTime} />)
+      
+      expect(screen.getByDisplayValue('5')).toBeInTheDocument()
+      
+      const newInitialData = {
+        ...defaultProps.initialData,
+        readingTime: 10
+      }
+      
+      rerender(<LinkEditForm {...defaultProps} initialData={newInitialData} />)
+      
+      expect(screen.getByDisplayValue('10')).toBeInTheDocument()
+    })
+
+    it('should apply compact styling to reading time field when compact is true', () => {
+      render(<LinkEditForm {...defaultProps} compact={true} />)
+      
+      const readingTimeInput = screen.getByPlaceholderText('预估阅读时间')
+      expect(readingTimeInput).toHaveClass('input-sm')
+    })
+  })
 })

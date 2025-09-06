@@ -5,6 +5,7 @@ import { isSuccessResponse } from '../../utils/api-helpers'
 import ProcessingAnimation, { ProcessingStage } from '../../components/ProcessingAnimation'
 import CategoryBadge from '../../components/CategoryBadge'
 import TagList from '../../components/TagList'
+import LinkEditForm from '../../components/LinkEditForm'
 
 interface AddLinkForm {
   url: string
@@ -37,7 +38,8 @@ export default function AddLink() {
     title: '',
     description: '',
     category: '',
-    tags: [] as string[]
+    tags: [] as string[],
+    readingTime: undefined as number | undefined
   })
   const [message, setMessage] = useState<{
     type: 'success' | 'error' | 'info'
@@ -254,6 +256,7 @@ export default function AddLink() {
       description: string
       category: string
       tags: string[]
+      readingTime?: number
       publish?: boolean
     }) => {
       return await api.confirmLink(confirmData.id, {
@@ -261,6 +264,7 @@ export default function AddLink() {
         description: confirmData.description,
         category: confirmData.category,
         tags: confirmData.tags,
+        readingTime: confirmData.readingTime,
         publish: confirmData.publish !== false
       })
     },
@@ -279,7 +283,8 @@ export default function AddLink() {
         title: '',
         description: '',
         category: '',
-        tags: []
+        tags: [],
+        readingTime: undefined
       })
       
       // Invalidate queries
@@ -397,7 +402,8 @@ export default function AddLink() {
         title: pendingLinkData.title,
         description: pendingLinkData.aiSummary,
         category: pendingLinkData.aiCategory,
-        tags: [...pendingLinkData.aiTags]
+        tags: [...pendingLinkData.aiTags],
+        readingTime: pendingLinkData.aiReadingTime
       })
       setIsEditing(true)
     }
@@ -409,63 +415,49 @@ export default function AddLink() {
       title: '',
       description: '',
       category: '',
-      tags: []
+      tags: [],
+      readingTime: undefined
     })
   }
 
-  // Handle tags input
-  const handleTagsChange = (tagsString: string) => {
-    const tags = tagsString
-      .split(',')
-      .map(tag => tag.trim())
-      .filter(tag => tag.length > 0)
-    
-    setEditForm(prev => ({ ...prev, tags }))
-  }
-
-  const getTagsString = () => {
-    return editForm.tags.join(', ')
-  }
-
-  // Form validation
-  const validateEditForm = (): string[] => {
-    const errors: string[] = []
-    
-    if (!editForm.title?.trim()) {
-      errors.push('标题不能为空')
-    }
-    
-    if (!editForm.description?.trim()) {
-      errors.push('描述不能为空')
-    }
-    
-    if (!editForm.category) {
-      errors.push('请选择分类')
-    }
-    
-    return errors
-  }
 
   // Handle confirm actions
-  const handleConfirmWithEdits = () => {
+  const handleConfirmWithEdits = (data?: { title: string; description: string; category: string; tags: string[]; readingTime?: number }) => {
     if (!pendingLinkId || !pendingLinkData) return
     
-    // Validate form
-    const errors = validateEditForm()
-    if (errors.length > 0) {
+    // If data is provided (from LinkEditForm), use it; otherwise use the current editForm
+    const formData = data || {
+      title: editForm.title,
+      description: editForm.description,
+      category: editForm.category,
+      tags: editForm.tags,
+      readingTime: editForm.readingTime
+    }
+    
+    // Basic validation
+    if (!formData.title?.trim()) {
       setMessage({
         type: 'error',
-        text: `请完善信息：${errors.join('，')}`
+        text: '请填写标题'
+      })
+      return
+    }
+    
+    if (!formData.description?.trim()) {
+      setMessage({
+        type: 'error',
+        text: '请填写描述'
       })
       return
     }
     
     confirmLinkMutation.mutate({
       id: pendingLinkId,
-      title: editForm.title || pendingLinkData.title,
-      description: editForm.description || pendingLinkData.aiSummary,
-      category: editForm.category || pendingLinkData.aiCategory,
-      tags: editForm.tags.length > 0 ? editForm.tags : pendingLinkData.aiTags,
+      title: formData.title.trim() || pendingLinkData.title,
+      description: formData.description.trim() || pendingLinkData.aiSummary,
+      category: formData.category || pendingLinkData.aiCategory,
+      tags: formData.tags.length > 0 ? formData.tags : pendingLinkData.aiTags,
+      readingTime: formData.readingTime || pendingLinkData.aiReadingTime,
       publish: true
     })
   }
@@ -479,6 +471,7 @@ export default function AddLink() {
       description: pendingLinkData.aiSummary,
       category: pendingLinkData.aiCategory,
       tags: pendingLinkData.aiTags,
+      readingTime: pendingLinkData.aiReadingTime,
       publish: true
     })
   }
@@ -809,106 +802,20 @@ export default function AddLink() {
 
                 {/* Edit Form - shown when editing */}
                 {isEditing && (
-                  <div className="space-y-4 p-4 bg-base-200/30 rounded-lg border border-base-300/20">
-                    <h4 className="font-medium text-base-content">编辑链接信息</h4>
-                    
-                    {/* Title */}
-                    <div className="form-control">
-                      <label className="label">
-                        <span className="label-text">标题</span>
-                      </label>
-                      <input
-                        type="text"
-                        className="input input-bordered"
-                        value={editForm.title}
-                        onChange={(e) => setEditForm(prev => ({ ...prev, title: e.target.value }))}
-                        placeholder="链接标题"
-                      />
-                    </div>
-
-                    {/* Description */}
-                    <div className="form-control">
-                      <label className="label">
-                        <span className="label-text">描述</span>
-                      </label>
-                      <textarea
-                        className="textarea textarea-bordered h-24"
-                        value={editForm.description}
-                        onChange={(e) => setEditForm(prev => ({ ...prev, description: e.target.value }))}
-                        placeholder="链接描述或摘要"
-                      />
-                    </div>
-
-                    {/* Category */}
-                    <div className="form-control">
-                      <label className="label">
-                        <span className="label-text">分类</span>
-                      </label>
-                      <select
-                        className="select select-bordered"
-                        value={editForm.category}
-                        onChange={(e) => setEditForm(prev => ({ ...prev, category: e.target.value }))}
-                      >
-                        <option value="">选择分类</option>
-                        {categories.map((category: any) => (
-                          <option key={category.id} value={category.name}>{category.name}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* Tags */}
-                    <div className="form-control">
-                      <label className="label">
-                        <span className="label-text">标签</span>
-                      </label>
-                      <input
-                        type="text"
-                        className="input input-bordered"
-                        value={getTagsString()}
-                        onChange={(e) => handleTagsChange(e.target.value)}
-                        placeholder="标签1, 标签2, 标签3"
-                      />
-                      <label className="label">
-                        <span className="label-text-alt text-base-content/50">
-                          多个标签用逗号分隔
-                        </span>
-                      </label>
-                    </div>
-                  </div>
+                  <LinkEditForm
+                    initialData={editForm}
+                    categories={categories}
+                    onSave={(data) => handleConfirmWithEdits(data)}
+                    onCancel={handleCancelEdit}
+                    isLoading={confirmLinkMutation.isPending}
+                    saveButtonText="确认发布"
+                    cancelButtonText="取消编辑"
+                  />
                 )}
 
-                {/* Action buttons */}
-                <div className="flex gap-2 pt-4 border-t border-base-300/20">
-                  {isEditing ? (
-                    <>
-                      <button 
-                        className={`btn btn-primary ${confirmLinkMutation.isPending ? 'loading' : ''}`}
-                        onClick={handleConfirmWithEdits}
-                        disabled={confirmLinkMutation.isPending}
-                      >
-                        {confirmLinkMutation.isPending ? (
-                          <span className="flex items-center gap-2">
-                            <span className="loading loading-spinner loading-sm"></span>
-                            发布中...
-                          </span>
-                        ) : (
-                          <span className="flex items-center gap-2">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                            </svg>
-                            确认发布
-                          </span>
-                        )}
-                      </button>
-                      <button 
-                        className="btn btn-ghost"
-                        onClick={handleCancelEdit}
-                        disabled={confirmLinkMutation.isPending}
-                      >
-                        取消编辑
-                      </button>
-                    </>
-                  ) : (
+                {/* Action buttons - only shown when not editing */}
+                {!isEditing && (
+                  <div className="flex gap-2 pt-4 border-t border-base-300/20">
                     <>
                       <button 
                         className="btn btn-primary"
@@ -952,8 +859,8 @@ export default function AddLink() {
                         取消
                       </button>
                     </>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

@@ -4,6 +4,7 @@ import api from '../../utils/api'
 import { isSuccessResponse } from '../../utils/api-helpers'
 import CategoryBadge from '../../components/CategoryBadge'
 import TagList from '../../components/TagList'
+import LinkEditForm from '../../components/LinkEditForm'
 
 interface PendingLink {
   id: number
@@ -135,37 +136,7 @@ export default function PendingLinks() {
     setEditForm({ title: '', description: '', category: '', tags: [], readingTime: undefined })
   }
 
-  const handleSaveEdit = () => {
-    if (!editingId) return
-    
-    // Basic validation
-    if (!editForm.title.trim() || !editForm.description.trim() || !editForm.category) {
-      alert('请填写所有必填字段')
-      return
-    }
 
-    updateMutation.mutate({
-      id: editingId,
-      title: editForm.title.trim(),
-      description: editForm.description.trim(),
-      category: editForm.category,
-      tags: editForm.tags,
-      readingTime: editForm.readingTime
-    })
-  }
-
-  const handleTagsChange = (tagsString: string) => {
-    const tags = tagsString
-      .split(',')
-      .map(tag => tag.trim())
-      .filter(tag => tag.length > 0)
-    
-    setEditForm(prev => ({ ...prev, tags }))
-  }
-
-  const getTagsString = () => {
-    return editForm.tags.join(', ')
-  }
 
   const handleSelectAll = () => {
     if (selectedIds.length === pendingLinks.length) {
@@ -380,7 +351,7 @@ export default function PendingLinks() {
                     {/* Header with title and date - matching LinkCard */}
                     <div className="flex items-start justify-between gap-4 mb-3">
                       <h2 
-                        className="text-lg font-semibold line-clamp-2 cursor-pointer hover:underline max-w-[80%] lg:max-w-[61.8%]"
+                        className="text-lg font-semibold line-clamp-2 cursor-pointer hover:underline max-w-[80%] lg:max-w-[75%]"
                         style={{ color: '#06161a' }}
                         title={link.title}
                         onClick={() => window.open(link.url, '_blank')}
@@ -426,14 +397,14 @@ export default function PendingLinks() {
 
                     {/* AI Summary - matching LinkCard description style */}
                     {link.aiSummary && (
-                      <div className="text-base-content/80 text-sm leading-relaxed mb-4 line-clamp-3 max-w-[80%] lg:max-w-[61.8%]">
+                      <div className="text-base-content/80 text-sm leading-relaxed mb-4 line-clamp-3 max-w-[80%] lg:max-w-[75%]">
                         {link.aiSummary}
                       </div>
                     )}
 
                     {/* AI Error Message - if exists */}
                     {link.aiAnalysisFailed && link.aiError && (
-                      <div className="text-xs text-red-600/80 mb-3 max-w-[80%] lg:max-w-[61.8%]">
+                      <div className="text-xs text-red-600/80 mb-3 max-w-[80%] lg:max-w-[75%]">
                         错误: {link.aiError}
                       </div>
                     )}
@@ -448,130 +419,25 @@ export default function PendingLinks() {
 
                     {/* Edit Form - shown when editing this specific link */}
                     {editingId === link.id && (
-                      <div className="space-y-4 p-4 bg-base-200/30 rounded-lg border border-base-300/20 mb-4">
-                        <h4 className="font-medium text-base-content">编辑链接信息</h4>
-                        
-                        {/* Title */}
-                        <div className="form-control">
-                          <label className="label">
-                            <span className="label-text text-sm">标题</span>
-                          </label>
-                          <input
-                            type="text"
-                            className="input input-bordered input-sm"
-                            value={editForm.title}
-                            onChange={(e) => setEditForm(prev => ({ ...prev, title: e.target.value }))}
-                            placeholder="链接标题"
-                          />
-                        </div>
-
-                        {/* Description */}
-                        <div className="form-control">
-                          <label className="label">
-                            <span className="label-text text-sm">描述</span>
-                          </label>
-                          <textarea
-                            className="textarea textarea-bordered textarea-sm h-20"
-                            value={editForm.description}
-                            onChange={(e) => setEditForm(prev => ({ ...prev, description: e.target.value }))}
-                            placeholder="链接描述或摘要"
-                          />
-                        </div>
-
-                        {/* Category */}
-                        <div className="form-control">
-                          <label className="label">
-                            <span className="label-text text-sm">分类</span>
-                          </label>
-                          <select
-                            className="select select-bordered select-sm"
-                            value={editForm.category}
-                            onChange={(e) => setEditForm(prev => ({ ...prev, category: e.target.value }))}
-                          >
-                            <option value="">选择分类</option>
-                            {categories.map((category: any) => (
-                              <option key={category.id} value={category.name}>{category.name}</option>
-                            ))}
-                          </select>
-                        </div>
-
-                        {/* Tags */}
-                        <div className="form-control">
-                          <label className="label">
-                            <span className="label-text text-sm">标签</span>
-                          </label>
-                          <input
-                            type="text"
-                            className="input input-bordered input-sm"
-                            value={getTagsString()}
-                            onChange={(e) => handleTagsChange(e.target.value)}
-                            placeholder="标签1, 标签2, 标签3"
-                          />
-                          <label className="label">
-                            <span className="label-text-alt text-xs text-base-content/50">
-                              多个标签用逗号分隔
-                            </span>
-                          </label>
-                        </div>
-
-                        {/* Reading Time */}
-                        <div className="form-control">
-                          <label className="label">
-                            <span className="label-text text-sm">阅读时间</span>
-                          </label>
-                          <input
-                            type="number"
-                            className="input input-bordered input-sm"
-                            value={editForm.readingTime || ''}
-                            onChange={(e) => setEditForm(prev => ({ ...prev, readingTime: e.target.value ? Number(e.target.value) : undefined }))}
-                            placeholder="预估阅读时间（分钟）"
-                            min="1"
-                            max="1440"
-                          />
-                          <label className="label">
-                            <span className="label-text-alt text-xs text-base-content/50">
-                              预估阅读时间，单位：分钟（1-1440分钟）
-                            </span>
-                          </label>
-                        </div>
-
-                        {/* Edit Actions */}
-                        <div className="flex items-center gap-2 pt-2">
-                          <button 
-                            className={`text-sm px-3 py-1 bg-green-100 hover:bg-green-200 text-green-700 rounded-full transition-colors duration-200 flex items-center gap-1 ${updateMutation.isPending ? 'opacity-50' : ''}`}
-                            onClick={handleSaveEdit}
-                            disabled={updateMutation.isPending}
-                          >
-                            {updateMutation.isPending ? (
-                              <>
-                                <svg className="w-3 h-3 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" strokeOpacity="0.25"></circle>
-                                  <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" strokeOpacity="0.75"></path>
-                                </svg>
-                                保存中...
-                              </>
-                            ) : (
-                              <>
-                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                </svg>
-                                保存并发布
-                              </>
-                            )}
-                          </button>
-                          
-                          <button 
-                            className="text-sm px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full transition-colors duration-200 flex items-center gap-1"
-                            onClick={handleCancelEdit}
-                            disabled={updateMutation.isPending}
-                          >
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                            取消
-                          </button>
-                        </div>
-                      </div>
+                      <LinkEditForm
+                        initialData={editForm}
+                        categories={categories}
+                        onSave={(data) => {
+                          updateMutation.mutate({
+                            id: editingId,
+                            title: data.title.trim(),
+                            description: data.description.trim(),
+                            category: data.category,
+                            tags: data.tags,
+                            readingTime: data.readingTime
+                          })
+                        }}
+                        onCancel={handleCancelEdit}
+                        isLoading={updateMutation.isPending}
+                        saveButtonText="保存并发布"
+                        compact={true}
+                        className="mb-4"
+                      />
                     )}
 
                     {/* Actions - redesigned to be more minimal, hidden when editing */}

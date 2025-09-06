@@ -103,7 +103,7 @@ export default function LinkCard({ link, onTitleClick, onTagClick, selectedTags 
         {/* Header with title and date */}
         <div className="flex items-start justify-between gap-4 mb-3">
           <h2 
-            className="text-lg font-semibold line-clamp-2 cursor-pointer hover:underline max-w-[80%] lg:max-w-[61.8%]"
+            className="text-lg font-semibold line-clamp-2 cursor-pointer hover:underline max-w-[80%] lg:max-w-[75%]"
             style={{ color: '#06161a' }}
             title={link.title}
             onClick={onTitleClick}
@@ -196,7 +196,7 @@ export default function LinkCard({ link, onTitleClick, onTagClick, selectedTags 
 
         {/* Description */}
         {link.description && (
-          <p className="text-base-content/80 text-sm leading-relaxed mb-4 max-w-[80%] lg:max-w-[61.8%]">
+          <p className="text-base-content/80 text-sm leading-relaxed mb-4 max-w-[80%] lg:max-w-[75%]">
             {link.description}
           </p>
         )}

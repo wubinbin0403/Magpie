@@ -74,6 +74,7 @@ export interface PendingLinkResponse {
   aiSummary: string;
   aiCategory: string;
   aiTags: string[];
+  aiReadingTime?: number; // AI estimated reading time in minutes
   aiAnalysisFailed?: boolean;
   aiError?: string;
   domain: string;

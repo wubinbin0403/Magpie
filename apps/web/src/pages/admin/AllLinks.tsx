@@ -13,6 +13,7 @@ interface EditForm {
   category: string
   tags: string[]
   status: 'published' | 'pending' | 'deleted'
+  readingTime?: number
 }
 
 export default function AllLinks() {
@@ -112,7 +113,8 @@ export default function AllLinks() {
       description: link.description,
       category: link.category,
       tags: [...link.tags],
-      status: link.status
+      status: link.status,
+      readingTime: (link as any).readingTime // Type assertion until AdminLink includes readingTime
     })
     setEditingId(link.id)
   }
@@ -358,7 +360,8 @@ export default function AllLinks() {
                               description: data.description.trim(),
                               category: data.category,
                               tags: data.tags,
-                              status: data.status
+                              status: data.status,
+                              readingTime: data.readingTime
                             }
                           })
                         }}

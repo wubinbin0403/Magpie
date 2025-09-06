@@ -6,6 +6,7 @@ interface LinkEditFormData {
   category: string
   tags: string[]
   status?: 'published' | 'pending' | 'deleted'
+  readingTime?: number
 }
 
 interface LinkEditFormProps {
@@ -169,6 +170,30 @@ export default function LinkEditForm({
               多个标签用逗号分隔
             </span>
           </label>
+        </div>
+
+        {/* Reading Time */}
+        <div className="form-control">
+          <label className="label py-1">
+            <span className={`label-text ${labelSize}`}>预估阅读时间</span>
+          </label>
+          <div className="relative">
+            <input
+              type="number"
+              className={`input input-bordered ${inputSize} pr-12`}
+              value={formData.readingTime || ''}
+              onChange={(e) => setFormData(prev => ({ 
+                ...prev, 
+                readingTime: e.target.value ? Number(e.target.value) : undefined 
+              }))}
+              placeholder="预估阅读时间"
+              min="1"
+              max="1440"
+            />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-base-content/50">
+              分钟
+            </span>
+          </div>
         </div>
 
         {/* Action Buttons */}
