@@ -1,7 +1,14 @@
 import * as bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
 
-const JWT_SECRET = process.env.JWT_SECRET || 'default-secret-change-in-production'
+const JWT_SECRET = process.env.JWT_SECRET || (() => {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('JWT_SECRET environment variable is required in production')
+  }
+  // Only use fallback in development/test
+  console.warn('WARNING: Using default JWT_SECRET for development. Set JWT_SECRET environment variable in production.')
+  return 'default-secret-for-development-only'
+})()
 const JWT_EXPIRY = '24h' // 24 hours
 
 // Password hashing utilities
