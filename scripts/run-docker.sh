@@ -21,6 +21,8 @@ BASE_URL="${BASE_URL:-http://localhost:$PORT}"
 OPENAI_API_KEY="${OPENAI_API_KEY:-}"
 OPENAI_BASE_URL="${OPENAI_BASE_URL:-}"
 IMAGE_TAG="${IMAGE_TAG:-latest}"
+REGISTRY="${REGISTRY:-ghcr.io}"
+REGISTRY_USER="${REGISTRY_USER:-}"
 
 # 版本管理函数
 get_version_from_package() {
@@ -57,6 +59,7 @@ Magpie Docker 运行脚本
     status      查看状态
     clean       停止并删除容器
     build       构建镜像
+    push        推送镜像到注册表
     help        显示帮助
 
 选项:
@@ -67,11 +70,15 @@ Magpie Docker 运行脚本
     -k, --api-key KEY         OpenAI API密钥
     -u, --base-url URL        基础URL
     -t, --tag TAG             镜像标签 (默认: latest)
+    -r, --registry URL        注册表地址 (默认: ghcr.io)
+    -u, --user USERNAME       注册表用户名
 
 环境变量:
     PORT                      端口号
     DATA_DIR                  数据目录
     JWT_SECRET                JWT密钥
+    REGISTRY                  镜像注册表地址
+    REGISTRY_USER             注册表用户名
     OPENAI_API_KEY           OpenAI API密钥
     OPENAI_BASE_URL          OpenAI API基础URL
     BASE_URL                  应用基础URL
@@ -317,6 +324,67 @@ build_image() {
     docker images magpie --format "table {{.Repository}}\t{{.Tag}}\t{{.ID}}\t{{.CreatedAt}}\t{{.Size}}" | head -6
 }
 
+# 推送镜像到注册表
+push_image() {
+    echo -e "${BLUE}📤 推送镜像到注册表...${NC}"
+    
+    if [ -z "$REGISTRY_USER" ]; then
+        echo -e "${RED}❌ 错误: 未设置注册表用户名${NC}"
+        echo "请设置 REGISTRY_USER 环境变量或使用 --user 参数"
+        exit 1
+    fi
+    
+    local version=$(get_version_from_package)
+    local git_info=$(get_git_info)
+    
+    echo -e "${BLUE}📋 推送信息:${NC}"
+    echo "   注册表: $REGISTRY"
+    echo "   用户名: $REGISTRY_USER"
+    echo "   版本: $version"
+    echo ""
+    
+    # 获取本地镜像列表
+    local images=$(docker images magpie --format "{{.Tag}}" | head -5)
+    
+    if [ -z "$images" ]; then
+        echo -e "${RED}❌ 错误: 未找到本地 magpie 镜像${NC}"
+        echo "请先运行构建命令: ./run-docker.sh build"
+        exit 1
+    fi
+    
+    echo -e "${BLUE}🏷️  准备推送的镜像标签:${NC}"
+    echo "$images" | while read -r tag; do
+        if [ -n "$tag" ]; then
+            echo "   - magpie:$tag → $REGISTRY/$REGISTRY_USER/magpie:$tag"
+        fi
+    done
+    echo ""
+    
+    # 推送每个镜像标签
+    echo -e "${BLUE}🚀 开始推送镜像...${NC}"
+    echo "$images" | while read -r tag; do
+        if [ -n "$tag" ]; then
+            echo -e "${YELLOW}推送标签: $tag${NC}"
+            
+            # 标记镜像
+            docker tag "magpie:$tag" "$REGISTRY/$REGISTRY_USER/magpie:$tag"
+            
+            # 推送镜像
+            if docker push "$REGISTRY/$REGISTRY_USER/magpie:$tag"; then
+                echo -e "${GREEN}✅ $tag 推送成功${NC}"
+            else
+                echo -e "${RED}❌ $tag 推送失败${NC}"
+            fi
+            echo ""
+        fi
+    done
+    
+    echo -e "${GREEN}📦 推送完成！${NC}"
+    echo -e "${BLUE}💡 使用方式:${NC}"
+    echo "   docker pull $REGISTRY/$REGISTRY_USER/magpie:$version"
+    echo "   docker pull $REGISTRY/$REGISTRY_USER/magpie:latest"
+}
+
 # 主函数
 main() {
     # 获取命令
@@ -348,6 +416,9 @@ main() {
             ;;
         build)
             build_image
+            ;;
+        push)
+            push_image
             ;;
         help|--help|-h)
             show_help

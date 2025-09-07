@@ -42,6 +42,7 @@ pnpm docker:run
 |------|------|------------|
 | `pnpm docker:build` | 智能构建（自动版本管理） | `scripts/run-docker.sh build` |
 | `pnpm docker:build:dev` | 构建开发版本 | `IMAGE_TAG=dev scripts/run-docker.sh build` |
+| `pnpm docker:push` | 推送镜像到注册表 | `scripts/run-docker.sh push` |
 | `pnpm docker:run` | 启动容器 | `scripts/run-docker.sh start` |
 | `pnpm docker:status` | 查看容器状态 | `scripts/run-docker.sh status` |
 | `pnpm docker:logs` | 查看容器日志 | `scripts/run-docker.sh logs` |
@@ -214,6 +215,106 @@ pnpm docker:build
 # 可选：推送到镜像仓库
 docker tag magpie:1.2.3 your-registry.com/magpie:1.2.3
 docker push your-registry.com/magpie:1.2.3
+```
+
+## 🌐 镜像推送到 GitHub Container Registry (GHCR)
+
+### 设置 GitHub 访问令牌
+
+1. **创建 GitHub Personal Access Token**
+   - 访问 GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic)
+   - 点击 "Generate new token (classic)"
+   - 选择权限：`write:packages`, `read:packages`, `delete:packages`
+   - 复制生成的令牌
+
+2. **登录 GHCR**
+```bash
+echo $GITHUB_TOKEN | docker login ghcr.io -u YOUR_GITHUB_USERNAME --password-stdin
+```
+
+### 推送镜像
+
+**方法一：使用环境变量**
+```bash
+# 设置环境变量
+export REGISTRY_USER="YOUR_GITHUB_USERNAME"
+
+# 推送镜像
+pnpm docker:push
+```
+
+**方法二：使用脚本参数**
+```bash
+# 直接指定用户名
+REGISTRY_USER=YOUR_GITHUB_USERNAME pnpm docker:push
+
+# 或使用脚本
+scripts/run-docker.sh push --user YOUR_GITHUB_USERNAME
+```
+
+### 推送示例输出
+
+```bash
+$ REGISTRY_USER=onevcat pnpm docker:push
+
+📤 推送镜像到注册表...
+
+📋 推送信息:
+   注册表: ghcr.io
+   用户名: onevcat
+   版本: 0.1.0
+
+🏷️ 准备推送的镜像标签:
+   - magpie:0.1.0 → ghcr.io/onevcat/magpie:0.1.0
+   - magpie:latest → ghcr.io/onevcat/magpie:latest
+   - magpie:stable → ghcr.io/onevcat/magpie:stable
+
+🚀 开始推送镜像...
+推送标签: 0.1.0
+✅ 0.1.0 推送成功
+
+推送标签: latest  
+✅ latest 推送成功
+
+📦 推送完成！
+💡 使用方式:
+   docker pull ghcr.io/onevcat/magpie:0.1.0
+   docker pull ghcr.io/onevcat/magpie:latest
+```
+
+### 在其他设备拉取镜像
+
+```bash
+# 拉取最新版本
+docker pull ghcr.io/YOUR_GITHUB_USERNAME/magpie:latest
+
+# 拉取特定版本
+docker pull ghcr.io/YOUR_GITHUB_USERNAME/magpie:0.1.0
+
+# 运行拉取的镜像
+docker run -d \
+  --name magpie \
+  -p 3001:3001 \
+  -v ./data:/app/data \
+  -e JWT_SECRET="your-secret-key" \
+  ghcr.io/YOUR_GITHUB_USERNAME/magpie:latest
+```
+
+### 支持的注册表
+
+当前支持推送到以下注册表：
+
+- **GitHub Container Registry**: `ghcr.io` (默认)
+- **Docker Hub**: `docker.io`
+- **阿里云容器镜像服务**: `registry.cn-hangzhou.aliyuncs.com`
+
+使用不同注册表：
+```bash
+# Docker Hub
+REGISTRY=docker.io REGISTRY_USER=username pnpm docker:push
+
+# 阿里云
+REGISTRY=registry.cn-hangzhou.aliyuncs.com REGISTRY_USER=namespace pnpm docker:push
 ```
 
 ## 📊 镜像信息

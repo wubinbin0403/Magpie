@@ -22,6 +22,7 @@
     "db:reset": "pnpm --filter api db:reset",
     "docker:build": "scripts/run-docker.sh build",
     "docker:build:dev": "IMAGE_TAG=dev scripts/run-docker.sh build",
+    "docker:push": "scripts/run-docker.sh push",
     "docker:run": "scripts/run-docker.sh start",
     "docker:status": "scripts/run-docker.sh status",
     "docker:logs": "scripts/run-docker.sh logs",
