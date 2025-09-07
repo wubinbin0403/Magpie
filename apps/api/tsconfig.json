@@ -6,6 +6,9 @@
     "noEmit": false,
     "allowImportingTsExtensions": false,
     "lib": ["ES2023", "DOM"],
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
     "paths": {
       "@/*": ["./src/*"],
       "@magpie/shared/*": ["../../packages/shared/src/*"]

@@ -1,5 +1,4 @@
 import { integer, sqliteTable, text, index } from 'drizzle-orm/sqlite-core';
-import { sql } from 'drizzle-orm';
 
 // Links table - Main content storage
 export const links = sqliteTable('links', {
