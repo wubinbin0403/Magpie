@@ -31,10 +31,8 @@ PORT=8080 DATA_DIR="./custom-data" pnpm docker:run
 
 # 完整配置示例
 JWT_SECRET="my-secret" \
-OPENAI_API_KEY="sk-xxx" \
-OPENAI_BASE_URL="https://api.openai.com/v1" \
 PORT=3001 \
-BASE_URL="http://localhost:3001" \
+BASE_URL="https://link.mydomain.com" \
 pnpm docker:run
 ```
 
