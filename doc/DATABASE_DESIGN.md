@@ -56,6 +56,9 @@ CREATE TABLE links (
   aiSummary TEXT,                      -- AI 生成的摘要
   aiCategory TEXT,                     -- AI 建议的分类
   aiTags TEXT,                         -- AI 建议的标签（JSON数组）
+  aiReadingTime INTEGER,               -- AI 估算阅读时间（分钟）
+  aiAnalysisFailed INTEGER,            -- AI 分析是否失败（0或1）
+  aiError TEXT,                        -- AI 分析错误信息
   
   -- 用户确认内容
   userDescription TEXT,                -- 用户最终确认的描述
@@ -293,6 +296,7 @@ CREATE TABLE categories (
   
   -- 显示配置
   icon TEXT DEFAULT 'folder',         -- 预设图标名称
+  color TEXT,                          -- 分类颜色（十六进制值）
   description TEXT,                    -- 分类描述（可选）
   
   -- 排序和状态
@@ -311,9 +315,14 @@ CREATE TABLE categories (
 
 **实现说明：**
 - 使用驼峰命名（displayOrder, isActive）符合Drizzle ORM规范
-- 移除color字段，使用图标系统替代
+- 保留color字段，用于分类颜色标识
 - slug字段自动生成，支持中文分类名转换
 - 支持Heroicons图标库的所有图标名称
+
+**字段命名规范说明：**
+- 数据库表使用下划线命名（snake_case）：`created_at`, `updated_at`, `user_description`
+- Drizzle ORM字段使用驼峰命名（camelCase）：`createdAt`, `updatedAt`, `userDescription`
+- 这种命名差异由Drizzle ORM自动处理映射
 
 **预设图标列表：**
 支持Heroicons库的所有图标，包括常用的18个精选图标：
@@ -344,7 +353,7 @@ CREATE TABLE categories (
 **初始数据：**
 ```sql
 -- 插入默认分类
-INSERT INTO categories (name, slug, icon, color, display_order, createdAt) VALUES 
+INSERT INTO categories (name, slug, icon, color, display_order, created_at) VALUES 
   ('技术', 'tech', 'code', '#3B82F6', 1, strftime('%s', 'now')),
   ('设计', 'design', 'palette', '#8B5CF6', 2, strftime('%s', 'now')),
   ('产品', 'product', 'cube', '#10B981', 3, strftime('%s', 'now')),
@@ -370,22 +379,20 @@ CREATE VIRTUAL TABLE links_fts USING fts5(
   content_rowid=id                 -- 使用 links 表的 id 作为 rowid
 );
 
--- 创建触发器，自动同步数据到 FTS5 表（直接使用用户确认字段）
+-- 创建触发器，自动同步数据到 FTS5 表（使用下划线字段名）
 CREATE TRIGGER links_fts_insert AFTER INSERT ON links BEGIN
   INSERT INTO links_fts(rowid, title, description, tags, domain, category)
-  VALUES (NEW.id, NEW.title, NEW.userDescription, NEW.userTags, NEW.domain, NEW.userCategory);
+  VALUES (NEW.id, NEW.title, NEW.user_description, NEW.user_tags, NEW.domain, NEW.user_category);
 END;
 
 CREATE TRIGGER links_fts_delete AFTER DELETE ON links BEGIN
-  INSERT INTO links_fts(links_fts, rowid, title, description, tags, domain, category)
-  VALUES ('delete', OLD.id, OLD.title, OLD.userDescription, OLD.userTags, OLD.domain, OLD.userCategory);
+  DELETE FROM links_fts WHERE rowid = OLD.id;
 END;
 
 CREATE TRIGGER links_fts_update AFTER UPDATE ON links BEGIN
-  INSERT INTO links_fts(links_fts, rowid, title, description, tags, domain, category)
-  VALUES ('delete', OLD.id, OLD.title, OLD.userDescription, OLD.userTags, OLD.domain, OLD.userCategory);
+  DELETE FROM links_fts WHERE rowid = OLD.id;
   INSERT INTO links_fts(rowid, title, description, tags, domain, category)
-  VALUES (NEW.id, NEW.title, NEW.userDescription, NEW.userTags, NEW.domain, NEW.userCategory);
+  VALUES (NEW.id, NEW.title, NEW.user_description, NEW.user_tags, NEW.domain, NEW.user_category);
 END;
 ```
 
@@ -397,35 +404,31 @@ END;
 -- links 表索引
 CREATE INDEX idx_links_status ON links(status);
 CREATE INDEX idx_links_domain ON links(domain);
-CREATE INDEX idx_links_category ON links(finalCategory);
-CREATE INDEX idx_links_published_at ON links(publishedAt DESC);
-CREATE INDEX idx_links_created_at ON links(createdAt DESC);
-CREATE INDEX idx_links_status_published_at ON links(status, publishedAt DESC);
-
--- 复合索引，优化常用查询
-CREATE INDEX idx_links_status_category_published ON links(status, finalCategory, publishedAt DESC);
+CREATE INDEX idx_links_published_at ON links(published_at DESC);
+CREATE INDEX idx_links_created_at ON links(created_at DESC);
+CREATE INDEX idx_links_status_published_at ON links(status, published_at DESC);
 
 -- users 表索引
 CREATE INDEX idx_users_username ON users(username);
-CREATE INDEX idx_users_session_token ON users(sessionToken);
+CREATE INDEX idx_users_session_token ON users(session_token);
 CREATE INDEX idx_users_status ON users(status);
-CREATE INDEX idx_users_last_login ON users(lastLoginAt DESC);
+CREATE INDEX idx_users_last_login ON users(last_login_at DESC);
 
 -- api_tokens 表索引
 CREATE INDEX idx_tokens_status ON api_tokens(status);
-CREATE INDEX idx_tokens_last_used ON api_tokens(lastUsedAt DESC);
+CREATE INDEX idx_tokens_last_used ON api_tokens(last_used_at DESC);
 
 -- operation_logs 表索引
-CREATE INDEX idx_logs_created_at ON operation_logs(createdAt DESC);
+CREATE INDEX idx_logs_created_at ON operation_logs(created_at DESC);
 CREATE INDEX idx_logs_action ON operation_logs(action);
-CREATE INDEX idx_logs_resource ON operation_logs(resource, resourceId);
-CREATE INDEX idx_logs_user_id ON operation_logs(userId);
-CREATE INDEX idx_logs_token_id ON operation_logs(tokenId);
+CREATE INDEX idx_logs_resource ON operation_logs(resource, resource_id);
+CREATE INDEX idx_logs_user_id ON operation_logs(user_id);
+CREATE INDEX idx_logs_token_id ON operation_logs(token_id);
 
 -- search_logs 表索引
 CREATE INDEX idx_search_query ON search_logs(query);
-CREATE INDEX idx_search_created_at ON search_logs(createdAt DESC);
-CREATE INDEX idx_search_no_results ON search_logs(noResultsFound);
+CREATE INDEX idx_search_created_at ON search_logs(created_at DESC);
+CREATE INDEX idx_search_no_results ON search_logs(no_results_found);
 
 -- categories 表索引
 CREATE INDEX idx_categories_display_order ON categories(display_order);
@@ -440,19 +443,19 @@ CREATE INDEX idx_categories_slug ON categories(slug);
 ```sql
 -- 分类统计（实时查询）
 SELECT 
-  userCategory as category,
+  user_category as category,
   COUNT(*) as count,
-  MAX(publishedAt) as lastPublished
+  MAX(published_at) as lastPublished
 FROM links 
 WHERE status = 'published' 
-GROUP BY userCategory
+GROUP BY user_category
 ORDER BY count DESC;
 
 -- 域名统计（实时查询）
 SELECT 
   domain,
   COUNT(*) as count,
-  MAX(publishedAt) as lastPublished
+  MAX(published_at) as lastPublished
 FROM links 
 WHERE status = 'published' 
 GROUP BY domain
@@ -460,9 +463,9 @@ ORDER BY count DESC;
 
 -- 月度统计（实时查询）
 SELECT 
-  strftime('%Y-%m', publishedAt, 'unixepoch') as month,
+  strftime('%Y-%m', published_at, 'unixepoch') as month,
   COUNT(*) as count,
-  COUNT(DISTINCT userCategory) as categories,
+  COUNT(DISTINCT user_category) as categories,
   COUNT(DISTINCT domain) as domains
 FROM links 
 WHERE status = 'published' 
@@ -473,7 +476,7 @@ ORDER BY month DESC;
 SELECT 
   json_each.value as tag,
   COUNT(*) as count
-FROM links, json_each(links.userTags)
+FROM links, json_each(links.user_tags)
 WHERE links.status = 'published'
 GROUP BY json_each.value
 ORDER BY count DESC;

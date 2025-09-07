@@ -29,7 +29,7 @@ Magpie 是一个轻博客系统，用于收集和展示在阅读过程中遇到�
 - **Web 框架**：Hono.js (轻量级)
 - **ORM**：Drizzle (TypeScript 友好)
 - **数据库**：SQLite
-- **网页抓取**：Cheerio
+- **网页抓取**：Mozilla Readability (替换了 Cheerio，提供更好的内容提取)
 - **AI 服务**：OpenAI API 兼容接口
 
 ### 部署
@@ -37,14 +37,15 @@ Magpie 是一个轻博客系统，用于收集和展示在阅读过程中遇到�
 - **架构**：前后端同容器，静态文件 + API 服务
 
 ### 浏览器扩展
+- **状态**：计划中，将在后续版本实现
 - **标准**：Chrome Extension Manifest V3
-- **功能**：点击保存当前页面
+- **功能**：一键保存当前页面
 
 ## 🏗 系统架构
 
 ```
 ┌─────────────────┐
-│  Chrome 扩展     │ ──────► GET /api/links/add?url=xxx
+│  外部API调用     │ ──────► GET /api/links/add?url=xxx
 └─────────────────┘         
                             
 ┌─────────────────────────────────────────────┐
@@ -65,7 +66,7 @@ Magpie 是一个轻博客系统，用于收集和展示在阅读过程中遇到�
 
 ### 标准流程（带确认）
 ```
-浏览网页 → 点击扩展 → 打开 /api/links/add?url=xxx 
+API调用 → GET /api/links/add?url=xxx 
 → 显示处理进度 → 302跳转到 /confirm/:id 
 → 编辑确认 → 发布到主页
 ```
@@ -290,16 +291,18 @@ cp .env.example .env
 docker-compose up -d
 ```
 
-### 4. 安装浏览器扩展
-1. 打开 Chrome 扩展管理页面
-2. 开启"开发者模式"
-3. 点击"加载已解压的扩展程序"
-4. 选择项目中的 `extension/` 目录
+### 4. 配置 API Token
+1. 打开管理界面 `http://localhost:3000/admin`
+2. 登录后进入 Token 管理页面
+3. 创建新的 API Token
+4. 使用该 Token 进行 API 调用
 
-### 5. 配置扩展
-1. 点击扩展图标
-2. 设置 API 地址（如 `http://localhost:3000`）
-3. 设置 API Token（来自环境变量 `INITIAL_API_TOKEN`）
+### 5. 测试 API
+```bash
+# 测试添加链接
+curl -X GET "http://localhost:3001/api/links/add?url=https://example.com" \
+     -H "Authorization: Bearer YOUR_TOKEN"
+```
 
 ## 🔧 开发指南
 
@@ -349,123 +352,42 @@ pnpm test
   - 修改 `packages/shared` 中的类型后，需要运行 `pnpm build` 重新构建
   - 确保前端和后端项目使用一致的类型定义
 
-### 类型安全的 API 调用
+### 前端 API 调用
 
-项目提供了一个完全类型安全的 API 客户端，位于 `packages/shared/src/api-client.ts`：
+项目中前端使用了一个简化的 API 客户端，位于 `apps/web/src/utils/api.ts`。类型安全的 API 客户端虽然已实现（`packages/shared/src/api-client.ts`），但目前**未在实际项目中使用**。
 
-#### 基本用法
+#### 当前使用的前端 API 客户端
 
 ```typescript
-// 创建 API 客户端实例
+// 已实现的前端 API 调用方式
+import api from '../utils/api'
+
+// 获取链接列表
+const response = await api.getLinks({ page: 1, limit: 10 })
+
+// 搜索链接
+const searchResult = await api.searchLinks('typescript', { category: 'tech' })
+
+// 管理员登录
+const loginResult = await api.adminLogin(password)
+
+// 添加链接
+const addResult = await api.addLinkJson(url, { 
+  skipConfirm: false,
+  category: 'tech'
+})
+```
+
+#### 未来改进计划
+
+如果需要更完整的类型安全支持，可以考虑将前端迁移到使用 `MagpieApiClient`：
+
+```typescript
+// 未来可选的类型安全方式（已实现但未使用）
 import { MagpieApiClient } from '@magpie/shared'
 
 const api = new MagpieApiClient('http://localhost:3001', 'your-api-token')
-
-// 获取链接列表 - 完全类型安全
 const response = await api.getLinks({ page: 1, limit: 10, category: 'tech' })
-if (response.success) {
-  // response.data 的类型是 LinksResponse
-  const links = response.data.links        // Link[]
-  const pagination = response.data.pagination  // Pagination
-}
-
-// 搜索链接
-const searchResult = await api.searchLinks({
-  q: 'typescript',
-  category: 'tech',
-  limit: 20
-})
-
-// 流式添加链接
-await api.addLinkStream(
-  { url: 'https://example.com', category: 'tech' },
-  (message) => {
-    // message 的类型是 StreamStatusMessage
-    console.log(`Stage: ${message.stage}, Progress: ${message.progress}%`)
-    if (message.stage === 'completed' && message.data) {
-      console.log('Link added:', message.data.title)
-    }
-  }
-)
-```
-
-#### 前端集成示例
-
-```typescript
-// React Hook 示例
-import { useQuery } from '@tanstack/react-query'
-import { createApiClient, type LinksQuery } from '@magpie/shared'
-
-const api = createApiClient(process.env.VITE_API_URL)
-
-export function useLinks(query: LinksQuery) {
-  return useQuery({
-    queryKey: ['links', query],
-    queryFn: async () => {
-      const response = await api.getLinks(query)
-      if (!response.success) {
-        throw new Error(response.error.message)
-      }
-      return response.data  // 类型是 LinksResponse
-    }
-  })
-}
-
-// 使用
-function LinksList() {
-  const { data, isLoading } = useLinks({ page: 1, limit: 10 })
-  
-  if (isLoading) return <div>Loading...</div>
-  
-  return (
-    <div>
-      {data?.links.map(link => (  // link 类型是 Link
-        <div key={link.id}>
-          <h3>{link.title}</h3>
-          <p>{link.description}</p>
-          <span>Category: {link.category}</span>
-        </div>
-      ))}
-    </div>
-  )
-}
-```
-
-#### 管理员 API 示例
-
-```typescript
-// 管理员操作
-const adminApi = new MagpieApiClient(baseUrl, adminToken)
-
-// 批量操作
-const batchResult = await adminApi.batchOperation({
-  ids: [1, 2, 3],
-  action: 'confirm',
-  params: { category: 'tech' }
-})
-
-// 令牌管理
-const tokens = await adminApi.getTokens({ status: 'active' })
-const newToken = await adminApi.createToken({ 
-  name: 'My API Token',
-  expiresAt: '2024-12-31T23:59:59Z'
-})
-```
-
-#### 错误处理
-
-所有 API 方法都返回统一的 `ApiResponse<T>` 类型：
-
-```typescript
-const response = await api.getLinks()
-
-if (response.success) {
-  // 成功：response.data 包含返回数据
-  const links = response.data.links
-} else {
-  // 失败：response.error 包含错误信息
-  console.error(`Error ${response.error.code}: ${response.error.message}`)
-}
 ```
 
 ### Git 工作流

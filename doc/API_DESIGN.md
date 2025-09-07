@@ -157,28 +157,15 @@ interface SearchResult extends Link {
 GET /api/search/suggestions
 ```
 
-**查询参数：**
+**实现状态：**
+❌ **未实现** - 此API端点当前未实现，搜索建议功能需要在后续版本中添加
+
+**计划的查询参数：**
 ```typescript
 interface SuggestionsQuery {
   q: string;               // 输入内容
   type?: 'title' | 'tag' | 'category' | 'domain'; // 建议类型
   limit?: number;          // 返回数量，默认 10
-}
-```
-
-**响应格式：**
-```typescript
-interface SuggestionsResponse {
-  success: boolean;
-  data: {
-    suggestions: Suggestion[];
-  };
-}
-
-interface Suggestion {
-  text: string;
-  type: 'title' | 'tag' | 'category' | 'domain';
-  count?: number;          // 相关条目数量
 }
 ```
 
@@ -295,11 +282,10 @@ interface AddLinkQuery {
 
 **处理流程：**
 1. 验证 URL 有效性
-2. 检查是否已存在
-3. 抓取网页内容
-4. 调用 AI 生成摘要和分类
-5. 保存到数据库（pending 状态）
-6. 返回处理结果或 302 跳转
+2. 使用 Mozilla Readability 抓取网页内容
+3. AI 智能分析生成摘要和分类
+4. 保存到数据库（pending 状态）
+5. 返回处理结果或 302 跳转
 
 **响应格式（跳过确认时）：**
 ```typescript
@@ -383,6 +369,9 @@ interface ConfirmLinkResponse {
 POST /api/links/add/stream
 ```
 
+**实现状态：**
+✅ **已实现** - 支持Server-Sent Events流式响应，实时返回处理进度
+
 **请求体：**
 ```typescript
 interface AddLinkStreamRequest {
@@ -395,20 +384,36 @@ interface AddLinkStreamRequest {
 
 **响应格式（Server-Sent Events）：**
 ```typescript
-interface StatusMessage {
+interface StreamStatusMessage {
   stage: 'fetching' | 'analyzing' | 'completed' | 'error';
   message: string;
   progress?: number;       // 0-100
-  data?: any;             // 阶段性数据
+  data?: {                // 阶段性数据
+    title?: string;
+    wordCount?: number;
+    summary?: string;
+    category?: string;
+    tags?: string[];
+    id?: number;
+    url?: string;
+    status?: string;
+    scrapingFailed?: boolean;
+  };
   error?: string;         // 错误信息
 }
 ```
 
 **实时状态流程：**
-1. `fetching` - 正在获取网页内容 (progress: 10-50)
-2. `analyzing` - 正在进行AI分析 (progress: 60-90)  
-3. `completed` - 处理完成 (progress: 100)
-4. `error` - 处理失败
+1. `fetching` - 正在连接和获取网页内容 (progress: 10-50)
+2. `analyzing` - 正在进行AI智能分析 (progress: 60-90)  
+3. `completed` - 处理完成，返回最终结果 (progress: 100)
+4. `error` - 处理失败，返回错误信息
+
+**特性：**
+- 支持网页内容抓取失败时的回退处理
+- AI分析失败时使用基础分析
+- 支持中英文处理进度消息
+- 完整的错误日志和操作审计
 
 ### 5. 删除链接
 ```typescript
