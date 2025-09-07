@@ -19,7 +19,9 @@
     "db:generate": "pnpm --filter api db:generate",
     "db:migrate": "pnpm --filter api db:migrate",
     "db:studio": "pnpm --filter api db:studio",
-    "db:reset": "pnpm --filter api db:reset"
+    "db:reset": "pnpm --filter api db:reset",
+    "docker:build": "scripts/run-docker.sh build",
+    "docker:run": "scripts/run-docker.sh start"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^8.42.0",

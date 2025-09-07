@@ -32,10 +32,15 @@ if (!fs.existsSync(dataDir)) {
 // Create better-sqlite3 instance
 const sqlite = new Database(dbPath);
 
-// Enable foreign keys and optimize settings
+// Enable foreign keys and optimize settings for container environment
 sqlite.pragma('foreign_keys = ON');
-sqlite.pragma('journal_mode = WAL'); // Better performance for concurrent access
-sqlite.pragma('synchronous = NORMAL'); // Good balance of safety and speed
+// Use DELETE mode instead of WAL for better data persistence in containers
+// WAL mode can cause data sync issues when containers are stopped/started
+sqlite.pragma('journal_mode = DELETE'); 
+// Use FULL synchronous mode to ensure data is written to disk immediately
+sqlite.pragma('synchronous = FULL');
+// Set a reasonable timeout for busy database
+sqlite.pragma('busy_timeout = 30000'); // 30 seconds
 
 // Create drizzle instance
 export const db = drizzle(sqlite, { schema });

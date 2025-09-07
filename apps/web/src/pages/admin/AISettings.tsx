@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from 'react'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import api from '../../utils/api'
 import { isSuccessResponse } from '../../utils/api-helpers'
+import type { UpdateSettingsRequest } from '@magpie/shared'
 
 interface AISettings {
   apiKey: string
@@ -60,7 +61,7 @@ export default function AISettings() {
 
   // Update settings mutation
   const updateSettingsMutation = useMutation({
-    mutationFn: async (newSettings: { ai: AISettings }) => {
+    mutationFn: async (newSettings: UpdateSettingsRequest) => {
       const response = await api.updateSettings(newSettings)
       if (!isSuccessResponse(response)) {
         throw new Error(response.error.message)
@@ -150,17 +151,21 @@ export default function AISettings() {
   }, [])
 
   const handleSave = useCallback(() => {
-    // Only include API key if user has actually entered one
-    const settingsToSave: AISettings = {
+    // Prepare settings to save - use the proper UpdateSettingsRequest type
+    const aiSettings: UpdateSettingsRequest['ai'] = {
       baseUrl: settings.baseUrl,
       model: settings.model,
       temperature: settings.temperature,
       userInstructions: settings.userInstructions,
-      apiKey: (apiKeyTouched && settings.apiKey && !settings.apiKey.includes('***')) 
-        ? settings.apiKey 
-        : '' // Provide empty string as fallback
     }
-    updateSettingsMutation.mutate({ ai: settingsToSave })
+    
+    // Only include API key if user has actually entered one
+    if (apiKeyTouched && settings.apiKey && !settings.apiKey.includes('***')) {
+      aiSettings.apiKey = settings.apiKey
+    }
+    // If not touched, don't include apiKey field at all (let backend keep existing value)
+    
+    updateSettingsMutation.mutate({ ai: aiSettings })
   }, [updateSettingsMutation, settings, apiKeyTouched])
 
   const handleTestAI = useCallback(() => {

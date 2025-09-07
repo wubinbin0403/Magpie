@@ -1,4 +1,4 @@
-import * as cheerio from 'cheerio'
+import { JSDOM } from 'jsdom'
 
 export interface ScrapedContent {
   url: string
@@ -45,11 +45,12 @@ export class WebScraper {
       // Fetch the webpage
       const html = await this.fetchHtml(url)
       
-      // Parse with Cheerio
-      const $ = cheerio.load(html)
+      // Parse with JSDOM
+      const dom = new JSDOM(html, { url })
+      const document = dom.window.document
       
       // Extract content based on type
-      const content = await this.extractContent($, contentType, url)
+      const content = await this.extractContent(document, contentType, url)
       
       const result = {
         url,
@@ -119,37 +120,37 @@ export class WebScraper {
     return 'article'
   }
 
-  private async extractContent($: cheerio.CheerioAPI, contentType: ScrapedContent['contentType'], url: string): Promise<Omit<ScrapedContent, 'url' | 'contentType' | 'domain'>> {
+  private async extractContent(document: Document, contentType: ScrapedContent['contentType'], url: string): Promise<Omit<ScrapedContent, 'url' | 'contentType' | 'domain'>> {
     switch (contentType) {
       case 'article':
-        return this.extractArticleContent($, url)
+        return this.extractArticleContent(document, url)
       case 'video':
-        return this.extractVideoContent($, url)
+        return this.extractVideoContent(document, url)
       case 'pdf':
-        return this.extractPdfContent($, url)
+        return this.extractPdfContent(document, url)
       case 'image':
-        return this.extractImageContent($, url)
+        return this.extractImageContent(document, url)
       default:
-        return this.extractGenericContent($, url)
+        return this.extractGenericContent(document, url)
     }
   }
 
-  private extractArticleContent($: cheerio.CheerioAPI, url: string): Omit<ScrapedContent, 'url' | 'contentType'> {
+  private extractArticleContent(document: Document, url: string): Omit<ScrapedContent, 'url' | 'contentType'> {
     // Extract title (multiple fallback strategies)
-    const title = this.extractTitle($)
+    const title = this.extractTitle(document)
     
     // Extract meta description
-    const description = this.extractDescription($)
+    const description = this.extractDescription(document)
     
     // Extract main content
-    const content = this.extractMainContent($)
+    const content = this.extractMainContent(document)
     
     // Extract additional metadata
-    const author = this.extractAuthor($)
-    const publishDate = this.extractPublishDate($)
-    const siteName = this.extractSiteName($)
-    const language = this.extractLanguage($)
-    const tags = this.extractTags($)
+    const author = this.extractAuthor(document)
+    const publishDate = this.extractPublishDate(document)
+    const siteName = this.extractSiteName(document)
+    const language = this.extractLanguage(document)
+    const tags = this.extractTags(document)
     
     const urlObj = new URL(url)
     
@@ -167,18 +168,18 @@ export class WebScraper {
     }
   }
 
-  private extractVideoContent($: cheerio.CheerioAPI, url: string): Omit<ScrapedContent, 'url' | 'contentType'> {
-    const title = this.extractTitle($)
-    const description = this.extractDescription($)
+  private extractVideoContent(document: Document, url: string): Omit<ScrapedContent, 'url' | 'contentType'> {
+    const title = this.extractTitle(document)
+    const description = this.extractDescription(document)
     
     // For videos, try to extract video-specific metadata
     let content = description
     
     // YouTube specific
     if (url.includes('youtube.com') || url.includes('youtu.be')) {
-      const videoDescription = $('#meta-contents #description-text')?.text() || 
-                              $('[data-testid="video-description"]')?.text() ||
-                              $('.video-description')?.text()
+      const videoDescription = document.querySelector('#meta-contents #description-text')?.textContent || 
+                              document.querySelector('[data-testid="video-description"]')?.textContent ||
+                              document.querySelector('.video-description')?.textContent
       if (videoDescription) {
         content = videoDescription
       }
@@ -186,7 +187,8 @@ export class WebScraper {
     
     // Bilibili specific  
     if (url.includes('bilibili.com')) {
-      const videoIntro = $('.video-desc .intro')?.text() || $('.video-info .desc')?.text()
+      const videoIntro = document.querySelector('.video-desc .intro')?.textContent || 
+                        document.querySelector('.video-info .desc')?.textContent
       if (videoIntro) {
         content = videoIntro
       }
@@ -199,16 +201,16 @@ export class WebScraper {
       title: this.cleanText(title),
       description: this.cleanText(description),
       content: this.cleanText(content, this.options.maxContentLength),
-      siteName: this.extractSiteName($),
-      language: this.extractLanguage($),
+      siteName: this.extractSiteName(document),
+      language: this.extractLanguage(document),
       wordCount: this.countWords(content)
     }
   }
 
-  private extractPdfContent($: cheerio.CheerioAPI, url: string): Omit<ScrapedContent, 'url' | 'contentType'> {
+  private extractPdfContent(document: Document, url: string): Omit<ScrapedContent, 'url' | 'contentType'> {
     // For PDFs, we can only extract metadata from the page that links to it
-    const title = this.extractTitle($) || url.split('/').pop()?.replace('.pdf', '') || 'PDF Document'
-    const description = this.extractDescription($) || 'PDF document'
+    const title = this.extractTitle(document) || url.split('/').pop()?.replace('.pdf', '') || 'PDF Document'
+    const description = this.extractDescription(document) || 'PDF document'
     
     const urlObj = new URL(url)
     
@@ -221,9 +223,9 @@ export class WebScraper {
     }
   }
 
-  private extractImageContent($: cheerio.CheerioAPI, url: string): Omit<ScrapedContent, 'url' | 'contentType'> {
-    const title = this.extractTitle($) || url.split('/').pop() || 'Image'
-    const description = this.extractDescription($) || 'Image content'
+  private extractImageContent(document: Document, url: string): Omit<ScrapedContent, 'url' | 'contentType'> {
+    const title = this.extractTitle(document) || url.split('/').pop() || 'Image'
+    const description = this.extractDescription(document) || 'Image content'
     
     const urlObj = new URL(url)
     
@@ -236,43 +238,45 @@ export class WebScraper {
     }
   }
 
-  private extractGenericContent($: cheerio.CheerioAPI, url: string): Omit<ScrapedContent, 'url' | 'contentType'> {
+  private extractGenericContent(document: Document, url: string): Omit<ScrapedContent, 'url' | 'contentType'> {
     const urlObj = new URL(url)
     
     return {
       domain: urlObj.hostname,
-      title: this.cleanText(this.extractTitle($)),
-      description: this.cleanText(this.extractDescription($)),
-      content: this.cleanText(this.extractMainContent($), this.options.maxContentLength),
-      siteName: this.extractSiteName($),
-      language: this.extractLanguage($),
-      wordCount: this.countWords(this.extractMainContent($))
+      title: this.cleanText(this.extractTitle(document)),
+      description: this.cleanText(this.extractDescription(document)),
+      content: this.cleanText(this.extractMainContent(document), this.options.maxContentLength),
+      siteName: this.extractSiteName(document),
+      language: this.extractLanguage(document),
+      wordCount: this.countWords(this.extractMainContent(document))
     }
   }
 
-  private extractTitle($: cheerio.CheerioAPI): string {
+  private extractTitle(document: Document): string {
     // Try multiple strategies for title extraction
-    return $('meta[property="og:title"]').attr('content') ||
-           $('meta[name="twitter:title"]').attr('content') ||
-           $('title').text() ||
-           $('h1').first().text() ||
-           $('h2').first().text() ||
+    return document.querySelector('meta[property="og:title"]')?.getAttribute('content') ||
+           document.querySelector('meta[name="twitter:title"]')?.getAttribute('content') ||
+           document.title ||
+           document.querySelector('h1')?.textContent ||
+           document.querySelector('h2')?.textContent ||
            'Untitled'
   }
 
-  private extractDescription($: cheerio.CheerioAPI): string {
-    return $('meta[property="og:description"]').attr('content') ||
-           $('meta[name="twitter:description"]').attr('content') ||
-           $('meta[name="description"]').attr('content') ||
-           $('meta[property="description"]').attr('content') ||
+  private extractDescription(document: Document): string {
+    return document.querySelector('meta[property="og:description"]')?.getAttribute('content') ||
+           document.querySelector('meta[name="twitter:description"]')?.getAttribute('content') ||
+           document.querySelector('meta[name="description"]')?.getAttribute('content') ||
+           document.querySelector('meta[property="description"]')?.getAttribute('content') ||
            'No description available'
   }
 
-  private extractMainContent($: cheerio.CheerioAPI): string {
-    // Remove unwanted elements
-    $('script, style, nav, header, footer, aside, .sidebar, .navigation, .menu, .ads, .advertisement').remove()
+  private extractMainContent(document: Document): string {
+    // Clone document to avoid modifying original
+    const bodyClone = document.body.cloneNode(true) as HTMLElement
     
-    // Attempting to extract main content
+    // Remove unwanted elements
+    const unwantedSelectors = 'script, style, nav, header, footer, aside, .sidebar, .navigation, .menu, .ads, .advertisement'
+    bodyClone.querySelectorAll(unwantedSelectors).forEach(el => el.remove())
     
     // Try common content selectors (in order of preference)
     const contentSelectors = [
@@ -289,7 +293,6 @@ export class WebScraper {
       '.container .content',
       '#content',
       '#main',
-      // Add some common blog/article selectors
       '.article',
       '.blog-post',
       '.tutorial-content',
@@ -298,39 +301,36 @@ export class WebScraper {
     ]
     
     for (const selector of contentSelectors) {
-      const element = $(selector).first()
-      if (element.length > 0) {
-        const text = element.text().trim()
+      const element = document.querySelector(selector)
+      if (element) {
+        const text = element.textContent?.trim() || ''
         if (text.length > 200) { // Only use if substantial content
           return text
         }
       }
     }
     
-    // Fallback: extract from body, removing common non-content elements
-    // Using fallback: extracting from body
-    const bodyClone = $('body').clone()
-    bodyClone.find('script, style, nav, header, footer, aside, .sidebar, .navigation, .menu, .ads, .advertisement, .comments, .social-share').remove()
-    const bodyText = bodyClone.text().trim()
-    return bodyText
+    // Fallback: extract from cloned body
+    bodyClone.querySelectorAll('.comments, .social-share').forEach(el => el.remove())
+    return bodyClone.textContent?.trim() || ''
   }
 
-  private extractAuthor($: cheerio.CheerioAPI): string | undefined {
-    const author = $('meta[name="author"]').attr('content') ||
-                  $('meta[property="article:author"]').attr('content') ||
-                  $('.author').first().text() ||
-                  $('.byline').first().text() ||
-                  $('[rel="author"]').first().text()
+  private extractAuthor(document: Document): string | undefined {
+    const author = document.querySelector('meta[name="author"]')?.getAttribute('content') ||
+                  document.querySelector('meta[property="article:author"]')?.getAttribute('content') ||
+                  document.querySelector('.author')?.textContent ||
+                  document.querySelector('.byline')?.textContent ||
+                  document.querySelector('[rel="author"]')?.textContent
     
-    return author ? author.trim() : undefined
+    return author?.trim() || undefined
   }
 
-  private extractPublishDate($: cheerio.CheerioAPI): string | undefined {
-    const dateStr = $('meta[property="article:published_time"]').attr('content') ||
-                   $('meta[name="publishdate"]').attr('content') ||
-                   $('time[datetime]').first().attr('datetime') ||
-                   $('.date').first().text() ||
-                   $('.published').first().text()
+  private extractPublishDate(document: Document): string | undefined {
+    const dateStr = document.querySelector('meta[property="article:published_time"]')?.getAttribute('content') ||
+                   document.querySelector('meta[name="publishdate"]')?.getAttribute('content') ||
+                   document.querySelector('time[datetime]')?.getAttribute('datetime') ||
+                   document.querySelector('.date')?.textContent ||
+                   document.querySelector('.published')?.textContent
     
     if (!dateStr) return undefined
     
@@ -342,26 +342,28 @@ export class WebScraper {
     }
   }
 
-  private extractSiteName($: cheerio.CheerioAPI): string | undefined {
-    return $('meta[property="og:site_name"]').attr('content') ||
-           $('meta[name="application-name"]').attr('content')
+  private extractSiteName(document: Document): string | undefined {
+    return document.querySelector('meta[property="og:site_name"]')?.getAttribute('content') ||
+           document.querySelector('meta[name="application-name"]')?.getAttribute('content') ||
+           undefined
   }
 
-  private extractLanguage($: cheerio.CheerioAPI): string | undefined {
-    return $('html').attr('lang') ||
-           $('meta[http-equiv="content-language"]').attr('content')
+  private extractLanguage(document: Document): string | undefined {
+    return document.documentElement.getAttribute('lang') ||
+           document.querySelector('meta[http-equiv="content-language"]')?.getAttribute('content') ||
+           undefined
   }
 
-  private extractTags($: cheerio.CheerioAPI): string[] | undefined {
-    const keywords = $('meta[name="keywords"]').attr('content')
+  private extractTags(document: Document): string[] | undefined {
+    const keywords = document.querySelector('meta[name="keywords"]')?.getAttribute('content')
     if (keywords) {
       return keywords.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0)
     }
     
     // Try to extract from article tags or categories
     const tags: string[] = []
-    $('.tag, .category, .label').each((_, element) => {
-      const tagText = $(element).text().trim()
+    document.querySelectorAll('.tag, .category, .label').forEach(element => {
+      const tagText = element.textContent?.trim()
       if (tagText) {
         tags.push(tagText)
       }

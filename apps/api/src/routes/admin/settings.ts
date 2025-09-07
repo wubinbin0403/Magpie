@@ -140,7 +140,8 @@ function createAdminSettingsRouter(database = db) {
 
       // Update AI settings
       if (updates.ai) {
-        if (updates.ai.apiKey !== undefined && updates.ai.apiKey !== '***CONFIGURED***') {
+        // Only update API key if it's explicitly provided and not a mask/placeholder
+        if ('apiKey' in updates.ai && updates.ai.apiKey !== undefined && updates.ai.apiKey !== '' && updates.ai.apiKey !== '***CONFIGURED***') {
           await setSetting('openai_api_key', updates.ai.apiKey)
         }
         if (updates.ai.baseUrl !== undefined) {

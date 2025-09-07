@@ -473,6 +473,18 @@ async function startServer() {
     // Initialize database (run migrations)
     await initializeDatabase()
     
+    // Generate initial static files (SEO files) on startup
+    if (process.env.NODE_ENV === 'production') {
+      const { generateAllStaticFiles } = await import('./services/static-generator.js')
+      try {
+        await generateAllStaticFiles()
+        console.log('✅ Initial static files generated successfully')
+      } catch (error) {
+        console.error('⚠️  Failed to generate initial static files:', error)
+        // Don't fail server startup - static files can be regenerated later
+      }
+    }
+    
     console.log(`Starting Magpie API server on port ${port}`)
     
     serve({
@@ -485,6 +497,26 @@ async function startServer() {
     console.error('Failed to start server:', error)
     process.exit(1)
   }
+}
+
+// Graceful shutdown handling
+process.on('SIGTERM', gracefulShutdown)
+process.on('SIGINT', gracefulShutdown)
+
+async function gracefulShutdown(signal: string) {
+  console.log(`\n${signal} signal received: closing database connection and shutting down gracefully`)
+  
+  try {
+    // Close database connection
+    const { closeDatabase } = await import('./db/index.js')
+    closeDatabase()
+    console.log('✅ Database connection closed')
+  } catch (error) {
+    console.error('❌ Error closing database:', error)
+  }
+  
+  // Exit process
+  process.exit(0)
 }
 
 // Start the server
