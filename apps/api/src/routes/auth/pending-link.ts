@@ -7,7 +7,6 @@ import { sendSuccess, sendError, notFound } from '../../utils/response.js'
 import { idParamSchema } from '../../utils/validation.js'
 import { requireApiTokenOrAdminSession, logOperation } from '../../middleware/auth.js'
 import type { PendingLinkResponse } from '@magpie/shared'
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 
 // Helper function to get unified auth data
 function getAuthData(c: any) {

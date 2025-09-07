@@ -2,13 +2,12 @@ import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
 import { db } from '../../db/index.js'
 import { users } from '../../db/schema.js'
-import { eq, and } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import { sendSuccess, sendError, notFound } from '../../utils/response.js'
 import { adminLoginSchema, adminInitSchema } from '../../utils/validation.js'
 import { hashPassword, verifyPassword, createAdminJWT, getClientIp } from '../../utils/auth.js'
 import { requireAdmin } from '../../middleware/admin.js'
 import type { AdminLoginResponse } from '@magpie/shared'
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 
 // Create admin auth router with optional database dependency injection
 function createAdminAuthRouter(database = db) {

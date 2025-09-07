@@ -26,7 +26,7 @@ export class ReadabilityScraper {
   async scrape(url: string): Promise<ScrapedContent> {
     try {
       // Validate URL
-      const parsedUrl = new URL(url)
+      new URL(url)
       
       // Fetch the webpage
       const html = await this.fetchHtml(url)

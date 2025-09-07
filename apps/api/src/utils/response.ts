@@ -1,10 +1,10 @@
 import type { Context } from 'hono'
-import type { ApiResponse, SuccessResponse, ErrorResponse } from '@magpie/shared'
+import type { SuccessResponse, ErrorResponse } from '@magpie/shared'
 
 export function success<T = any>(
   data: T,
   message?: string,
-  status: number = 200
+  _status: number = 200
 ): SuccessResponse<T> {
   return {
     success: true,
@@ -18,7 +18,7 @@ export function error(
   code: string,
   message: string,
   details?: any,
-  status: number = 400
+  _status: number = 400
 ): ErrorResponse {
   return {
     success: false,

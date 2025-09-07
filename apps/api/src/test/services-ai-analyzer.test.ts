@@ -1,9 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { AIAnalyzer, createAIAnalyzer, type AIAnalysisResult } from '../services/ai-analyzer.js'
+import { AIAnalyzer, createAIAnalyzer } from '../services/ai-analyzer.js'
 import type { ScrapedContent } from '../services/web-scraper.js'
 
 // Mock OpenAI
-const mockOpenAI = vi.fn()
 const mockCreate = vi.fn()
 
 vi.mock('openai', () => {

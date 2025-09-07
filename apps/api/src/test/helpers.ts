@@ -1,12 +1,11 @@
 import { testDb, testDrizzle } from './setup.js';
-import { users, links } from '../db/schema.js';
+import { users } from '../db/schema.js';
 import { seedDatabase } from '../db/seed.js';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import publicLinks from '../routes/public/links.js';
 import searchRoutes from '../routes/public/search.js';
 import authAddLinkRoutes from '../routes/auth/add-link.js';
-import { getSettings } from '../utils/settings.js';
 
 /**
  * Seed test database using the existing seed function
@@ -199,7 +198,7 @@ export async function testApp() {
 /**
  * Get authentication headers for testing
  */
-export async function getAuthHeaders(app?: any) {
+export async function getAuthHeaders(_app?: any) {
   // Mock auth headers for testing
   return {
     'Authorization': 'Bearer test-token',

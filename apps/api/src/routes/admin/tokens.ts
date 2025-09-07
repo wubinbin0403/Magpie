@@ -7,8 +7,6 @@ import { sendSuccess, sendError, notFound } from '../../utils/response.js'
 import { tokensQuerySchema, createTokenSchema, idParamSchema } from '../../utils/validation.js'
 import { requireAdmin } from '../../middleware/admin.js'
 import crypto from 'crypto'
-import type { ApiToken, TokensResponse, AdminTokensQuery } from '@magpie/shared'
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 
 // Create admin tokens router with optional database dependency injection
 function createAdminTokensRouter(database = db) {

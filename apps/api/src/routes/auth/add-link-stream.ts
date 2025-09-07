@@ -3,7 +3,6 @@ import { zValidator } from '@hono/zod-validator'
 import { streamSSE } from 'hono/streaming'
 import { db } from '../../db/index.js'
 import { links } from '../../db/schema.js'
-import { sendError } from '../../utils/response.js'
 import { addLinkBodySchema, extractDomain } from '../../utils/validation.js'
 import { requireApiTokenOrAdminSession, logOperation } from '../../middleware/auth.js'
 import { webScraper } from '../../services/web-scraper.js'
@@ -12,7 +11,6 @@ import { createAIAnalyzer, type AIAnalysisResult } from '../../services/ai-analy
 import { getSettings } from '../../utils/settings.js'
 import { buildLinkData } from '../../utils/link-data-builder.js'
 import type { StreamStatusMessage } from '@magpie/shared'
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 
 // Helper function to get unified auth data
 function getAuthData(c: any) {

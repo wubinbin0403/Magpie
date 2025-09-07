@@ -8,7 +8,6 @@ import { idParamSchema } from '../../utils/validation.js'
 import { requireApiToken, logOperation } from '../../middleware/auth.js'
 import { triggerStaticGeneration } from '../../services/static-generator.js'
 import { getUnifiedAuthData } from '../../types/hono-context.js'
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 
 // Create delete link router with optional database dependency injection
 function createDeleteLinkRouter(database = db) {

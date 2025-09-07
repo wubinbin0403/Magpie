@@ -3,11 +3,10 @@ import { testApp, getAuthHeaders } from './helpers.js'
 
 describe('Tag Limit Validation (Maximum 5 Tags)', () => {
   let app: any
-  let authHeaders: Record<string, string>
 
   beforeEach(async () => {
     app = await testApp()
-    authHeaders = await getAuthHeaders(app)
+    await getAuthHeaders(app)
   })
 
   afterEach(() => {

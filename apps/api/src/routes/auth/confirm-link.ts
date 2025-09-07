@@ -8,7 +8,6 @@ import { idParamSchema, confirmLinkSchema } from '../../utils/validation.js'
 import { requireApiTokenOrAdminSession, logOperation } from '../../middleware/auth.js'
 import { triggerStaticGeneration } from '../../services/static-generator.js'
 import type { ConfirmLinkResponse } from '@magpie/shared'
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 
 // Helper function to get unified auth data
 function getAuthData(c: any) {

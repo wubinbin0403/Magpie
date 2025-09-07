@@ -6,10 +6,8 @@ import { eq } from 'drizzle-orm'
 import { sendSuccess, sendError } from '../../utils/response.js'
 import { updateSettingsSchema } from '../../utils/validation.js'
 import { requireAdmin } from '../../middleware/admin.js'
-import { getSettings, setSetting } from '../../utils/settings.js'
+import { getSettings } from '../../utils/settings.js'
 import { createAIAnalyzer } from '../../services/ai-analyzer.js'
-import type { SettingsResponse, UpdateSettingsRequest, AITestRequest, AITestResponseData } from '@magpie/shared'
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 
 // Create admin settings router with optional database dependency injection
 function createAdminSettingsRouter(database = db) {
@@ -34,16 +32,6 @@ function createAdminSettingsRouter(database = db) {
     return '***CONFIGURED***'
   }
 
-  // Helper function to get setting value by key
-  async function getSetting(key: string): Promise<string | null> {
-    const result = await database
-      .select()
-      .from(settings)
-      .where(eq(settings.key, key))
-      .limit(1)
-    
-    return result.length > 0 ? result[0].value : null
-  }
 
   // Helper function to set setting value
   async function setSetting(key: string, value: string, type: 'string' | 'number' | 'boolean' | 'json' = 'string'): Promise<void> {

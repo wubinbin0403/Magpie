@@ -5,7 +5,6 @@ import { db } from '../../db/index.js'
 import { links } from '../../db/schema.js'
 import { eq, sql, and } from 'drizzle-orm'
 import { sendSuccess, sendError } from '../../utils/response.js'
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 
 // Validation schema for domain query
 const domainQuerySchema = z.object({

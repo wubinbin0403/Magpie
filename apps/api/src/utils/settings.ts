@@ -1,7 +1,6 @@
 import { db } from '../db/index.js'
 import { settings } from '../db/schema.js'
 import { eq } from 'drizzle-orm'
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 
 // Default system settings
 const DEFAULT_SETTINGS = {
@@ -25,7 +24,7 @@ const DEFAULT_SETTINGS = {
 }
 
 // Get all settings as a key-value object
-export async function getSettings(database: BetterSQLite3Database<any> = db): Promise<Record<string, any>> {
+export async function getSettings(database: any = db): Promise<Record<string, any>> {
   try {
     const settingsRows = await database.select().from(settings)
     
@@ -65,7 +64,7 @@ export async function getSettings(database: BetterSQLite3Database<any> = db): Pr
 }
 
 // Get a single setting value
-export async function getSetting(key: string, database: BetterSQLite3Database<any> = db): Promise<any> {
+export async function getSetting(key: string, database: any = db): Promise<any> {
   try {
     const result = await database
       .select()
@@ -100,7 +99,7 @@ export async function setSetting(
   value: any,
   type: 'string' | 'number' | 'boolean' | 'json' = 'string',
   description?: string,
-  database: BetterSQLite3Database<any> = db
+  database: any = db
 ): Promise<void> {
   const now = Math.floor(Date.now() / 1000)
   
@@ -148,17 +147,15 @@ export async function setSetting(
 // Update multiple settings at once
 export async function updateSettings(
   settingsData: Record<string, { value: any; type?: string; description?: string }>,
-  database: BetterSQLite3Database<any> = db
+  database: any = db
 ): Promise<void> {
-  const now = Math.floor(Date.now() / 1000)
-  
   for (const [key, data] of Object.entries(settingsData)) {
     await setSetting(key, data.value, data.type as any, data.description, database)
   }
 }
 
 // Initialize default settings
-export async function initializeSettings(database: BetterSQLite3Database<any> = db): Promise<void> {
+export async function initializeSettings(database: any = db): Promise<void> {
   const now = Math.floor(Date.now() / 1000)
   
   for (const [key, value] of Object.entries(DEFAULT_SETTINGS)) {

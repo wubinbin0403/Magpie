@@ -1,10 +1,9 @@
 import { db } from '../db/index.js'
 import { links, settings } from '../db/schema.js'
-import { eq, and, or, desc, isNotNull, sql } from 'drizzle-orm'
+import { eq, and, or, desc, isNotNull } from 'drizzle-orm'
 import { promises as fs } from 'fs'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const STATIC_DIR = join(__dirname, '../../static')
@@ -26,7 +25,7 @@ async function ensureStaticDir() {
 }
 
 // Get site configuration from settings
-async function getSiteConfig(database: BetterSQLite3Database<any> = db): Promise<SiteConfig> {
+async function getSiteConfig(database: any = db): Promise<SiteConfig> {
   try {
     const siteSettings = await database
       .select({ key: settings.key, value: settings.value })
@@ -37,7 +36,7 @@ async function getSiteConfig(database: BetterSQLite3Database<any> = db): Promise
       ))
 
     const configMap = new Map()
-    siteSettings.forEach(setting => {
+    siteSettings.forEach((setting: any) => {
       configMap.set(setting.key, setting.value)
     })
 
@@ -60,7 +59,7 @@ async function getSiteConfig(database: BetterSQLite3Database<any> = db): Promise
 }
 
 // Get published links for sitemap and RSS
-async function getPublishedLinks(database: BetterSQLite3Database<any> = db) {
+async function getPublishedLinks(database: any = db) {
   return database
     .select({
       id: links.id,
@@ -81,7 +80,7 @@ async function getPublishedLinks(database: BetterSQLite3Database<any> = db) {
 }
 
 // Generate sitemap.xml
-async function generateSitemap(database: BetterSQLite3Database<any> = db) {
+async function generateSitemap(database: any = db) {
   const siteConfig = await getSiteConfig(database)
   const publishedLinks = await getPublishedLinks(database)
 
@@ -96,7 +95,7 @@ async function generateSitemap(database: BetterSQLite3Database<any> = db) {
     <priority>1.0</priority>
   </url>`
 
-  publishedLinks.forEach(link => {
+  publishedLinks.forEach((link: any) => {
     const publishedDate = link.publishedAt ? new Date(link.publishedAt * 1000).toISOString() : new Date().toISOString()
     xml += `
   <url>
@@ -116,7 +115,7 @@ async function generateSitemap(database: BetterSQLite3Database<any> = db) {
 }
 
 // Generate RSS feed
-async function generateRSSFeed(database: BetterSQLite3Database<any> = db) {
+async function generateRSSFeed(database: any = db) {
   const siteConfig = await getSiteConfig(database)
   const publishedLinks = await getPublishedLinks(database)
 
@@ -136,7 +135,7 @@ async function generateRSSFeed(database: BetterSQLite3Database<any> = db) {
     <atom:link href="${siteConfig.baseUrl}/feed.xml" rel="self" type="application/rss+xml"/>
     <generator>Magpie Static Generator</generator>`
 
-  recentLinks.forEach(link => {
+  recentLinks.forEach((link: any) => {
     const publishedDate = link.publishedAt ? new Date(link.publishedAt * 1000).toUTCString() : new Date().toUTCString()
     const tags = link.finalTags ? JSON.parse(link.finalTags) : []
     
@@ -180,7 +179,7 @@ async function generateRSSFeed(database: BetterSQLite3Database<any> = db) {
 }
 
 // Generate JSON feed
-async function generateJSONFeed(database: BetterSQLite3Database<any> = db) {
+async function generateJSONFeed(database: any = db) {
   const siteConfig = await getSiteConfig(database)
   const publishedLinks = await getPublishedLinks(database)
 
@@ -194,7 +193,7 @@ async function generateJSONFeed(database: BetterSQLite3Database<any> = db) {
     feed_url: `${siteConfig.baseUrl}/feed.json`,
     description: siteConfig.description,
     language: 'zh-CN',
-    items: recentLinks.map(link => {
+    items: recentLinks.map((link: any) => {
       const tags = link.finalTags ? JSON.parse(link.finalTags) : []
       
       return {
@@ -216,7 +215,7 @@ async function generateJSONFeed(database: BetterSQLite3Database<any> = db) {
 }
 
 // Generate all static files
-export async function generateAllStaticFiles(database: BetterSQLite3Database<any> = db) {
+export async function generateAllStaticFiles(database: any = db) {
   try {
     console.log('Starting static file generation...')
     
@@ -234,7 +233,7 @@ export async function generateAllStaticFiles(database: BetterSQLite3Database<any
 }
 
 // Background task wrapper for async generation
-export function triggerStaticGeneration(database: BetterSQLite3Database<any> = db) {
+export function triggerStaticGeneration(database: any = db) {
   // In test environment, run synchronously to avoid database connection issues
   if (process.env.NODE_ENV === 'test') {
     console.log('Static file generation triggered in test mode (sync)')

@@ -4,7 +4,6 @@ import { testDrizzle } from './setup.js'
 import { links, apiTokens } from '../db/schema.js'
 import { eq } from 'drizzle-orm'
 import { createConfirmLinkRouter } from '../routes/auth/confirm-link.js'
-import type { ConfirmLinkResponse } from '@magpie/shared'
 
 describe('Auth Confirm Link API', () => {
   let app: any
@@ -289,7 +288,7 @@ describe('Auth Confirm Link API', () => {
         },
         body: JSON.stringify(confirmData)
       })
-      const data = await response.json() as any
+      await response.json() as any
 
       expect(response.status).toBe(200)
 

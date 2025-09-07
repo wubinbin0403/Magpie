@@ -4,7 +4,6 @@ import { links } from '../../db/schema.js'
 import { eq, desc, and, sql } from 'drizzle-orm'
 import { sendSuccess, sendError } from '../../utils/response.js'
 import type { StatsResponse, ActivityItem, TagStats, DomainStats, MonthlyStats } from '@magpie/shared'
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 
 // Create stats router with optional database dependency injection
 export function createStatsRouter(database = db) {

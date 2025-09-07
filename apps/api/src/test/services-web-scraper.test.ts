@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { WebScraper, createWebScraper, type ScrapedContent } from '../services/web-scraper.js'
+import { WebScraper, createWebScraper } from '../services/web-scraper.js'
 
 // Mock fetch for testing
 const mockFetch = vi.fn()

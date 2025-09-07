@@ -3,7 +3,6 @@ import { clearTestData } from './helpers.js'
 import { testDrizzle } from './setup.js'
 import { links } from '../db/schema.js'
 import { createStatsRouter } from '../routes/public/stats.js'
-import type { StatsResponse } from '@magpie/shared'
 
 describe('Public Stats API', () => {
   let app: any

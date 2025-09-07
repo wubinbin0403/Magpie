@@ -6,7 +6,6 @@ import { eq } from 'drizzle-orm'
 import { sendSuccess, sendError, notFound } from '../../utils/response.js'
 import { idParamSchema, updateLinkSchema } from '../../utils/validation.js'
 import { requireApiToken, logOperation } from '../../middleware/auth.js'
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 
 // Create edit link router with optional database dependency injection
 function createEditLinkRouter(database = db) {

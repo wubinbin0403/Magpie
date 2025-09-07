@@ -3,7 +3,6 @@ import { db } from '../../db/index.js'
 import { categories, links } from '../../db/schema.js'
 import { eq, asc, sql } from 'drizzle-orm'
 import { sendSuccess, sendError } from '../../utils/response.js'
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 
 // Create public categories router with optional database dependency injection
 function createPublicCategoriesRouter(database = db) {

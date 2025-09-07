@@ -2,12 +2,11 @@ import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
 import { db } from '../../db/index.js'
 import { links } from '../../db/schema.js'
-import { eq, desc, asc, like, and, or, count, sql, isNull } from 'drizzle-orm'
-import { sendSuccess, sendError, notFound, badRequest } from '../../utils/response.js'
+import { eq, desc, asc, like, and, or, count, sql } from 'drizzle-orm'
+import { sendSuccess, sendError, notFound } from '../../utils/response.js'
 import { linksQuerySchema, idParamSchema, buildDateFilter } from '../../utils/validation.js'
 import { getSettings } from '../../utils/settings.js'
 import type { LinksResponse, Link, Pagination } from '@magpie/shared'
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 
 // Create public links router with optional database dependency injection
 function createLinksRouter(database = db) {

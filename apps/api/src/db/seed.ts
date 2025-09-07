@@ -2,11 +2,8 @@
 
 import { db } from './index.js';
 import { settings, apiTokens, links, categories } from './schema.js';
-import * as schema from './schema.js';
-import { eq, sql } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import crypto from 'crypto';
-import type { DrizzleD1Database } from 'drizzle-orm/d1';
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 
 const DEFAULT_SETTINGS = [
   // Site basic information
@@ -607,8 +604,7 @@ async function seedDatabase(database = db, includeDevData = false) {
         const userCategory = link.status === 'published' ? (link.userCategory || link.aiCategory) : null;
         const userTags = link.status === 'published' ? (link.userTags || link.aiTags) : null;
         
-        // Create search text for optimization
-        const searchText = `${link.title} ${link.aiSummary} ${link.aiCategory} ${link.aiTags}`.toLowerCase();
+        // Create search text for optimization (currently unused but kept for future search optimization)
         
         // Generate reading time based on content length (estimated)
         const estimatedWordCount = link.aiSummary.split(/\s+/).length * 2; // Multiply by 2 to simulate full article

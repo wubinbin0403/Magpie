@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach, afterEach } from 'vitest'
-import { testApp, mockLinks, mockSettings } from './helpers.js'
+import { testApp } from './helpers.js'
 
 describe('SEO Link Routes (/link/:id)', () => {
   let app: any

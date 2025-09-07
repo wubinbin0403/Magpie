@@ -3,10 +3,9 @@ import { zValidator } from '@hono/zod-validator'
 import { z } from 'zod'
 import { db } from '../../db/index.js'
 import { categories } from '../../db/schema.js'
-import { eq, asc, desc, sql, or } from 'drizzle-orm'
+import { eq, asc, sql } from 'drizzle-orm'
 import { sendSuccess, sendError, notFound } from '../../utils/response.js'
 import { requireAdmin } from '../../middleware/admin.js'
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 
 // Validation schemas
 const createCategorySchema = z.object({

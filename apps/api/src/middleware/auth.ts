@@ -2,7 +2,7 @@ import { Context, Next } from 'hono';
 import { db } from '../db/index.js';
 import { apiTokens, users, operationLogs } from '../db/schema.js';
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
-import { eq, and } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import crypto from 'crypto';
 import type { ApiToken, User } from '../db/schema.js';
 import { verifyAdminJWT } from '../utils/auth.js';

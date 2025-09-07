@@ -2,12 +2,11 @@ import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
 import { db } from '../../db/index.js'
 import { links } from '../../db/schema.js'
-import { eq, inArray, and, ne } from 'drizzle-orm'
+import { eq, inArray } from 'drizzle-orm'
 import { sendSuccess, sendError } from '../../utils/response.js'
 import { batchOperationSchema } from '../../utils/validation.js'
 import { requireAdmin } from '../../middleware/admin.js'
 import { triggerStaticGeneration } from '../../services/static-generator.js'
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 
 // Create admin batch operations router with optional database dependency injection
 function createAdminBatchRouter(database = db) {

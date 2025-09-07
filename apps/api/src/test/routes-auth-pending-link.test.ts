@@ -2,9 +2,8 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { clearTestData } from './helpers.js'
 import { testDrizzle } from './setup.js'
 import { links, apiTokens } from '../db/schema.js'
-import { eq } from 'drizzle-orm'
+// import { eq } from 'drizzle-orm'  // Unused
 import { createPendingLinkRouter } from '../routes/auth/pending-link.js'
-import type { PendingLinkResponse } from '@magpie/shared'
 
 describe('Auth Pending Link API', () => {
   let app: any

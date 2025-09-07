@@ -2,13 +2,12 @@ import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
 import { db } from '../../db/index.js'
 import { links } from '../../db/schema.js'
-import { eq, desc, asc, count, and, or, like, inArray } from 'drizzle-orm'
+import { eq, desc, asc, count, and, or, like } from 'drizzle-orm'
 import { sendSuccess, sendError, notFound } from '../../utils/response.js'
 import { adminLinksQuerySchema, idParamSchema, updateLinkSchema } from '../../utils/validation.js'
 import { requireAdmin } from '../../middleware/admin.js'
 import { triggerStaticGeneration } from '../../services/static-generator.js'
-import type { AdminLink, AdminLinksResponse } from '@magpie/shared'
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
+import type { AdminLink } from '@magpie/shared'
 
 // Create admin links router with optional database dependency injection
 export function createAdminLinksRouter(database = db) {
