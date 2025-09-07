@@ -293,9 +293,13 @@ docker-compose up -d
 
 ### 4. 配置 API Token
 1. 打开管理界面 `http://localhost:3000/admin`
-2. 登录后进入 Token 管理页面
-3. 创建新的 API Token
-4. 使用该 Token 进行 API 调用
+2. 使用 admin 密码登录管理界面
+3. 在左侧导航栏点击"API Tokens"进入 Token 管理页面
+4. 创建新的 API Token：
+   - 输入 Token 名称（可选，用于标识用途）
+   - 点击"创建 Token"按钮
+   - **重要**: 新创建的 Token 只显示一次，请立即复制保存
+5. 使用该 Token 进行 API 调用
 
 ### 5. 测试 API
 ```bash
@@ -430,8 +434,9 @@ const response = await api.getLinks({ page: 1, limit: 10, category: 'tech' })
 **2. API Token 认证**（用于扩展和外部调用）
 - 长期有效的 API Token（`mgp_` 前缀）
 - 用于浏览器扩展和外部 API 调用
-- 支持不同权限级别：read、write、admin
+- 支持命名管理，方便识别不同用途的 Token
 - 可在管理界面创建和撤销
+- Token 采用安全掩码显示（如：`mgp_***f456`），仅创建时完整显示
 
 ### 权限级别
 - **公开访问**：主页、搜索页面

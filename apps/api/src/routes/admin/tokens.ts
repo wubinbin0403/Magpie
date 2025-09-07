@@ -29,9 +29,8 @@ function createAdminTokensRouter(database = db) {
   function maskToken(token: string): string {
     if (!token || token.length < 10) return token
     const prefix = token.substring(0, 4) // Keep 'mgp_' prefix
-    const masked = '*'.repeat(Math.max(0, token.length - 8))
     const suffix = token.substring(Math.max(0, token.length - 4))
-    return prefix + masked + suffix
+    return prefix + '***' + suffix
   }
 
   // GET /api/admin/tokens - Get token list
