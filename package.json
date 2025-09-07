@@ -1,6 +1,6 @@
 {
   "name": "magpie",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "A lightweight blog system for collecting and displaying interesting links",
   "private": true,
   "workspaces": [
@@ -21,7 +21,11 @@
     "db:studio": "pnpm --filter api db:studio",
     "db:reset": "pnpm --filter api db:reset",
     "docker:build": "scripts/run-docker.sh build",
-    "docker:run": "scripts/run-docker.sh start"
+    "docker:build:dev": "IMAGE_TAG=dev scripts/run-docker.sh build",
+    "docker:run": "scripts/run-docker.sh start",
+    "docker:status": "scripts/run-docker.sh status",
+    "docker:logs": "scripts/run-docker.sh logs",
+    "docker:stop": "scripts/run-docker.sh stop"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^8.42.0",

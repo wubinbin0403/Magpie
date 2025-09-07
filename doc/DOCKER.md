@@ -40,8 +40,12 @@ pnpm docker:run
 
 | 命令 | 功能 | 等价脚本命令 |
 |------|------|------------|
-| `pnpm docker:build` | 构建 Docker 镜像 | `scripts/run-docker.sh build` |
+| `pnpm docker:build` | 智能构建（自动版本管理） | `scripts/run-docker.sh build` |
+| `pnpm docker:build:dev` | 构建开发版本 | `IMAGE_TAG=dev scripts/run-docker.sh build` |
 | `pnpm docker:run` | 启动容器 | `scripts/run-docker.sh start` |
+| `pnpm docker:status` | 查看容器状态 | `scripts/run-docker.sh status` |
+| `pnpm docker:logs` | 查看容器日志 | `scripts/run-docker.sh logs` |
+| `pnpm docker:stop` | 停止容器 | `scripts/run-docker.sh stop` |
 
 ## 🛠️ 脚本命令总览
 
@@ -128,6 +132,88 @@ scripts/run-docker.sh logs
 ```bash
 # 重启容器（保持现有配置）
 scripts/run-docker.sh restart
+```
+
+## 🏷️ 版本管理策略
+
+### 智能标签系统
+
+Magpie 的 Docker 构建系统会自动根据项目状态创建合适的标签：
+
+#### 1. **默认行为** (`pnpm docker:build`)
+```bash
+# 自动读取 package.json 版本并创建多个标签
+pnpm docker:build
+
+# 示例输出:
+# 📋 版本信息:
+#    Package 版本: 1.0.0
+#    Git 信息: master-abc1234
+#    构建标签: latest
+# 🏷️ 构建多个标签: 1.0.0, latest
+# 🎯 主分支检测，添加 stable 标签
+```
+
+这会创建：
+- `magpie:1.0.0` - 精确版本
+- `magpie:latest` - 最新版本  
+- `magpie:stable` - 稳定版本（主分支）
+
+#### 2. **开发版本** (`pnpm docker:build:dev`)
+```bash
+# 在特性分支构建开发版本
+pnpm docker:build:dev
+
+# 创建标签：
+# - magpie:dev
+# - magpie:dev-feature-auth-7f8e9a2
+```
+
+#### 3. **手动版本管理**
+```bash
+# 构建特定版本
+IMAGE_TAG=v1.2.3 pnpm docker:build
+
+# 构建发布候选版本
+IMAGE_TAG=1.2.3-rc.1 pnpm docker:build
+
+# 构建带日期的快照版本
+IMAGE_TAG="snapshot-$(date +%Y%m%d)" pnpm docker:build
+```
+
+### 推荐的版本工作流
+
+#### **日常开发**
+```bash
+# 开发时使用开发版本
+pnpm docker:build:dev
+pnpm docker:run
+```
+
+#### **测试发布**
+```bash
+# 准备发布时更新版本号
+npm version patch  # 或 minor, major
+
+# 构建版本化镜像
+pnpm docker:build
+
+# 测试新版本
+pnpm docker:run
+```
+
+#### **正式发布**
+```bash
+# 在主分支构建稳定版本
+git checkout master
+git merge develop
+
+# 构建生产版本（自动创建 stable 标签）
+pnpm docker:build
+
+# 可选：推送到镜像仓库
+docker tag magpie:1.2.3 your-registry.com/magpie:1.2.3
+docker push your-registry.com/magpie:1.2.3
 ```
 
 ## 📊 镜像信息

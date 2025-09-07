@@ -22,6 +22,25 @@ OPENAI_API_KEY="${OPENAI_API_KEY:-}"
 OPENAI_BASE_URL="${OPENAI_BASE_URL:-}"
 IMAGE_TAG="${IMAGE_TAG:-latest}"
 
+# 版本管理函数
+get_version_from_package() {
+    if [ -f "package.json" ]; then
+        node -p "require('./package.json').version" 2>/dev/null || echo "latest"
+    else
+        echo "latest"
+    fi
+}
+
+get_git_info() {
+    if git rev-parse --git-dir > /dev/null 2>&1; then
+        local branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
+        local commit=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+        echo "${branch}-${commit}"
+    else
+        echo "nogit"
+    fi
+}
+
 # 显示帮助信息
 show_help() {
     cat << EOF
@@ -258,12 +277,44 @@ clean_container() {
 # 构建镜像
 build_image() {
     echo -e "${BLUE}🔨 构建 Docker 镜像...${NC}"
+    
     # Change to parent directory for build context
     cd "$(dirname "$0")/.." || exit 1
-    docker build -t "magpie:$IMAGE_TAG" .
+    
+    local version=$(get_version_from_package)
+    local git_info=$(get_git_info)
+    
+    echo -e "${BLUE}📋 版本信息:${NC}"
+    echo "   Package 版本: $version"
+    echo "   Git 信息: $git_info"
+    echo "   构建标签: $IMAGE_TAG"
+    echo ""
+    
+    # 构建镜像
+    if [ "$IMAGE_TAG" = "latest" ] && [ "$version" != "latest" ]; then
+        # 如果使用 latest 标签但有明确版本，同时构建版本标签
+        echo -e "${BLUE}🏷️  构建多个标签: $version, latest${NC}"
+        docker build -t "magpie:$version" -t "magpie:latest" .
+        
+        # 如果在开发分支，也添加开发标签
+        if echo "$git_info" | grep -q "^master\|^main"; then
+            # 在主分支，添加稳定标签
+            echo -e "${BLUE}🎯 主分支检测，添加 stable 标签${NC}"
+            docker tag "magpie:$version" "magpie:stable"
+        elif ! echo "$git_info" | grep -q "^master\|^main"; then
+            # 在开发分支，添加开发标签
+            echo -e "${BLUE}🚧 开发分支检测，添加 dev-$git_info 标签${NC}"
+            docker tag "magpie:$version" "magpie:dev-$git_info"
+        fi
+    else
+        # 单标签构建
+        docker build -t "magpie:$IMAGE_TAG" .
+    fi
+    
     cd - > /dev/null || exit 1
     echo -e "${GREEN}✅ 镜像构建完成${NC}"
-    docker images magpie:$IMAGE_TAG
+    echo -e "${BLUE}📦 构建的镜像:${NC}"
+    docker images magpie --format "table {{.Repository}}\t{{.Tag}}\t{{.ID}}\t{{.CreatedAt}}\t{{.Size}}" | head -6
 }
 
 # 主函数
