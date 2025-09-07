@@ -73,9 +73,8 @@ describe('NavBar', () => {
     it('should render dropdown menu', () => {
       render(<NavBarWithRouter onSearch={mockOnSearch} />)
       
-      expect(screen.getByText('订阅RSS')).toBeInTheDocument()
-      expect(screen.getByText('关于Magpie')).toBeInTheDocument()
-      expect(screen.getByText('切换颜色')).toBeInTheDocument()
+      expect(screen.getByText('订阅RSS (XML)')).toBeInTheDocument()
+      expect(screen.getByText('订阅Feed (JSON)')).toBeInTheDocument()
     })
   })
 
@@ -304,19 +303,17 @@ describe('NavBar', () => {
     it('should render dropdown menu items with correct styling', () => {
       render(<NavBarWithRouter onSearch={mockOnSearch} />)
       
-      const rssItem = screen.getByText('订阅RSS').closest('a')
-      const aboutItem = screen.getByText('关于Magpie').closest('a')
-      const themeItem = screen.getByText('切换颜色').closest('a')
+      const rssItem = screen.getByText('订阅RSS (XML)').closest('a')
+      const jsonItem = screen.getByText('订阅Feed (JSON)').closest('a')
       
       expect(rssItem).toHaveClass('flex', 'items-center', 'gap-3', 'hover:bg-slate-100')
-      expect(aboutItem).toHaveClass('flex', 'items-center', 'gap-3', 'hover:bg-slate-100')
-      expect(themeItem).toHaveClass('flex', 'items-center', 'gap-3', 'hover:bg-slate-100')
+      expect(jsonItem).toHaveClass('flex', 'items-center', 'gap-3', 'hover:bg-slate-100')
     })
 
     it('should have proper dropdown positioning', () => {
       render(<NavBarWithRouter onSearch={mockOnSearch} />)
       
-      const dropdown = screen.getByText('订阅RSS').closest('.dropdown-content')
+      const dropdown = screen.getByText('订阅RSS (XML)').closest('.dropdown-content')
       expect(dropdown).toHaveClass('dropdown-content')
       
       const dropdownContainer = document.querySelector('.dropdown.dropdown-end')
