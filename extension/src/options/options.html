@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Magpie Extension Options</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <h1>Magpie Extension Settings</h1>
+      <p>Configure your Magpie extension settings</p>
+    </header>
+
+    <main class="main">
+      <div class="form-section">
+        <h2>Configuration</h2>
+        <p class="section-description">Basic configuration options</p>
+        
+        <form id="config-form" class="config-form">
+          <!-- Server URL -->
+          <div class="form-group">
+            <label for="server-url" class="form-label">Server URL</label>
+            <input 
+              type="url" 
+              id="server-url" 
+              name="serverUrl" 
+              class="form-input"
+              placeholder="https://your-magpie-server.com"
+              required
+            >
+            <div class="form-help">The URL of your Magpie server</div>
+          </div>
+
+          <!-- API Token -->
+          <div class="form-group">
+            <label for="api-token" class="form-label">API Token</label>
+            <input 
+              type="password" 
+              id="api-token" 
+              name="apiToken" 
+              class="form-input"
+              placeholder="Your API token"
+              required
+            >
+            <div class="form-help">Your Magpie API token for authentication</div>
+          </div>
+
+          <!-- Test Connection Button -->
+          <div class="form-group">
+            <button type="button" id="test-connection" class="btn btn-secondary">
+              Test Connection
+            </button>
+            <div id="connection-status" class="connection-status hidden"></div>
+          </div>
+
+          <!-- Default Category -->
+          <div class="form-group">
+            <label for="default-category" class="form-label">Default Category</label>
+            <input 
+              type="text" 
+              id="default-category" 
+              name="defaultCategory" 
+              class="form-input"
+              placeholder="未分类"
+            >
+            <div class="form-help">Default category for new links</div>
+          </div>
+
+          <!-- Default Tags -->
+          <div class="form-group">
+            <label for="default-tags" class="form-label">Default Tags</label>
+            <input 
+              type="text" 
+              id="default-tags" 
+              name="defaultTags" 
+              class="form-input"
+              placeholder="tag1, tag2, tag3"
+            >
+            <div class="form-help">Default tags for new links (comma-separated)</div>
+          </div>
+
+          <!-- Auto Publish -->
+          <div class="form-group">
+            <div class="checkbox-group">
+              <input 
+                type="checkbox" 
+                id="auto-publish" 
+                name="autoPublish" 
+                class="form-checkbox"
+              >
+              <label for="auto-publish" class="checkbox-label">
+                Auto-publish links (skip confirmation)
+              </label>
+            </div>
+            <div class="form-help">Automatically publish links without review</div>
+          </div>
+
+          <!-- Submit Button -->
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">
+              Save Settings
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Status Message -->
+      <div id="status-message" class="status-message hidden">
+        <div class="status-content">
+          <span class="status-text">Settings saved successfully!</span>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script type="module" src="options.ts"></script>
+</body>
+</html>
