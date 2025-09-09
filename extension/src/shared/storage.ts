@@ -20,16 +20,12 @@ export class StorageManager {
       const result = await chrome.storage.sync.get([
         StorageKeys.API_TOKEN,
         StorageKeys.SERVER_URL,
-        StorageKeys.DEFAULT_CATEGORY,
-        StorageKeys.DEFAULT_TAGS,
         StorageKeys.AUTO_PUBLISH
       ]);
 
       return {
         apiToken: result[StorageKeys.API_TOKEN] || DEFAULT_CONFIG.apiToken,
         serverUrl: result[StorageKeys.SERVER_URL] || DEFAULT_CONFIG.serverUrl,
-        defaultCategory: result[StorageKeys.DEFAULT_CATEGORY] || DEFAULT_CONFIG.defaultCategory,
-        defaultTags: result[StorageKeys.DEFAULT_TAGS] || DEFAULT_CONFIG.defaultTags,
         autoPublish: result[StorageKeys.AUTO_PUBLISH] ?? DEFAULT_CONFIG.autoPublish
       };
     } catch (error) {
@@ -51,12 +47,7 @@ export class StorageManager {
       if (config.serverUrl !== undefined) {
         dataToSave[StorageKeys.SERVER_URL] = config.serverUrl;
       }
-      if (config.defaultCategory !== undefined) {
-        dataToSave[StorageKeys.DEFAULT_CATEGORY] = config.defaultCategory;
-      }
-      if (config.defaultTags !== undefined) {
-        dataToSave[StorageKeys.DEFAULT_TAGS] = config.defaultTags;
-      }
+      // defaultCategory and defaultTags no longer needed - handled by AI
       if (config.autoPublish !== undefined) {
         dataToSave[StorageKeys.AUTO_PUBLISH] = config.autoPublish;
       }

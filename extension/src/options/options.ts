@@ -8,7 +8,7 @@ import {
   MessageType, 
   ExtensionMessage 
 } from '../shared/types';
-import { parseTags, formatTags, log } from '../shared/utils';
+import { log } from '../shared/utils';
 import { MagpieApiClient } from '../shared/api';
 
 class OptionsController {
@@ -34,12 +34,11 @@ class OptionsController {
     this.elements = {
       serverUrl: document.getElementById('server-url')!,
       apiToken: document.getElementById('api-token')!,
-      defaultCategory: document.getElementById('default-category')!,
-      defaultTags: document.getElementById('default-tags')!,
       autoPublish: document.getElementById('auto-publish')!,
       testConnection: document.getElementById('test-connection')!,
       connectionStatus: document.getElementById('connection-status')!,
       statusMessage: document.getElementById('status-message')!
+      // defaultCategory and defaultTags removed - now handled by AI
     };
 
     this.setupEventListeners();
@@ -77,15 +76,12 @@ class OptionsController {
   private populateForm(config: ExtensionConfig): void {
     const serverUrl = this.elements.serverUrl as HTMLInputElement;
     const apiToken = this.elements.apiToken as HTMLInputElement;
-    const defaultCategory = this.elements.defaultCategory as HTMLInputElement;
-    const defaultTags = this.elements.defaultTags as HTMLInputElement;
     const autoPublish = this.elements.autoPublish as HTMLInputElement;
 
     if (serverUrl) serverUrl.value = config.serverUrl || '';
     if (apiToken) apiToken.value = config.apiToken || '';
-    if (defaultCategory) defaultCategory.value = config.defaultCategory || '未分类';
-    if (defaultTags) defaultTags.value = formatTags(config.defaultTags || []);
     if (autoPublish) autoPublish.checked = config.autoPublish || false;
+    // defaultCategory and defaultTags removed - now handled by AI
   }
 
   private async saveConfig(): Promise<void> {
@@ -95,9 +91,8 @@ class OptionsController {
       const config: Partial<ExtensionConfig> = {
         serverUrl: formData.get('serverUrl') as string,
         apiToken: formData.get('apiToken') as string,
-        defaultCategory: formData.get('defaultCategory') as string,
-        defaultTags: parseTags(formData.get('defaultTags') as string || ''),
         autoPublish: formData.has('autoPublish')
+        // defaultCategory and defaultTags removed - now handled by AI
       };
 
       // Validate required fields

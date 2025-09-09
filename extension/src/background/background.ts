@@ -200,8 +200,8 @@ async function handleMessage(
  * Handle save link message from popup
  */
 async function handleSaveLinkMessage(message: SaveLinkMessage): Promise<any> {
-  const { url, title, skipConfirm, category, tags } = message.payload;
-  return await handleSaveLink(url, title, skipConfirm || false, category, tags);
+  const { url, title, skipConfirm } = message.payload;
+  return await handleSaveLink(url, title, skipConfirm || false);
 }
 
 /**
@@ -210,12 +210,10 @@ async function handleSaveLinkMessage(message: SaveLinkMessage): Promise<any> {
 async function handleSaveLink(
   url: string,
   title: string,
-  skipConfirm: boolean = false,
-  category?: string,
-  tags?: string[]
+  skipConfirm: boolean = false
 ): Promise<{ success: boolean; data?: any; error?: string }> {
   try {
-    log('Saving link:', { url, title, skipConfirm, category, tags });
+    log('Saving link:', { url, title, skipConfirm });
     
     // Validate URL
     if (!isValidUrl(url)) {
@@ -228,14 +226,11 @@ async function handleSaveLink(
       throw new Error('Extension not configured. Please set up API token.');
     }
 
-    // Get default config for missing parameters
-    const config = await getConfig();
-    
+    // Create submission with just URL and skipConfirm
+    // AI will determine category and tags on the server
     const submission = {
       url,
-      skipConfirm,
-      category: category || config.defaultCategory,
-      tags: tags ? tags.join(',') : config.defaultTags.join(','),
+      skipConfirm
     };
 
     // Show saving notification (non-blocking)

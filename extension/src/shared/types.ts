@@ -6,20 +6,18 @@
 export enum StorageKeys {
   API_TOKEN = 'apiToken',
   SERVER_URL = 'serverUrl',
-  DEFAULT_CATEGORY = 'defaultCategory',
-  DEFAULT_TAGS = 'defaultTags',
   AUTO_PUBLISH = 'autoPublish',
   LAST_SYNC = 'lastSync',
   USER_PREFERENCES = 'userPreferences'
+  // DEFAULT_CATEGORY and DEFAULT_TAGS removed - now handled by AI
 }
 
 // Configuration interface
 export interface ExtensionConfig {
   apiToken: string | null;
   serverUrl: string;
-  defaultCategory: string;
-  defaultTags: string[];
   autoPublish: boolean;
+  // defaultCategory and defaultTags removed - now handled by AI
 }
 
 // User preferences
@@ -41,8 +39,7 @@ export interface ApiResponse<T = any> {
 export interface LinkSubmission {
   url: string;
   skipConfirm: boolean;
-  category?: string;
-  tags?: string;
+  // category and tags are now determined by AI on the server
 }
 
 // Link response from API
@@ -78,8 +75,7 @@ export interface SaveLinkMessage extends ExtensionMessage {
     url: string;
     title: string;
     skipConfirm?: boolean;
-    category?: string;
-    tags?: string[];
+    // category and tags are now determined by AI on the server
   };
 }
 
@@ -104,9 +100,8 @@ export interface Category {
 export const DEFAULT_CONFIG: ExtensionConfig = {
   apiToken: null,
   serverUrl: 'http://localhost:3001',
-  defaultCategory: '未分类',
-  defaultTags: [],
   autoPublish: false
+  // defaultCategory and defaultTags removed - now handled by AI
 };
 
 export const DEFAULT_PREFERENCES: UserPreferences = {
