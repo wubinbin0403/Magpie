@@ -6,7 +6,6 @@
 export enum StorageKeys {
   API_TOKEN = 'apiToken',
   SERVER_URL = 'serverUrl',
-  AUTO_PUBLISH = 'autoPublish',
   LAST_SYNC = 'lastSync',
   USER_PREFERENCES = 'userPreferences'
   // DEFAULT_CATEGORY and DEFAULT_TAGS removed - now handled by AI
@@ -16,7 +15,6 @@ export enum StorageKeys {
 export interface ExtensionConfig {
   apiToken: string | null;
   serverUrl: string;
-  autoPublish: boolean;
   // defaultCategory and defaultTags removed - now handled by AI
 }
 
@@ -99,8 +97,7 @@ export interface Category {
 // Default values
 export const DEFAULT_CONFIG: ExtensionConfig = {
   apiToken: null,
-  serverUrl: 'http://localhost:3001',
-  autoPublish: false
+  serverUrl: 'http://localhost:3001'
   // defaultCategory and defaultTags removed - now handled by AI
 };
 

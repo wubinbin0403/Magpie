@@ -19,14 +19,12 @@ export class StorageManager {
     try {
       const result = await chrome.storage.sync.get([
         StorageKeys.API_TOKEN,
-        StorageKeys.SERVER_URL,
-        StorageKeys.AUTO_PUBLISH
+        StorageKeys.SERVER_URL
       ]);
 
       return {
         apiToken: result[StorageKeys.API_TOKEN] || DEFAULT_CONFIG.apiToken,
-        serverUrl: result[StorageKeys.SERVER_URL] || DEFAULT_CONFIG.serverUrl,
-        autoPublish: result[StorageKeys.AUTO_PUBLISH] ?? DEFAULT_CONFIG.autoPublish
+        serverUrl: result[StorageKeys.SERVER_URL] || DEFAULT_CONFIG.serverUrl
       };
     } catch (error) {
       console.error('Failed to get config from storage:', error);
@@ -48,9 +46,6 @@ export class StorageManager {
         dataToSave[StorageKeys.SERVER_URL] = config.serverUrl;
       }
       // defaultCategory and defaultTags no longer needed - handled by AI
-      if (config.autoPublish !== undefined) {
-        dataToSave[StorageKeys.AUTO_PUBLISH] = config.autoPublish;
-      }
 
       await chrome.storage.sync.set(dataToSave);
     } catch (error) {
