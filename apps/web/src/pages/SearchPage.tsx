@@ -3,7 +3,12 @@ import NavBar from '../components/NavBar'
 export default function SearchPage() {
   return (
     <div className="min-h-screen bg-base-100">
-      <NavBar onSearch={() => {}} />
+      <NavBar 
+        onSearch={() => {}} 
+        categories={[]}
+        selectedCategory={null}
+        onCategoryFilter={() => {}}
+      />
       
       <div className="container mx-auto px-4 py-6">
         <div className="text-center py-16">

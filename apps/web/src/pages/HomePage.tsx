@@ -216,6 +216,9 @@ export default function HomePage() {
           onSearch={handleSearch}
           onLogoClick={handleLogoClick}
           initialSearchQuery={searchQuery}
+          categories={sidebarData.categories}
+          selectedCategory={selectedCategory}
+          onCategoryFilter={handleCategoryFilter}
         />
         
         <div className="flex flex-col items-center justify-center gap-4 pt-20">
@@ -237,6 +240,9 @@ export default function HomePage() {
         onSearch={handleSearch}
         onLogoClick={handleLogoClick}
         initialSearchQuery={searchQuery}
+        categories={sidebarData.categories}
+        selectedCategory={selectedCategory}
+        onCategoryFilter={handleCategoryFilter}
       />
       
       {/* 桌面端侧边栏 */}
