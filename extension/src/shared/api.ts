@@ -186,8 +186,8 @@ export class MagpieApiClient {
   }
 
   /**
-   * Save link using Server-Sent Events for progress updates
-   * This is for advanced use cases where we want real-time progress
+   * Save link using streaming fetch for progress updates
+   * This provides real-time progress feedback during processing
    */
   static async saveLinkWithProgress(
     submission: LinkSubmission,
@@ -197,67 +197,114 @@ export class MagpieApiClient {
       const baseUrl = await this.getBaseUrl();
       const headers = await this.getHeaders();
       
-      // Use the streaming endpoint
-      const eventSource = new EventSource(
-        `${baseUrl}/api/links/add/stream`,
-        {
-          // Note: EventSource doesn't support custom headers in the constructor
-          // We'll need to pass the token as a query parameter for SSE
-        }
-      );
+      console.log('Starting streaming request to:', `${baseUrl}/api/links/add/stream`);
+      console.log('Request headers:', headers);
+      console.log('Request body:', submission);
+      
+      const response = await fetch(`${baseUrl}/api/links/add/stream`, {
+        method: 'POST',
+        headers: {
+          ...headers,
+          'Accept': 'text/event-stream',
+          'Cache-Control': 'no-cache'
+        },
+        body: JSON.stringify(submission)
+      });
 
-      return new Promise((resolve) => {
-        eventSource.onmessage = (event) => {
-          try {
-            const data = JSON.parse(event.data);
-            onProgress(data);
-            
-            if (data.type === 'complete' || data.type === 'error') {
-              eventSource.close();
-              
-              if (data.type === 'complete') {
-                resolve({
-                  success: true,
-                  data: data.data,
-                });
-              } else {
-                resolve({
-                  success: false,
-                  error: data.error || 'Failed to save link',
-                });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      if (!response.body) {
+        throw new Error('No response body received');
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let finalResult: ApiResponse<LinkResponse> | null = null;
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          
+          if (done) {
+            // Process any remaining data in buffer
+            if (buffer.trim()) {
+              const remainingLines = buffer.split('\n');
+              for (const line of remainingLines) {
+                if (line.startsWith('data: ')) {
+                  try {
+                    const data = JSON.parse(line.slice(6));
+                    console.log('Received final SSE data:', data);
+                    onProgress(data);
+                    
+                    if (data.stage === 'completed') {
+                      finalResult = {
+                        success: true,
+                        data: data.data
+                      };
+                    } else if (data.stage === 'error') {
+                      finalResult = {
+                        success: false,
+                        error: data.error || data.message || 'Failed to save link'
+                      };
+                    }
+                  } catch (parseError) {
+                    console.warn('Failed to parse final SSE line:', line, parseError);
+                  }
+                }
               }
             }
-          } catch (error) {
-            console.error('Failed to parse SSE message:', error);
+            break;
           }
-        };
 
-        eventSource.onerror = (error) => {
-          console.error('SSE error:', error);
-          eventSource.close();
-          resolve({
-            success: false,
-            error: 'Connection to server lost',
-          });
-        };
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || ''; // Keep incomplete line in buffer
 
-        // Send the actual POST request
-        fetch(`${baseUrl}/api/links/add/stream`, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify(submission),
-        }).catch((error) => {
-          eventSource.close();
-          resolve({
-            success: false,
-            error: error.message,
-          });
-        });
-      });
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              try {
+                const data = JSON.parse(line.slice(6));
+                console.log('Received SSE data:', data);
+                onProgress(data);
+                
+                if (data.stage === 'completed') {
+                  finalResult = {
+                    success: true,
+                    data: data.data
+                  };
+                } else if (data.stage === 'error') {
+                  finalResult = {
+                    success: false,
+                    error: data.error || data.message || 'Failed to save link'
+                  };
+                }
+              } catch (parseError) {
+                console.warn('Failed to parse SSE line:', line, parseError);
+              }
+            }
+          }
+        }
+      } finally {
+        reader.releaseLock();
+      }
+
+      if (finalResult) {
+        return finalResult;
+      } else {
+        console.warn('Stream ended without receiving completion or error stage');
+        return {
+          success: false,
+          error: 'Stream ended without completion'
+        };
+      }
     } catch (error) {
+      console.error('Streaming request failed:', error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to save link',
+        error: error instanceof Error ? error.message : 'Failed to save link'
       };
     }
   }
@@ -265,6 +312,7 @@ export class MagpieApiClient {
 
 // Export convenience functions
 export const saveLink = MagpieApiClient.saveLink.bind(MagpieApiClient);
+export const saveLinkWithProgress = MagpieApiClient.saveLinkWithProgress.bind(MagpieApiClient);
 export const testConnection = MagpieApiClient.testConnection.bind(MagpieApiClient);
 export const getCategories = MagpieApiClient.getCategories.bind(MagpieApiClient);
 export const getStats = MagpieApiClient.getStats.bind(MagpieApiClient);

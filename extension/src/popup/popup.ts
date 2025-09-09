@@ -11,23 +11,24 @@ import {
   Category,
   ExtensionConfig
 } from '../shared/types';
-import { getCurrentTab, getPageTitle, parseTags, formatTags, log } from '../shared/utils';
+import { MagpieApiClient } from '../shared/api';
+import { getCurrentTab, getPageTitle, log } from '../shared/utils';
 
 interface PopupState {
   config: ExtensionConfig | null;
-  categories: Category[];
   currentTab: chrome.tabs.Tab | null;
   isLoading: boolean;
   saveStatus: SaveStatus;
+  // categories removed - now handled by AI
 }
 
 class PopupController {
   private state: PopupState = {
     config: null,
-    categories: [],
     currentTab: null,
     isLoading: true,
     saveStatus: 'idle'
+    // categories removed - now handled by AI
   };
 
   private elements: {
@@ -36,13 +37,14 @@ class PopupController {
     loading: HTMLElement;
     pageTitle: HTMLElement;
     pageUrl: HTMLElement;
-    categorySelect: HTMLSelectElement;
-    tagsInput: HTMLInputElement;
     saveForm: HTMLFormElement;
     publishBtn: HTMLButtonElement;
     statusMessage: HTMLElement;
     optionsBtn: HTMLButtonElement;
     configureBtn: HTMLButtonElement;
+    progressContainer: HTMLElement;
+    progressText: HTMLElement;
+    // categorySelect and tagsInput removed - now handled by AI
   } | null = null;
 
   constructor() {
@@ -74,13 +76,14 @@ class PopupController {
       loading: document.getElementById('loading')!,
       pageTitle: document.getElementById('page-title')!,
       pageUrl: document.getElementById('page-url')!,
-      categorySelect: document.getElementById('category') as HTMLSelectElement,
-      tagsInput: document.getElementById('tags') as HTMLInputElement,
       saveForm: document.getElementById('save-form') as HTMLFormElement,
       publishBtn: document.getElementById('publish-btn') as HTMLButtonElement,
       statusMessage: document.getElementById('status-message')!,
       optionsBtn: document.getElementById('options-btn') as HTMLButtonElement,
       configureBtn: document.getElementById('configure-btn') as HTMLButtonElement,
+      progressContainer: document.getElementById('progress-container')!,
+      progressText: document.getElementById('progress-text')!,
+      // categorySelect and tagsInput removed - now handled by AI
     };
 
     // Set up event listeners
@@ -111,10 +114,7 @@ class PopupController {
       this.handleSave(true);
     });
 
-    // Tags input formatting
-    this.elements.tagsInput.addEventListener('blur', () => {
-      this.formatTagsInput();
-    });
+    // Tags input formatting removed - now handled by AI
   }
 
   private async loadInitialData(): Promise<void> {
@@ -190,8 +190,7 @@ class PopupController {
     } else {
       this.showMainContent();
       this.populatePageInfo();
-      this.populateCategories();
-      this.populateDefaultValues();
+      // Form population methods removed - now handled by AI
     }
   }
 
@@ -220,48 +219,11 @@ class PopupController {
     this.elements.pageUrl.title = url; // Full URL on hover
   }
 
-  private populateCategories(): void {
-    if (!this.elements) return;
+  // populateCategories method removed - now handled by AI
 
-    const select = this.elements.categorySelect;
-    select.innerHTML = '';
+  // populateDefaultValues method removed - now handled by AI
 
-    // Add default option
-    const defaultOption = document.createElement('option');
-    defaultOption.value = '';
-    defaultOption.textContent = 'Select category...';
-    select.appendChild(defaultOption);
-
-    // Add categories
-    this.state.categories.forEach(category => {
-      const option = document.createElement('option');
-      option.value = category.id;
-      option.textContent = category.name;
-      select.appendChild(option);
-    });
-
-    // Select default category if available
-    if (this.state.config?.defaultCategory) {
-      select.value = this.state.config.defaultCategory;
-    }
-  }
-
-  private populateDefaultValues(): void {
-    if (!this.elements || !this.state.config) return;
-
-    // Set default tags
-    if (this.state.config.defaultTags.length > 0) {
-      this.elements.tagsInput.value = formatTags(this.state.config.defaultTags);
-    }
-  }
-
-  private formatTagsInput(): void {
-    if (!this.elements) return;
-
-    const input = this.elements.tagsInput;
-    const tags = parseTags(input.value);
-    input.value = formatTags(tags);
-  }
+  // formatTagsInput method removed - now handled by AI
 
   private async handleSave(skipConfirm: boolean): Promise<void> {
     if (!this.elements || !this.state.currentTab?.url || this.state.saveStatus === 'saving') {
@@ -271,26 +233,24 @@ class PopupController {
     try {
       this.state.saveStatus = 'saving';
       this.updateSaveButtons();
+      this.showProgress();
 
-      const category = this.elements.categorySelect.value || this.state.config?.defaultCategory || '未分类';
-      const tags = parseTags(this.elements.tagsInput.value);
-      const title = getPageTitle(this.state.currentTab);
-
-      const message: SaveLinkMessage = {
-        type: MessageType.SAVE_LINK,
-        payload: {
-          url: this.state.currentTab.url,
-          title,
-          skipConfirm,
-          category,
-          tags
-        }
+      const submission = {
+        url: this.state.currentTab.url,
+        skipConfirm
+        // category and tags are now determined by AI
       };
 
-      const response = await this.sendMessage(message);
+      const response = await MagpieApiClient.saveLinkWithProgress(
+        submission,
+        (progressData) => {
+          this.updateProgress(progressData);
+        }
+      );
 
       if (response?.success) {
         this.state.saveStatus = 'success';
+        this.hideProgress();
         this.showSuccess(
           skipConfirm 
             ? 'Link published successfully!' 
@@ -307,6 +267,7 @@ class PopupController {
     } catch (error) {
       console.error('Save failed:', error);
       this.state.saveStatus = 'error';
+      this.hideProgress();
       this.showError(error instanceof Error ? error.message : 'Failed to save link');
     } finally {
       setTimeout(() => {
@@ -314,6 +275,51 @@ class PopupController {
         this.updateSaveButtons();
       }, 2000);
     }
+  }
+
+  private showProgress(): void {
+    if (!this.elements) return;
+    
+    this.elements.progressContainer.classList.remove('hidden');
+    this.updateProgress({ type: 'start', message: 'Starting...' });
+  }
+
+  private hideProgress(): void {
+    if (!this.elements) return;
+    
+    this.elements.progressContainer.classList.add('hidden');
+  }
+
+  private updateProgress(data: any): void {
+    if (!this.elements) return;
+    
+    console.log('Progress update:', data);
+    
+    let message = data.message || 'Processing...';
+    
+    // Map server stages to user-friendly messages
+    switch (data.stage) {
+      case 'fetching':
+        message = 'Fetching page content...';
+        break;
+      case 'analyzing':
+        message = 'AI is analyzing content...';
+        break;
+      case 'completed':
+        message = 'Complete!';
+        break;
+      case 'error':
+        message = `Error: ${data.error || data.message || 'Unknown error'}`;
+        break;
+      default:
+        // Use the message from server if available
+        if (data.message) {
+          message = data.message;
+        }
+        break;
+    }
+    
+    this.elements.progressText.textContent = message;
   }
 
   private updateSaveButtons(): void {
