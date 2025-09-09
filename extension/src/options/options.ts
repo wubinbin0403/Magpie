@@ -34,7 +34,6 @@ class OptionsController {
     this.elements = {
       serverUrl: document.getElementById('server-url')!,
       apiToken: document.getElementById('api-token')!,
-      autoPublish: document.getElementById('auto-publish')!,
       testConnection: document.getElementById('test-connection')!,
       connectionStatus: document.getElementById('connection-status')!,
       statusMessage: document.getElementById('status-message')!
@@ -76,11 +75,9 @@ class OptionsController {
   private populateForm(config: ExtensionConfig): void {
     const serverUrl = this.elements.serverUrl as HTMLInputElement;
     const apiToken = this.elements.apiToken as HTMLInputElement;
-    const autoPublish = this.elements.autoPublish as HTMLInputElement;
 
     if (serverUrl) serverUrl.value = config.serverUrl || '';
     if (apiToken) apiToken.value = config.apiToken || '';
-    if (autoPublish) autoPublish.checked = config.autoPublish || false;
     // defaultCategory and defaultTags removed - now handled by AI
   }
 
@@ -90,8 +87,7 @@ class OptionsController {
       
       const config: Partial<ExtensionConfig> = {
         serverUrl: formData.get('serverUrl') as string,
-        apiToken: formData.get('apiToken') as string,
-        autoPublish: formData.has('autoPublish')
+        apiToken: formData.get('apiToken') as string
         // defaultCategory and defaultTags removed - now handled by AI
       };
 
@@ -118,6 +114,18 @@ class OptionsController {
     const status = this.elements.connectionStatus;
 
     try {
+      // Get current form values (not saved values)
+      const serverUrl = (this.elements.serverUrl as HTMLInputElement).value.trim();
+      const apiToken = (this.elements.apiToken as HTMLInputElement).value.trim();
+
+      // Validate inputs before testing
+      if (!serverUrl) {
+        status.classList.remove('hidden', 'loading');
+        status.classList.add('error');
+        status.textContent = '✗ Please enter a server URL';
+        return;
+      }
+
       // Disable button and show loading
       button.disabled = true;
       button.textContent = 'Testing...';
@@ -125,17 +133,33 @@ class OptionsController {
       status.classList.add('loading');
       status.textContent = 'Testing connection...';
 
-      // Test connection
-      const response = await MagpieApiClient.testConnection();
+      // Test connection with current form values
+      const response = await MagpieApiClient.testConnection({
+        serverUrl,
+        apiToken: apiToken || undefined
+      });
 
       if (response.success) {
         status.classList.remove('loading');
-        status.classList.add('success');
         
         if (response.data?.authenticated) {
-          status.textContent = '✓ Connection successful and authenticated';
+          status.classList.add('success');
+          const tokenInfo = response.data.tokenInfo;
+          const responseTime = response.data.responseTime;
+          if (tokenInfo && responseTime !== undefined) {
+            status.textContent = `✓ Connection successful - Token "${tokenInfo.name}" is valid (${responseTime}ms)`;
+          } else {
+            status.textContent = '✓ Connection successful and authenticated';
+          }
         } else {
-          status.textContent = '✓ Server reachable but authentication failed';
+          status.classList.add('error');
+          const errorMsg = response.error || 'Authentication failed';
+          const responseTime = response.data?.responseTime;
+          if (responseTime !== undefined) {
+            status.textContent = `✗ Server reachable but ${errorMsg} (${responseTime}ms)`;
+          } else {
+            status.textContent = `✗ Server reachable but ${errorMsg}`;
+          }
         }
       } else {
         throw new Error(response.error || 'Connection failed');

@@ -119,33 +119,51 @@ export class MagpieApiClient {
 
   /**
    * Test API connection and authentication
+   * @param tempConfig Optional temporary configuration to test (uses saved config if not provided)
    */
-  static async testConnection(): Promise<ApiResponse<{ authenticated: boolean }>> {
+  static async testConnection(tempConfig?: { serverUrl?: string; apiToken?: string }): Promise<ApiResponse<{ authenticated: boolean; tokenInfo?: any; responseTime?: number }>> {
     try {
-      // First, try to get the health endpoint (no auth required)
-      const healthResponse = await this.fetchApi<any>('/api/health');
+      // Use temporary config if provided, otherwise use saved config
+      const serverUrl = tempConfig?.serverUrl || await getServerUrl();
+      const token = tempConfig?.apiToken || await getApiToken();
       
-      if (!healthResponse.success) {
+      // Record start time for response time measurement
+      const startTime = performance.now();
+      
+      // First, try to get the health endpoint (no auth required)
+      const baseUrl = serverUrl.replace(/\/$/, '');
+      const healthUrl = `${baseUrl}/api/health`;
+      
+      try {
+        const healthResponse = await fetch(healthUrl);
+        if (!healthResponse.ok) {
+          return {
+            success: false,
+            error: 'Cannot connect to server',
+          };
+        }
+      } catch (error) {
         return {
           success: false,
           error: 'Cannot connect to server',
         };
       }
 
-      // Then check if we have a valid token format
-      const token = await getApiToken();
+      // Then check if we have a token configured
       if (!token) {
+        const responseTime = Math.round(performance.now() - startTime);
         return {
           success: true,
-          data: { authenticated: false },
+          data: { authenticated: false, responseTime },
         };
       }
 
-      // Validate token format (mgp_ + 64 hex chars)
+      // Validate token format locally first (mgp_ + 64 hex chars)
       if (!token.startsWith('mgp_') || token.length !== 68) {
         return {
           success: true,
           data: { authenticated: false },
+          error: 'Invalid token format',
         };
       }
 
@@ -154,15 +172,44 @@ export class MagpieApiClient {
         return {
           success: true,
           data: { authenticated: false },
+          error: 'Invalid token format',
         };
       }
 
-      // Token format is valid, we assume it's authenticated
-      // Real authentication testing will happen when actually using the API
-      return {
-        success: true,
-        data: { authenticated: true },
+      // Now verify the token with the server
+      const verifyUrl = `${baseUrl}/api/auth/verify`;
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${token}`,
       };
+      
+      const verifyResponse = await fetch(verifyUrl, {
+        method: 'POST',
+        headers,
+      });
+
+      const verifyData = await verifyResponse.json();
+      
+      // Calculate response time
+      const responseTime = Math.round(performance.now() - startTime);
+
+      if (verifyResponse.ok && verifyData.success && verifyData.data?.valid) {
+        return {
+          success: true,
+          data: { 
+            authenticated: true,
+            tokenInfo: verifyData.data.token,
+            responseTime
+          },
+        };
+      } else {
+        return {
+          success: true,
+          data: { authenticated: false, responseTime },
+          error: verifyData.error || 'Invalid or expired token',
+        };
+      }
     } catch (error) {
       return {
         success: false,
