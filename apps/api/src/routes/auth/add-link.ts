@@ -66,13 +66,13 @@ app.onError((err, c) => {
 })
 
 // Create fallback content when scraping fails
-function createFallbackContent(url: string): {
+async function createFallbackContent(url: string): Promise<{
   content: any;
   aiAnalysis: AIAnalysisResult;
   scrapingFailed: boolean;
   aiAnalysisFailed?: boolean;
   aiError?: string;
-} {
+}> {
   const domain = extractDomain(url)
   
   // Generate basic title from URL
@@ -99,9 +99,13 @@ function createFallbackContent(url: string): {
     language: 'zh-CN'
   }
   
+  // Get default category from settings
+  const settings = await getSettings()
+  const defaultCategory = settings.default_category || '其他'
+  
   const fallbackAiAnalysis: AIAnalysisResult = {
     summary: `无法自动分析内容，请手动输入描述和分类`,
-    category: '其他',
+    category: defaultCategory,
     tags: ['待分类'],
     language: 'zh-CN',
     sentiment: 'neutral',
@@ -139,7 +143,7 @@ async function processUrlContent(url: string, database: BetterSQLite3Database<an
       scrapingFailed = true
       
       // Return fallback content instead of throwing error
-      return createFallbackContent(url)
+      return await createFallbackContent(url)
     }
   }
   
@@ -164,9 +168,12 @@ async function processUrlContent(url: string, database: BetterSQLite3Database<an
     aiError = error instanceof Error ? error.message : 'Unknown AI analysis error'
     
     // Fallback to basic analysis
+    // Get settings from database for default category
+    const fallbackSettings = await getSettings(database)
+    const defaultCategory = fallbackSettings.default_category || '其他'
     aiAnalysis = {
       summary: scrapedContent.description || scrapedContent.title.substring(0, 200),
-      category: 'other',
+      category: defaultCategory,
       tags: ['article'],
       language: scrapedContent.language,
       sentiment: 'neutral',
@@ -264,7 +271,7 @@ app.get('/add', requireApiTokenOrAdminSession(database), zValidator('query', add
     } catch (error) {
       console.warn('Unexpected error in processUrlContent, using fallback:', error)
       // Use fallback content as last resort
-      processedContent = createFallbackContent(url)
+      processedContent = await createFallbackContent(url)
     }
 
     const { content: scrapedContent, aiAnalysis, scrapingFailed, aiAnalysisFailed, aiError } = processedContent
@@ -381,7 +388,7 @@ app.post('/', requireApiTokenOrAdminSession(database), zValidator('json', addLin
     } catch (error) {
       console.warn('Unexpected error in processUrlContent, using fallback:', error)
       // Use fallback content as last resort
-      processedContent = createFallbackContent(url)
+      processedContent = await createFallbackContent(url)
     }
 
     const { content: scrapedContent, aiAnalysis, scrapingFailed, aiAnalysisFailed, aiError } = processedContent

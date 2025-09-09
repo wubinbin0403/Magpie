@@ -168,7 +168,7 @@ export default function SystemSettings() {
       aboutUrl: ''
     },
     content: {
-      defaultCategory: '其他',
+      defaultCategory: '',
       itemsPerPage: 20
     }
   })

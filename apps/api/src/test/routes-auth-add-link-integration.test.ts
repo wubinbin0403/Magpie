@@ -243,7 +243,7 @@ describe('Add Link Integration Tests', () => {
       expect(data.success).toBe(true)
       expect(data.data.status).toBe('published')
       expect(data.data.title).toBe('Test Article')
-      expect(data.data.category).toBe('other') // Fallback category
+      expect(data.data.category).toBe('其他') // Fallback category
       expect(data.data.tags).toEqual(['article']) // Fallback tags
       
       // Verify fallback data in database
@@ -253,7 +253,7 @@ describe('Add Link Integration Tests', () => {
         .where(eq(links.id, data.data.id))
         .limit(1)
       
-      expect(savedLink[0].aiCategory).toBe('other')
+      expect(savedLink[0].aiCategory).toBe('其他')
       expect(JSON.parse(savedLink[0].aiTags || '[]')).toEqual(['article'])
     })
 
@@ -296,7 +296,7 @@ describe('Add Link Integration Tests', () => {
       expect(data.data.status).toBe('published')
       
       // Should use fallback analysis
-      expect(data.data.category).toBe('other')
+      expect(data.data.category).toBe('其他')
       expect(data.data.tags).toEqual(['article'])
     })
 

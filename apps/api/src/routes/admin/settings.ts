@@ -96,7 +96,7 @@ function createAdminSettingsRouter(database = db) {
         },
         content: {
           defaultCategory: settingsMap.get('default_category') || '其他',
-          categories: JSON.parse(settingsMap.get('categories') || '["技术", "设计", "产品", "工具", "其他"]'),
+          categories: JSON.parse(settingsMap.get('categories') || '["其他"]'),
           itemsPerPage: parseInt(settingsMap.get('items_per_page') || '20'),
         },
       }

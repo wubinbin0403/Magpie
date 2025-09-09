@@ -17,8 +17,9 @@ const DEFAULT_SETTINGS = {
   ai_max_tokens: '1000',
   ai_timeout: '30000',
   
-  // Categories (JSON string) - Chinese-focused
-  categories: JSON.stringify(['技术', '设计', '产品', '工具', '其他']),
+  // Categories (JSON string) - Initial with only "其他"
+  categories: JSON.stringify(['其他']),
+  default_category: '其他',
   
   ai_user_instructions: ''
 }

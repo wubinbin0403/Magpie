@@ -39,13 +39,13 @@ export function buildLinkData({
     
   const userCategory = forceUserFields
     ? (category || null)  // Stream mode: simple fallback
-    : (skipConfirm ? (category || aiAnalysis.category) : (category || null))
+    : (skipConfirm ? (category || aiAnalysis.category) : null) // Use AI analysis for published, null for pending
     
   const userTags = forceUserFields
     ? (tags ? JSON.stringify(tags) : null)  // Stream mode: simple conversion
     : (skipConfirm 
-        ? JSON.stringify(tags || aiAnalysis.tags) 
-        : (tags ? JSON.stringify(tags) : null))
+        ? JSON.stringify(aiAnalysis.tags) // Always use AI tags for published
+        : null) // null for pending links
 
   return {
     url,

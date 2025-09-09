@@ -73,8 +73,9 @@ export class AIAnalyzer {
   private options: Required<Omit<AIAnalyzerOptions, 'apiKey' | 'baseURL'>>
   private userInstructions: string
   private availableCategories: string[]
+  private defaultCategory: string
 
-  constructor(options: AIAnalyzerOptions, userInstructions?: string, categories?: string[]) {
+  constructor(options: AIAnalyzerOptions, userInstructions?: string, categories?: string[], defaultCategory?: string) {
     this.client = new OpenAI({
       apiKey: options.apiKey,
       baseURL: options.baseURL,
@@ -90,6 +91,7 @@ export class AIAnalyzer {
 
     this.userInstructions = userInstructions || ''
     this.availableCategories = categories || DEFAULT_CATEGORIES
+    this.defaultCategory = defaultCategory || this.availableCategories[this.availableCategories.length - 1]
     
     // Log initialization
   }
@@ -264,8 +266,8 @@ export class AIAnalyzer {
         return category.toLowerCase()
       }
     }
-    // Return fallback category (usually "其他")
-    return this.availableCategories.includes('其他') ? '其他' : this.availableCategories[this.availableCategories.length - 1]
+    // Return default category
+    return this.defaultCategory
   }
 
   private validateTags(tags: any): string[] {
@@ -310,7 +312,7 @@ export class AIAnalyzer {
     // Generate basic analysis when AI fails
     // First try content-based detection, then URL-based
     let category = this.guessCategoryFromContent(content.title, content.description)
-    if (category === (this.availableCategories.includes('其他') ? '其他' : this.availableCategories[this.availableCategories.length - 1])) {
+    if (category === this.defaultCategory) {
       category = this.guessCategoryFromUrl(content.url)
     }
     const tags = this.extractBasicTags(content.title, content.description)
@@ -359,8 +361,8 @@ export class AIAnalyzer {
       }
     }
     
-    // Return fallback category (usually "其他")
-    return this.availableCategories.includes('其他') ? '其他' : this.availableCategories[this.availableCategories.length - 1]
+    // Return default category
+    return this.defaultCategory
   }
 
   private guessCategoryFromContent(title: string, description: string): string {
@@ -376,7 +378,7 @@ export class AIAnalyzer {
     
     // Check each available category
     for (const category of this.availableCategories) {
-      if (category === '其他') continue // Skip "其他", it's the fallback
+      if (category === this.defaultCategory) continue // Skip default category, it's the fallback
       
       const keywords = categoryKeywords[category as keyof typeof categoryKeywords]
       if (keywords && keywords.some(keyword => {
@@ -392,8 +394,8 @@ export class AIAnalyzer {
       }
     }
     
-    // Return fallback category
-    return this.availableCategories.includes('其他') ? '其他' : this.availableCategories[this.availableCategories.length - 1]
+    // Return default category
+    return this.defaultCategory
   }
 
   private extractBasicTags(title: string, description: string): string[] {
@@ -437,6 +439,10 @@ export class AIAnalyzer {
     this.availableCategories = categories
   }
 
+  updateDefaultCategory(category: string): void {
+    this.defaultCategory = category
+  }
+
   // Test connection
   async testConnection(): Promise<boolean> {
     try {
@@ -474,6 +480,7 @@ export async function createAIAnalyzer(settings: Record<string, any>): Promise<A
   const userInstructions = settings.ai_user_instructions || ''
   const categories = Array.isArray(settings.categories) ? settings.categories : 
                     (settings.categories ? JSON.parse(settings.categories) : undefined)
+  const defaultCategory = settings.default_category
 
-  return new AIAnalyzer(options, userInstructions, categories)
+  return new AIAnalyzer(options, userInstructions, categories, defaultCategory)
 }

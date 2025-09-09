@@ -34,6 +34,47 @@ const PRESET_ICONS = [
   'finance', 'tool', 'heart', 'star', 'home'
 ]
 
+// Helper function to sync categories to settings table
+async function syncCategoriesToSettings(database: any): Promise<void> {
+  const { settings } = await import('../../db/schema.js')
+  const activeCategories = await database
+    .select({ name: categories.name })
+    .from(categories)
+    .where(eq(categories.isActive, 1))
+    .orderBy(asc(categories.displayOrder), asc(categories.name))
+  
+  const categoryNames = activeCategories.map((c: { name: string }) => c.name)
+  const now = Math.floor(Date.now() / 1000)
+  
+  // Update or insert categories setting
+  const existing = await database
+    .select()
+    .from(settings)
+    .where(eq(settings.key, 'categories'))
+    .limit(1)
+  
+  if (existing.length > 0) {
+    await database
+      .update(settings)
+      .set({
+        value: JSON.stringify(categoryNames),
+        updatedAt: now
+      })
+      .where(eq(settings.key, 'categories'))
+  } else {
+    await database
+      .insert(settings)
+      .values({
+        key: 'categories',
+        value: JSON.stringify(categoryNames),
+        type: 'json',
+        description: 'Available categories',
+        createdAt: now,
+        updatedAt: now
+      })
+  }
+}
+
 // Create categories router with optional database dependency injection
 function createAdminCategoriesRouter(database = db) {
   const app = new Hono()
@@ -171,6 +212,9 @@ function createAdminCategoriesRouter(database = db) {
         .values(insertData)
         .returning()
       
+      // Sync categories to settings table
+      await syncCategoriesToSettings(database)
+      
       return sendSuccess(c, result[0], 'Category created successfully', 201)
     } catch (error) {
       console.error('Error creating category:', error)
@@ -264,11 +308,57 @@ function createAdminCategoriesRouter(database = db) {
         updatedAt: now,
       }
       
+      const oldCategoryName = existingCategory[0].name
+      
       const result = await database
         .update(categories)
         .set(updateData)
         .where(eq(categories.id, id))
         .returning()
+      
+      // If the category name changed, update all links
+      if (data.name && data.name !== oldCategoryName) {
+        const { links } = await import('../../db/schema.js')
+        
+        // Update user category links
+        await database
+          .update(links)
+          .set({
+            userCategory: data.name,
+            updatedAt: now
+          })
+          .where(eq(links.userCategory, oldCategoryName))
+        
+        // Update AI category links
+        await database
+          .update(links)
+          .set({
+            aiCategory: data.name,
+            updatedAt: now
+          })
+          .where(eq(links.aiCategory, oldCategoryName))
+        
+        // Update default_category setting if it was the old name
+        const { settings } = await import('../../db/schema.js')
+        const defaultCategorySetting = await database
+          .select({ value: settings.value })
+          .from(settings)
+          .where(eq(settings.key, 'default_category'))
+          .limit(1)
+        
+        if (defaultCategorySetting.length > 0 && defaultCategorySetting[0].value === oldCategoryName) {
+          await database
+            .update(settings)
+            .set({
+              value: data.name,
+              updatedAt: now
+            })
+            .where(eq(settings.key, 'default_category'))
+        }
+      }
+      
+      // Sync categories to settings table
+      await syncCategoriesToSettings(database)
       
       return sendSuccess(c, result[0], 'Category updated successfully')
     } catch (error) {
@@ -351,6 +441,30 @@ function createAdminCategoriesRouter(database = db) {
       await database
         .delete(categories)
         .where(eq(categories.id, id))
+      
+      // Sync categories to settings table
+      await syncCategoriesToSettings(database)
+      
+      // If deleted category was the default, update to first available active category
+      const deletedCategoryName = existingCategory[0].name
+      if (defaultCategorySetting.length > 0 && defaultCategorySetting[0].value === deletedCategoryName) {
+        const firstActiveCategory = await database
+          .select({ name: categories.name })
+          .from(categories)
+          .where(eq(categories.isActive, 1))
+          .orderBy(asc(categories.displayOrder), asc(categories.name))
+          .limit(1)
+        
+        if (firstActiveCategory.length > 0) {
+          await database
+            .update(settings)
+            .set({
+              value: firstActiveCategory[0].name,
+              updatedAt: Math.floor(Date.now() / 1000)
+            })
+            .where(eq(settings.key, 'default_category'))
+        }
+      }
       
       return sendSuccess(c, null, 'Category deleted successfully')
     } catch (error) {
