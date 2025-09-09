@@ -44,43 +44,25 @@
 
       <!-- Save Form -->
       <form id="save-form" class="save-form">
-        <!-- Category Selection -->
-        <div class="form-group">
-          <label for="category" class="form-label">Category</label>
-          <select id="category" name="category" class="form-select">
-            <option value="">Loading categories...</option>
-          </select>
-        </div>
-
-        <!-- Tags Input -->
-        <div class="form-group">
-          <label for="tags" class="form-label">Tags</label>
-          <input 
-            type="text" 
-            id="tags" 
-            name="tags" 
-            class="form-input" 
-            placeholder="Enter tags separated by commas"
-          >
-          <div class="form-help">Up to 5 tags, separated by commas</div>
-        </div>
 
         <!-- Action Buttons -->
         <div class="form-actions">
           <button type="submit" class="btn btn-primary" data-action="save">
-            <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-            </svg>
             Save for Review
           </button>
           <button type="button" id="publish-btn" class="btn btn-secondary">
-            <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
-            </svg>
             Publish Now
           </button>
         </div>
       </form>
+
+      <!-- Progress Display -->
+      <div id="progress-container" class="progress-container hidden">
+        <div class="progress-content">
+          <div class="progress-spinner"></div>
+          <div class="progress-text" id="progress-text">Starting...</div>
+        </div>
+      </div>
 
       <!-- Status Messages -->
       <div id="status-message" class="status-message hidden">
