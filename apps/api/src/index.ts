@@ -20,6 +20,7 @@ import pendingLinkRouter from './routes/auth/pending-link.js'
 import confirmLinkRouter from './routes/auth/confirm-link.js'
 import deleteLinkRouter from './routes/auth/delete-link.js'
 import editLinkRouter from './routes/auth/edit-link.js'
+import verifyTokenRouter from './routes/auth/verify-token.js'
 import adminAuthRouter from './routes/admin/auth.js'
 import adminPendingRouter from './routes/admin/pending.js'
 import adminBatchRouter from './routes/admin/batch.js'
@@ -81,6 +82,7 @@ app.route('/api/domains', domainsRouter)
 app.route('/api/categories', publicCategoriesRouter)
 
 // Authentication required routes
+app.route('/api/auth', verifyTokenRouter)   // POST /api/auth/verify
 app.route('/api/links', addLinkRouter)      // POST /api/links
 app.route('/api/links/add', addLinkStreamRouter) // POST /api/links/add/stream - SSE endpoint
 app.route('/api/links', pendingLinkRouter)  // GET /api/links/:id/pending
