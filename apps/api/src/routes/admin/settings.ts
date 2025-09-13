@@ -160,7 +160,7 @@ function createAdminSettingsRouter(database = db) {
             .limit(1)
           
           if (categoryExists.length === 0) {
-            return sendError(c, 'INVALID_DEFAULT_CATEGORY', 'Default category does not exist', undefined, 400)
+            return sendError(c, 'INVALID_DEFAULT_CATEGORY', `Default category "${updates.content.defaultCategory}" does not exist`, undefined, 400)
           }
           
           if (categoryExists[0].isActive !== 1) {

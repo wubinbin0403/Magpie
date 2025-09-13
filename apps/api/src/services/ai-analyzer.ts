@@ -92,8 +92,6 @@ export class AIAnalyzer {
     this.userInstructions = userInstructions || ''
     this.availableCategories = categories || DEFAULT_CATEGORIES
     this.defaultCategory = defaultCategory || this.availableCategories[this.availableCategories.length - 1]
-    
-    // Log initialization
   }
 
   async analyze(content: ScrapedContent): Promise<AIAnalysisResult> {
@@ -152,13 +150,15 @@ export class AIAnalyzer {
 
   private buildPrompt(content: ScrapedContent): string {
     // Replace template variables in the default template
+    const categoriesStr = this.availableCategories.join('、')
+    
     return DEFAULT_PROMPT_TEMPLATE
       .replace('{url}', content.url)
       .replace('{title}', content.title || 'No title')
       .replace('{contentType}', content.contentType)
       .replace('{description}', content.description || 'No description')
       .replace('{content}', this.truncateContent(content.content))
-      .replace('{categories}', this.availableCategories.join('、'))
+      .replace('{categories}', categoriesStr)
       .replace('{wordCount}', content.wordCount.toString())
       .replace(/{wordCount}/g, content.wordCount.toString())
       .replace('{user_instructions}', this.userInstructions || '无特殊要求')
@@ -478,8 +478,8 @@ export async function createAIAnalyzer(settings: Record<string, any>): Promise<A
   }
 
   const userInstructions = settings.ai_user_instructions || ''
-  const categories = Array.isArray(settings.categories) ? settings.categories : 
-                    (settings.categories ? JSON.parse(settings.categories) : undefined)
+  // categories should already be parsed as array from getSettings() when type='json'
+  const categories = Array.isArray(settings.categories) ? settings.categories : undefined
   const defaultCategory = settings.default_category
 
   return new AIAnalyzer(options, userInstructions, categories, defaultCategory)

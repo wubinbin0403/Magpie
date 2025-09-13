@@ -58,7 +58,7 @@ describe('Admin Links API', () => {
       const data = await response.json() as any
 
       if (response.status !== 200) {
-        console.log('Error response:', data)
+        // Log error response for debugging
       }
       expect(response.status).toBe(200)
       expect(data.success).toBe(true)

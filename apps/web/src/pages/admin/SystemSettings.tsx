@@ -268,6 +268,7 @@ export default function SystemSettings() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['system-settings'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-categories'] })
       showToast('设置保存成功！', 'success')
     }
   })
@@ -435,39 +436,44 @@ export default function SystemSettings() {
       // Handle default category updates
       const editingCategoryAny = editingCategory as any
       const wasOriginallyDefault = originalCategory.name === settings.content.defaultCategory
-      const shouldBeDefault = editingCategoryAny.tempIsDefault ?? wasOriginallyDefault
+      const shouldBeDefault = editingCategoryAny.tempIsDefault
       const nameChanged = editingCategory.name !== originalCategory.name
       
+      // Always check if default category needs to be updated
+      let needsDefaultUpdate = false
+      let newDefaultCategory = settings.content.defaultCategory
+      
       if (wasOriginallyDefault && nameChanged) {
-        // If this was the default category and name changed, always update default setting
-        await updateSettingsMutation.mutateAsync({
-          ...settings,
-          content: { ...settings.content, defaultCategory: shouldBeDefault ? editingCategory.name : (() => {
-            // If user unchecked default, find another active category
-            const otherCategory = categories.find(cat => cat.isActive && cat.id !== editingCategory.id)
-            return otherCategory?.name || editingCategory.name // Fallback to current name if no other category
-          })() }
-        })
-      } else if (editingCategoryAny.tempIsDefault !== undefined) {
+        // If this was the default category and name changed, update to new name
+        needsDefaultUpdate = true
+        newDefaultCategory = editingCategory.name
+      }
+      
+      // Check if user explicitly changed the default status
+      if (editingCategoryAny.tempIsDefault !== undefined) {
         const currentlyDefault = originalCategory.name === settings.content.defaultCategory
         
         if (shouldBeDefault && !currentlyDefault) {
-          // Set this category as default
-          await updateSettingsMutation.mutateAsync({
-            ...settings,
-            content: { ...settings.content, defaultCategory: editingCategory.name }
-          })
+          // User wants to set this category as default
+          needsDefaultUpdate = true
+          newDefaultCategory = editingCategory.name
         } else if (!shouldBeDefault && currentlyDefault) {
-          // Remove default status, set another category as default
+          // User wants to remove default status, set another category as default
           const otherCategory = categories.find(cat => cat.isActive && cat.id !== editingCategory.id)
           if (otherCategory) {
-            await updateSettingsMutation.mutateAsync({
-              ...settings,
-              content: { ...settings.content, defaultCategory: otherCategory.name }
-            })
+            needsDefaultUpdate = true
+            newDefaultCategory = otherCategory.name
           }
           // If no other category available, keep current as default (don't allow removing last default)
         }
+      }
+      
+      // Update default category if needed
+      if (needsDefaultUpdate) {
+        await updateSettingsMutation.mutateAsync({
+          ...settings,
+          content: { ...settings.content, defaultCategory: newDefaultCategory }
+        })
       }
       
       setEditingCategory(null)

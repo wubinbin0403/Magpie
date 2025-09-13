@@ -148,7 +148,7 @@ export const updateSettingsSchema = z.object({
   site: z.object({
     title: z.string().max(200).optional(),
     description: z.string().max(500).optional(),
-    aboutUrl: z.string().url().optional(),
+    aboutUrl: z.union([z.string().url(), z.literal('')]).optional(),
   }).optional(),
   ai: z.object({
     apiKey: z.string().optional(),

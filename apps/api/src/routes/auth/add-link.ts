@@ -66,7 +66,7 @@ app.onError((err, c) => {
 })
 
 // Create fallback content when scraping fails
-async function createFallbackContent(url: string): Promise<{
+async function createFallbackContent(url: string, database: BetterSQLite3Database<any> = db): Promise<{
   content: any;
   aiAnalysis: AIAnalysisResult;
   scrapingFailed: boolean;
@@ -100,7 +100,7 @@ async function createFallbackContent(url: string): Promise<{
   }
   
   // Get default category from settings
-  const settings = await getSettings()
+  const settings = await getSettings(database)
   const defaultCategory = settings.default_category || '其他'
   
   const fallbackAiAnalysis: AIAnalysisResult = {
@@ -143,7 +143,7 @@ async function processUrlContent(url: string, database: BetterSQLite3Database<an
       scrapingFailed = true
       
       // Return fallback content instead of throwing error
-      return await createFallbackContent(url)
+      return await createFallbackContent(url, database)
     }
   }
   
@@ -271,7 +271,7 @@ app.get('/add', requireApiTokenOrAdminSession(database), zValidator('query', add
     } catch (error) {
       console.warn('Unexpected error in processUrlContent, using fallback:', error)
       // Use fallback content as last resort
-      processedContent = await createFallbackContent(url)
+      processedContent = await createFallbackContent(url, database)
     }
 
     const { content: scrapedContent, aiAnalysis, scrapingFailed, aiAnalysisFailed, aiError } = processedContent
@@ -388,7 +388,7 @@ app.post('/', requireApiTokenOrAdminSession(database), zValidator('json', addLin
     } catch (error) {
       console.warn('Unexpected error in processUrlContent, using fallback:', error)
       // Use fallback content as last resort
-      processedContent = await createFallbackContent(url)
+      processedContent = await createFallbackContent(url, database)
     }
 
     const { content: scrapedContent, aiAnalysis, scrapingFailed, aiAnalysisFailed, aiError } = processedContent

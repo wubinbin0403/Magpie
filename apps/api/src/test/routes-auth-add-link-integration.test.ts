@@ -92,6 +92,14 @@ describe('Add Link Integration Tests', () => {
         description: 'Available categories',
         createdAt: now,
         updatedAt: now,
+      },
+      {
+        key: 'default_category',
+        value: '其他',
+        type: 'string',
+        description: 'Default category for test',
+        createdAt: now,
+        updatedAt: now,
       }
     ])
   })
