@@ -84,6 +84,8 @@ scripts/run-docker.sh start -p 8080 -s "my-secret-key"
 | `BASE_URL` | 应用访问地址 | `http://localhost:PORT` |
 | `CONTAINER_NAME` | 容器名称 | `magpie` |
 | `IMAGE_TAG` | Docker 镜像标签 | `latest` |
+| `LOG_LEVEL` | 日志级别 | `info` |
+| `LOG_DIR` | 日志目录 | `/app/data/logs` |
 
 ### AI 功能配置
 
@@ -100,12 +102,47 @@ scripts/run-docker.sh start -p 8080 -s "my-secret-key"
 
 ```bash
 ./data/                    # 默认数据目录
-└── magpie.db             # SQLite 数据库文件
+├── magpie.db             # SQLite 数据库文件
+└── logs/                 # 日志文件目录
+    ├── error.log         # 错误日志
+    ├── combined.log      # 完整日志
+    ├── error.log.1       # 历史错误日志（轮转）
+    └── combined.log.1    # 历史完整日志（轮转）
 ```
 
 **重要说明**：
 - 数据库使用 `DELETE` 日志模式和 `FULL` 同步模式确保容器环境下的数据完整性
 - 所有数据修改都会立即写入磁盘，避免容器重启时数据丢失
+- 日志文件支持自动轮转（5MB × 5个文件），确保磁盘空间可控
+
+### 日志挂载配置
+
+如需单独挂载日志目录以便于监控和分析：
+
+```bash
+# 方法1：单独挂载日志目录
+docker run -d \
+  --name magpie \
+  -p 3001:3001 \
+  -v ./data:/app/data \
+  -v ./logs:/app/data/logs \
+  -e JWT_SECRET="your-secret-key" \
+  magpie:latest
+
+# 方法2：使用 docker-compose
+version: '3.8'
+services:
+  magpie:
+    image: magpie:latest
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/data/logs  # 单独挂载日志
+    environment:
+      - JWT_SECRET=your-secret-key
+      - LOG_LEVEL=info         # 可选：设置日志级别
+```
 
 ## 🔧 开发工作流
 
@@ -356,9 +393,13 @@ REGISTRY=registry.cn-hangzhou.aliyuncs.com REGISTRY_USER=namespace pnpm docker:p
    ```bash
    # 查看详细日志
    scripts/run-docker.sh logs
-   
+
    # 或直接查看 Docker 日志
    docker logs magpie
+
+   # 查看应用程序日志文件
+   tail -f ./data/logs/combined.log
+   tail -f ./data/logs/error.log
    ```
 
 4. **镜像不存在**

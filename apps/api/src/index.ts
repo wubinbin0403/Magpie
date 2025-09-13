@@ -7,6 +7,7 @@ import { HTTPException } from 'hono/http-exception'
 import { serveStatic } from '@hono/node-server/serve-static'
 import * as dotenv from 'dotenv'
 import { initializeDatabase } from './db/index.js'
+import { logSystemStart, systemLogger } from './utils/logger.js'
 
 // Import route handlers
 import linksRouter from './routes/public/links.js'
@@ -472,6 +473,15 @@ const port = parseInt(process.env.PORT || '3001')
 // Initialize database before starting server
 async function startServer() {
   try {
+    // Initialize logging system
+    logSystemStart()
+
+    systemLogger.info('Initializing Magpie API server', {
+      port: parseInt(process.env.PORT || '3001'),
+      nodeEnv: process.env.NODE_ENV,
+      logLevel: process.env.LOG_LEVEL || 'info'
+    })
+
     // Initialize database (run migrations)
     await initializeDatabase()
     
@@ -488,14 +498,29 @@ async function startServer() {
     }
     
     console.log(`Starting Magpie API server on port ${port}`)
-    
+
+    systemLogger.info('Starting HTTP server', { port })
+
     serve({
       fetch: app.fetch,
       port,
     })
-    
+
+    systemLogger.info('Magpie API server started successfully', {
+      port,
+      url: `http://localhost:${port}`,
+      nodeEnv: process.env.NODE_ENV
+    })
+
     console.log(`🚀 Server is running on http://localhost:${port}`)
   } catch (error) {
+    systemLogger.error('Failed to start Magpie API server', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      port,
+      nodeEnv: process.env.NODE_ENV
+    })
+
     console.error('Failed to start server:', error)
     process.exit(1)
   }

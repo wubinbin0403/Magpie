@@ -11,6 +11,7 @@ import { readabilityScraper } from '../../services/readability-scraper.js'
 import { createAIAnalyzer, type AIAnalysisResult } from '../../services/ai-analyzer.js'
 import { getSettings } from '../../utils/settings.js'
 import { buildLinkData } from '../../utils/link-data-builder.js'
+import { apiLogger, logApiRequest, logScraping, logAiAnalysis } from '../../utils/logger.js'
 import type { AddLinkResponse } from '@magpie/shared'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 
@@ -128,45 +129,114 @@ async function processUrlContent(url: string, database: BetterSQLite3Database<an
   aiError?: string;
 }> {
   // Step 1: Scrape web content using Readability (with fallback)
+  logScraping(url, 'start')
+  const scrapingStartTime = Date.now()
+
   let scrapedContent
   let scrapingFailed = false
-  
+
   try {
     scrapedContent = await readabilityScraper.scrape(url)
+    const scrapingDuration = Date.now() - scrapingStartTime
+    logScraping(url, 'success', scrapingDuration, scrapedContent.content?.length)
+
+    apiLogger.debug('Content scraping successful', {
+      url,
+      title: scrapedContent.title,
+      contentLength: scrapedContent.content?.length,
+      wordCount: scrapedContent.wordCount,
+      language: scrapedContent.language,
+      duration: scrapingDuration
+    })
   } catch (readabilityError) {
-    console.warn('Readability scraper failed, trying web scraper:', readabilityError)
+    const errorMessage = readabilityError instanceof Error ? readabilityError.message : String(readabilityError)
+    apiLogger.warn('Readability scraper failed, trying web scraper', { url, error: errorMessage })
     try {
       // Readability scraper failed, falling back to original scraper
       scrapedContent = await webScraper.scrape(url)
+      const scrapingDuration = Date.now() - scrapingStartTime
+      logScraping(url, 'success', scrapingDuration, scrapedContent.content?.length)
+
+      apiLogger.info('Web scraper fallback successful', {
+        url,
+        title: scrapedContent.title,
+        contentLength: scrapedContent.content?.length,
+        duration: scrapingDuration
+      })
     } catch (webScraperError) {
-      console.warn('Both scrapers failed:', webScraperError)
+      const scrapingDuration = Date.now() - scrapingStartTime
+      logScraping(url, 'error', scrapingDuration, undefined, webScraperError)
+
+      apiLogger.error('Both scrapers failed', {
+        url,
+        readabilityError: readabilityError instanceof Error ? readabilityError.message : String(readabilityError),
+        webScraperError: webScraperError instanceof Error ? webScraperError.message : String(webScraperError),
+        duration: scrapingDuration
+      })
+
       scrapingFailed = true
-      
+
       // Return fallback content instead of throwing error
       return await createFallbackContent(url, database)
     }
   }
   
   // Step 2: Get AI settings and analyze content
+  logAiAnalysis(url, 'start')
   let aiAnalysis: AIAnalysisResult
   let aiAnalysisFailed = false
   let aiError: string | undefined
-  
+
   try {
     const settings = await getSettings(database)
-    
+
     // Check if AI is configured
     if (!settings.openai_api_key) {
       throw new Error('AI service not configured')
     }
-    
+
     const aiAnalyzer = await createAIAnalyzer(settings)
+
+    // Log AI analysis details
+    const contentPreview = scrapedContent.content?.substring(0, 500) + '...'
+    const promptInfo = `Analyzing content for: ${scrapedContent.title}, Word count: ${scrapedContent.wordCount}, Language: ${scrapedContent.language}`
+
+    apiLogger.info('Starting AI analysis', {
+      url,
+      title: scrapedContent.title,
+      wordCount: scrapedContent.wordCount,
+      language: scrapedContent.language,
+      contentPreview,
+      promptInfo
+    })
+
     aiAnalysis = await aiAnalyzer.analyze(scrapedContent)
+
+    logAiAnalysis(url, 'success', promptInfo, aiAnalysis)
+
+    apiLogger.info('AI analysis completed successfully', {
+      url,
+      result: {
+        summary: aiAnalysis.summary.substring(0, 200) + '...',
+        category: aiAnalysis.category,
+        tags: aiAnalysis.tags,
+        language: aiAnalysis.language,
+        sentiment: aiAnalysis.sentiment,
+        readingTime: aiAnalysis.readingTime
+      }
+    })
   } catch (error) {
-    console.warn('AI analysis failed, using basic analysis:', error)
     aiAnalysisFailed = true
     aiError = error instanceof Error ? error.message : 'Unknown AI analysis error'
-    
+
+    logAiAnalysis(url, 'error', undefined, undefined, error)
+
+    apiLogger.warn('AI analysis failed, using basic analysis', {
+      url,
+      error: aiError,
+      title: scrapedContent.title
+    })
+
     // Fallback to basic analysis
     // Get settings from database for default category
     const fallbackSettings = await getSettings(database)
@@ -256,10 +326,34 @@ app.get('/add', requireApiTokenOrAdminSession(database), zValidator('query', add
   }
 }), async (c) => {
   const startTime = Date.now()
-  
+
   try {
     const { url, skipConfirm, category, tags } = c.req.valid('query')
     const authData = getAuthData(c)
+
+    // Log API request
+    logApiRequest('GET', `/api/links/add`, undefined, undefined, {
+      url,
+      skipConfirm,
+      category,
+      tags,
+      authType: authData.authType,
+      userAgent: c.req.header('user-agent'),
+      clientIp: authData.clientIp
+    })
+
+    apiLogger.info('Add link request received', {
+      method: 'GET',
+      url: url,
+      skipConfirm,
+      category,
+      tags,
+      authType: authData.authType,
+      tokenId: authData.tokenId,
+      userId: authData.userId,
+      userAgent: c.req.header('user-agent'),
+      clientIp: authData.clientIp
+    })
 
     // Extract domain
     const domain = extractDomain(url)
@@ -359,12 +453,46 @@ app.get('/add', requireApiTokenOrAdminSession(database), zValidator('query', add
         aiAnalysisFailed,
         aiError
       }
+
+      const duration = Date.now() - startTime
+      logApiRequest('GET', '/api/links/add', 200, duration)
+
+      apiLogger.info('Add link request completed successfully (skipConfirm=true)', {
+        linkId,
+        url,
+        duration,
+        scrapingFailed,
+        aiAnalysisFailed,
+        status: 'published'
+      })
+
       return c.json(response)
     } else {
+      const duration = Date.now() - startTime
+      logApiRequest('GET', '/api/links/add', 200, duration)
+
+      apiLogger.info('Add link request completed successfully (redirect to confirm)', {
+        linkId,
+        url,
+        duration,
+        confirmUrl: `/confirm/${linkId}`,
+        scrapingFailed,
+        aiAnalysisFailed
+      })
+
       // Return HTML processing page that will redirect to confirm page
       return c.html(generateProcessingHTML(url, linkId))
     }
   } catch (error) {
+    const duration = Date.now() - startTime
+    logApiRequest('GET', '/api/links/add', 500, duration)
+
+    apiLogger.error('Add link request failed (GET)', {
+      error: error instanceof Error ? error.message : String(error),
+      duration,
+      stack: error instanceof Error ? error.stack : undefined
+    })
+
     console.error('Failed to add link:', error)
     return sendError(c, 'INTERNAL_SERVER_ERROR', 'Failed to add link', undefined, 500)
   }
@@ -373,10 +501,34 @@ app.get('/add', requireApiTokenOrAdminSession(database), zValidator('query', add
 // POST /api/links - Add new link (authenticated)
 app.post('/', requireApiTokenOrAdminSession(database), zValidator('json', addLinkBodySchema), async (c) => {
   const startTime = Date.now()
-  
+
   try {
     const { url, skipConfirm, category, tags } = c.req.valid('json')
     const authData = getAuthData(c)
+
+    // Log API request
+    logApiRequest('POST', '/api/links', undefined, undefined, {
+      url,
+      skipConfirm,
+      category,
+      tags,
+      authType: authData.authType,
+      userAgent: c.req.header('user-agent'),
+      clientIp: authData.clientIp
+    })
+
+    apiLogger.info('Add link request received', {
+      method: 'POST',
+      url: url,
+      skipConfirm,
+      category,
+      tags,
+      authType: authData.authType,
+      tokenId: authData.tokenId,
+      userId: authData.userId,
+      userAgent: c.req.header('user-agent'),
+      clientIp: authData.clientIp
+    })
 
     // Extract domain
     const domain = extractDomain(url)
@@ -490,19 +642,53 @@ app.post('/', requireApiTokenOrAdminSession(database), zValidator('json', addLin
         aiAnalysisFailed: aiAnalysisFailed || false,
         aiError
       }
-      
+
+      logApiRequest('POST', '/api/links', 200, duration)
+
+      apiLogger.info('Add link request completed successfully (POST, skipConfirm=true)', {
+        linkId,
+        url,
+        duration,
+        scrapingFailed,
+        aiAnalysisFailed,
+        status: 'published'
+      })
+
       return sendSuccess(c, responseData, 'Link added and published successfully')
     } else {
       // For browser-based usage, redirect to confirmation page
       // For API usage, this would typically return the link ID
       if (c.req.header('accept')?.includes('application/json')) {
+        logApiRequest('POST', '/api/links', 200, duration)
+
+        apiLogger.info('Add link request completed successfully (POST, API client)', {
+          linkId,
+          url,
+          duration,
+          status: 'pending',
+          confirmUrl: `/confirm/${linkId}`,
+          scrapingFailed,
+          aiAnalysisFailed
+        })
+
         // API client - return link ID for confirmation
-        return sendSuccess(c, { 
-          id: linkId, 
+        return sendSuccess(c, {
+          id: linkId,
           status: 'pending',
           confirmUrl: `/confirm/${linkId}`
         }, 'Link added, awaiting confirmation')
       } else {
+        logApiRequest('POST', '/api/links', 302, duration)
+
+        apiLogger.info('Add link request completed successfully (POST, browser redirect)', {
+          linkId,
+          url,
+          duration,
+          redirectUrl: `/confirm/${linkId}`,
+          scrapingFailed,
+          aiAnalysisFailed
+        })
+
         // Browser client - redirect to confirmation page
         return c.redirect(`/confirm/${linkId}`, 302)
       }
@@ -511,7 +697,15 @@ app.post('/', requireApiTokenOrAdminSession(database), zValidator('json', addLin
   } catch (error) {
     const duration = Date.now() - startTime
     const authData = getAuthData(c)
-    
+
+    logApiRequest('POST', '/api/links', 500, duration)
+
+    apiLogger.error('Add link request failed (POST)', {
+      error: error instanceof Error ? error.message : String(error),
+      duration,
+      stack: error instanceof Error ? error.stack : undefined
+    })
+
     await logOperation(
       'link_add',
       'links',
@@ -525,7 +719,7 @@ app.post('/', requireApiTokenOrAdminSession(database), zValidator('json', addLin
       String(error),
       duration
     )
-    
+
     console.error('Error adding link:', error)
     return sendError(c, 'INTERNAL_SERVER_ERROR', 'Failed to add link', undefined, 500)
   }
