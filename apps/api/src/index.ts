@@ -217,7 +217,7 @@ if (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== 'test') {
       const response = await fetch(`http://localhost:3000${c.req.path}`)
       const contentType = response.headers.get('content-type')
       const body = await response.text()
-      
+
       return new Response(body, {
         status: response.status,
         headers: {
@@ -478,7 +478,6 @@ async function startServer() {
 
     systemLogger.info('Initializing Magpie API server', {
       port: parseInt(process.env.PORT || '3001'),
-      nodeEnv: process.env.NODE_ENV,
       logLevel: process.env.LOG_LEVEL || 'info'
     })
 
@@ -508,8 +507,7 @@ async function startServer() {
 
     systemLogger.info('Magpie API server started successfully', {
       port,
-      url: `http://localhost:${port}`,
-      nodeEnv: process.env.NODE_ENV
+      url: `http://localhost:${port}`
     })
 
     console.log(`🚀 Server is running on http://localhost:${port}`)
@@ -517,8 +515,7 @@ async function startServer() {
     systemLogger.error('Failed to start Magpie API server', {
       error: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined,
-      port,
-      nodeEnv: process.env.NODE_ENV
+      port
     })
 
     console.error('Failed to start server:', error)

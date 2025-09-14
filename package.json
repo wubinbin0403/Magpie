@@ -39,6 +39,11 @@
     "typescript": "^5.9.2",
     "vitest": "^3.0.0"
   },
+  "pnpm": {
+    "overrides": {
+      "is-arrayish": "0.2.1"
+    }
+  },
   "engines": {
     "node": ">=18",
     "pnpm": ">=8"
