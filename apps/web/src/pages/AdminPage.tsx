@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import api from '../utils/api'
 import { isSuccessResponse } from '../utils/api-helpers'
+import type { ApiResponse, StatsResponse } from '@magpie/shared'
 import AdminNavBar from '../components/AdminNavBar'
 import AdminSidebar from '../components/AdminSidebar'
 import AdminOverview from './admin/AdminOverview'
@@ -23,20 +24,19 @@ export default function AdminPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   
   // Real stats query for sidebar badges
-  const { data: statsResponse } = useQuery({
+  const { data: statsResponse } = useQuery<ApiResponse<StatsResponse>>({
     queryKey: ['admin-stats-summary'],
-    queryFn: async () => {
-      const response = await api.getStats()
-      return isSuccessResponse(response) ? response.data : null
-    },
+    queryFn: async () => api.getStats(),
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: false
   })
 
-  const stats = statsResponse ? {
-    pendingCount: statsResponse.pendingLinks,
-    totalLinks: statsResponse.totalLinks
-  } : undefined
+  const stats = statsResponse && isSuccessResponse(statsResponse)
+    ? {
+        pendingCount: statsResponse.data.pendingLinks,
+        totalLinks: statsResponse.data.totalLinks
+      }
+    : undefined
 
   return (
     <div className="min-h-screen bg-base-100">
