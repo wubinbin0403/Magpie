@@ -196,9 +196,9 @@ export default function AllLinks() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 overflow-hidden">
       {/* Page Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-3xl font-bold text-base-content">所有链接</h1>
           <p className="text-base-content/60 mt-1">
@@ -215,17 +215,17 @@ export default function AllLinks() {
         <div className="card-body p-4">
           <div className="flex flex-col sm:flex-row gap-3">
             {/* Search Input */}
-            <div className="flex-1 max-w-6xl">
+            <div className="flex-1 min-w-0">
               <div className="form-control">
                 <div className="flex items-center gap-2">
                   <input
                     type="text"
-                    className="input input-bordered flex-1 focus:border-primary"
+                    className="input input-bordered flex-1 min-w-0 focus:border-primary"
                     placeholder="搜索标题、描述、域名、分类或ID..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                   />
-                  <button className="btn btn-primary btn-square">
+                  <button className="btn btn-primary btn-square shrink-0">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                     </svg>

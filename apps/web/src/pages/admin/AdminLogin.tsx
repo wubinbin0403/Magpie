@@ -174,7 +174,7 @@ export default function AdminLogin() {
 
             <button
               type="submit"
-              className={`btn btn-primary w-full ${isLoading ? 'loading' : ''}`}
+              className="btn btn-primary w-full"
               disabled={isLoading}
             >
               {isLoading ? (
