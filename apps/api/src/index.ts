@@ -29,6 +29,7 @@ import adminSettingsRouter from './routes/admin/settings.js'
 import adminTokensRouter from './routes/admin/tokens.js'
 import adminCategoriesRouter from './routes/admin/categories.js'
 import adminLinksRouter from './routes/admin/links.js'
+import adminActivityRouter from './routes/admin/activity.js'
 import { isBot } from './utils/bot-detection.js'
 import { generateBotHTML } from './utils/seo-html-generator.js'
 import { db } from './db/index.js'
@@ -102,6 +103,7 @@ app.route('/api/admin/links', adminLinksRouter)     // GET /api/admin/links
 app.route('/api/admin/settings', adminSettingsRouter) // GET/PUT /api/admin/settings, POST /api/admin/settings/ai/test
 app.route('/api/admin/tokens', adminTokensRouter)   // GET/POST /api/admin/tokens, DELETE /api/admin/tokens/:id
 app.route('/api/admin/categories', adminCategoriesRouter) // GET/POST /api/admin/categories, PUT/DELETE /api/admin/categories/:id
+app.route('/api/admin/activity', adminActivityRouter) // GET /api/admin/activity
 
 // Link detail route handler
 app.get('/link/:id', async (c) => {

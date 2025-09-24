@@ -122,6 +122,20 @@ export const adminLinksQuerySchema = z.object({
   domain: z.string().optional(),
 })
 
+export const adminActivityQuerySchema = z.object({
+  page: z.coerce.number().min(1).default(1),
+  limit: z.coerce.number().min(1).max(100).default(20),
+  action: z.string().max(100).optional(),
+  resource: z.string().max(100).optional(),
+  status: z.enum(['success', 'failed', 'pending']).optional(),
+  search: z.string().max(200).optional(),
+  tokenId: z.coerce.number().min(1).optional(),
+  userId: z.coerce.number().min(1).optional(),
+  start: z.string().datetime().optional(),
+  end: z.string().datetime().optional(),
+  includeTests: z.coerce.boolean().optional(),
+})
+
 // Tokens 相关验证模式
 export const tokensQuerySchema = z.object({
   page: z.coerce.number().min(1).default(1),

@@ -119,6 +119,42 @@ export interface ActivityItem {
   timestamp: string;
 }
 
+export type OperationStatus = 'success' | 'failed' | 'pending'
+
+export interface AdminActivityActor {
+  type: 'user' | 'token'
+  id: number
+  name?: string | null
+  identifier?: string | null
+}
+
+export interface AdminActivityLog {
+  id: number
+  action: string
+  resource?: string | null
+  resourceId?: number | null
+  status: OperationStatus
+  details?: Record<string, unknown> | null
+  errorMessage?: string | null
+  ip?: string | null
+  userAgent?: string | null
+  duration?: number | null
+  actor?: AdminActivityActor | null
+  createdAt: string
+}
+
+export interface AdminActivityFilters {
+  actions: string[]
+  resources: string[]
+  statuses: OperationStatus[]
+}
+
+export interface AdminActivityResponse {
+  logs: AdminActivityLog[]
+  pagination: Pagination
+  availableFilters: AdminActivityFilters
+}
+
 // Search types
 export interface SearchResult extends Link {
   score: number;

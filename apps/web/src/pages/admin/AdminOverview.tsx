@@ -310,12 +310,12 @@ export default function AdminOverview() {
             ))}
           </div>
           <div className="text-center mt-4">
-            <button className="btn btn-ghost btn-sm">
+            <Link to="/admin/activity" className="btn btn-ghost btn-sm">
               查看所有活动
               <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
-            </button>
+            </Link>
           </div>
         </div>
       </div>

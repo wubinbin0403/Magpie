@@ -105,6 +105,23 @@ class ApiClient {
     return this.request<import('@magpie/shared').AdminLinksResponse>(`/admin/links${queryString}`)
   }
 
+  async getAdminActivity(params?: Record<string, any>): Promise<ApiResponse<import('@magpie/shared').AdminActivityResponse>> {
+    const queryParams = params
+      ? Object.entries(params).reduce<Record<string, string>>((acc, [key, value]) => {
+          if (value === undefined || value === null) return acc
+          if (Array.isArray(value)) {
+            acc[key] = value.join(',')
+          } else {
+            acc[key] = String(value)
+          }
+          return acc
+        }, {})
+      : undefined
+
+    const queryString = queryParams ? `?${new URLSearchParams(queryParams).toString()}` : ''
+    return this.request<import('@magpie/shared').AdminActivityResponse>(`/admin/activity${queryString}`)
+  }
+
   async batchPendingLinks(ids: number[], action: 'confirm' | 'delete' | 'reanalyze', params?: any): Promise<ApiResponse<import('@magpie/shared').BatchOperationResponse>> {
     return this.request<import('@magpie/shared').BatchOperationResponse>('/admin/pending/batch', {
       method: 'POST',

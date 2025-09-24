@@ -13,6 +13,7 @@ import AddLink from './admin/AddLink'
 import SystemSettings from './admin/SystemSettings'
 import AISettings from './admin/AISettings'
 import ApiTokens from './admin/ApiTokens'
+import AdminActivity from './admin/AdminActivity'
 
 // Mock user data - in real app this would come from auth context
 const mockUser = {
@@ -84,7 +85,7 @@ export default function AdminPage() {
               {/* Dashboard routes */}
               <Route path="/pending" element={<PendingLinks />} />
               <Route path="/links" element={<AllLinks />} />
-              <Route path="/activity" element={<div>活动页面（即将推出）</div>} />
+              <Route path="/activity" element={<AdminActivity />} />
               
               {/* Link Management routes */}
               <Route path="/add" element={<AddLink />} />
