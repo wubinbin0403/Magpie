@@ -7,6 +7,7 @@ import { sendSuccess, sendError, notFound } from '../../utils/response.js'
 import { idParamSchema } from '../../utils/validation.js'
 import { requireApiTokenOrAdminSession, logOperation } from '../../middleware/auth.js'
 import type { PendingLinkResponse } from '@magpie/shared'
+import { apiLogger } from '../../utils/logger.js'
 
 // Helper function to get unified auth data
 function getAuthData(c: any) {
@@ -46,7 +47,10 @@ function createPendingLinkRouter(database = db) {
 
 // Error handling middleware
 app.onError((err, c) => {
-  console.error('Pending Link API Error:', err)
+  apiLogger.error('Pending Link API error', {
+    error: err instanceof Error ? err.message : err,
+    stack: err instanceof Error ? err.stack : undefined
+  })
   
   if (err.message.includes('ZodError') || err.name === 'ZodError') {
     return sendError(c, 'VALIDATION_ERROR', 'Invalid request parameters', undefined, 400)
@@ -188,7 +192,10 @@ app.get('/:id/pending', requireApiTokenOrAdminSession(database), zValidator('par
       duration
     )
     
-    console.error('Error fetching pending link:', error)
+    apiLogger.error('Error fetching pending link', {
+      error: error instanceof Error ? error.message : error,
+      stack: error instanceof Error ? error.stack : undefined
+    })
     return sendError(c, 'INTERNAL_SERVER_ERROR', 'Failed to fetch pending link', undefined, 500)
   }
 })

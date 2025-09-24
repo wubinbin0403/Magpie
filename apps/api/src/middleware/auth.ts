@@ -6,6 +6,7 @@ import { eq } from 'drizzle-orm';
 import crypto from 'crypto';
 import type { ApiToken, User } from '../db/schema.js';
 import { verifyAdminJWT } from '../utils/auth.js';
+import { adminLogger, apiLogger } from '../utils/logger.js';
 
 // Auth verification result types
 export interface ApiTokenVerification {
@@ -74,7 +75,11 @@ export async function verifyApiToken(
     return { valid: true, tokenData: tokenRecord };
     
   } catch (error) {
-    console.error('API token verification error:', error);
+    apiLogger.error('API token verification error', {
+      tokenSuffix: token ? token.slice(-4) : undefined,
+      error: error instanceof Error ? error.message : error,
+      stack: error instanceof Error ? error.stack : undefined
+    });
     return { valid: false, error: 'INVALID_TOKEN' };
   }
 }
@@ -129,7 +134,11 @@ export async function verifySessionToken(
     return { valid: true, userData: userRecord };
     
   } catch (error) {
-    console.error('Session token verification error:', error);
+    apiLogger.error('Session token verification error', {
+      tokenSuffix: token ? token.slice(-4) : undefined,
+      error: error instanceof Error ? error.message : error,
+      stack: error instanceof Error ? error.stack : undefined
+    });
     return { valid: false, error: 'INVALID_TOKEN' };
   }
 }
@@ -375,7 +384,13 @@ export async function logOperation(
       createdAt: Math.floor(Date.now() / 1000),
     });
   } catch (error) {
-    console.error('Failed to log operation:', error);
+    adminLogger.error('Failed to log operation', {
+      action,
+      resource,
+      resourceId,
+      error: error instanceof Error ? error.message : error,
+      stack: error instanceof Error ? error.stack : undefined
+    });
     // Don't throw - logging failure shouldn't break the main operation
   }
 }

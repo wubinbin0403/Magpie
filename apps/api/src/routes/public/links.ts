@@ -6,6 +6,7 @@ import { eq, desc, asc, like, and, or, count, sql } from 'drizzle-orm'
 import { sendSuccess, sendError, notFound } from '../../utils/response.js'
 import { linksQuerySchema, idParamSchema, buildDateFilter } from '../../utils/validation.js'
 import { getSettings } from '../../utils/settings.js'
+import { apiLogger } from '../../utils/logger.js'
 import type { LinksResponse, Link, Pagination } from '@magpie/shared'
 
 // Create public links router with optional database dependency injection
@@ -14,10 +15,13 @@ function createLinksRouter(database = db) {
 
 // 添加验证错误处理中间件
 app.onError((err, c) => {
-  console.error('Links API Error:', err)
+  apiLogger.error('Links API error', {
+    error: err instanceof Error ? err.message : err,
+    stack: err instanceof Error ? err.stack : undefined
+  })
   
   // zod验证错误
-  if (err.message.includes('ZodError') || err.name === 'ZodError') {
+  if (err instanceof Error && (err.message.includes('ZodError') || err.name === 'ZodError')) {
     return sendError(c, 'VALIDATION_ERROR', 'Invalid request parameters', undefined, 400)
   }
   
@@ -37,7 +41,10 @@ app.get('/', zValidator('query', linksQuerySchema), async (c) => {
         const itemsPerPage = parseInt(settings.items_per_page || '20')
         limit = Math.min(Math.max(itemsPerPage, 1), 100) // 确保在1-100范围内
       } catch (error) {
-        console.warn('Failed to get items_per_page from settings, using default:', error)
+        apiLogger.warn('Failed to derive items_per_page from settings, using default', {
+          error: error instanceof Error ? error.message : error,
+          fallbackLimit: 20
+        })
         limit = 20 // 如果获取设置失败，使用默认值
       }
     }
@@ -243,15 +250,22 @@ app.get('/', zValidator('query', linksQuerySchema), async (c) => {
     return sendSuccess(c, responseData)
     
   } catch (error) {
-    console.error('Error fetching links:', error)
+    apiLogger.error('Error fetching links', {
+      error: error instanceof Error ? error.message : error,
+      stack: error instanceof Error ? error.stack : undefined
+    })
     return sendError(c, 'INTERNAL_SERVER_ERROR', 'Failed to fetch links', undefined, 500)
   }
 })
 
 // GET /api/links/:id - 获取单个链接详情
 app.get('/:id', zValidator('param', idParamSchema), async (c) => {
+  let requestedId: number | undefined
+
   try {
-    const { id } = c.req.valid('param')
+    const params = c.req.valid('param')
+    requestedId = params.id
+    const { id } = params
     
     const linkResult = await database
       .select({
@@ -292,7 +306,11 @@ app.get('/:id', zValidator('param', idParamSchema), async (c) => {
     return sendSuccess(c, formattedLink)
     
   } catch (error) {
-    console.error('Error fetching link:', error)
+    apiLogger.error('Error fetching link', {
+      linkId: requestedId ?? Number.parseInt(c.req.param('id'), 10),
+      error: error instanceof Error ? error.message : error,
+      stack: error instanceof Error ? error.stack : undefined
+    })
     return sendError(c, 'INTERNAL_SERVER_ERROR', 'Failed to fetch link', undefined, 500)
   }
 })

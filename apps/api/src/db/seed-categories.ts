@@ -1,18 +1,21 @@
 import { db } from './index.js'
 import { categories, settings } from './schema.js'
 import { eq } from 'drizzle-orm'
+import { createLogger } from '../utils/logger.js'
+
+const seedLogger = createLogger('db-seed')
 
 /**
  * Seed initial categories data
  */
 export async function seedCategories() {
-  console.log('Seeding categories...')
+  seedLogger.info('Seeding categories')
   
   try {
     // Check if categories already exist
     const existingCategories = await db.select().from(categories)
     if (existingCategories.length > 0) {
-      console.log('Categories already exist, skipping seed')
+      seedLogger.info('Categories already exist, skipping seed')
       return
     }
     
@@ -90,7 +93,7 @@ export async function seedCategories() {
     
     await db.insert(categories).values(defaultCategories)
     
-    console.log(`✓ Seeded ${defaultCategories.length} categories`)
+    seedLogger.info('Seeded categories', { count: defaultCategories.length })
     
     // Update the categories in settings to match new format
     const categoryNames = defaultCategories.map(c => c.name)
@@ -102,10 +105,13 @@ export async function seedCategories() {
       })
       .where(eq(settings.key, 'categories'))
     
-    console.log('✓ Updated categories setting to match seeded data')
-    
+    seedLogger.info('Updated categories setting to match seeded data')
+
   } catch (error) {
-    console.error('Error seeding categories:', error)
+    seedLogger.error('Error seeding categories', {
+      error: error instanceof Error ? error.message : error,
+      stack: error instanceof Error ? error.stack : undefined
+    })
     throw error
   }
 }
@@ -114,11 +120,14 @@ export async function seedCategories() {
 if (import.meta.url === `file://${process.argv[1]}`) {
   seedCategories()
     .then(() => {
-      console.log('Categories seeding completed successfully')
+      seedLogger.info('Categories seeding completed successfully')
       process.exit(0)
     })
     .catch((error) => {
-      console.error('Categories seeding failed:', error)
+      seedLogger.error('Categories seeding failed', {
+        error: error instanceof Error ? error.message : error,
+        stack: error instanceof Error ? error.stack : undefined
+      })
       process.exit(1)
     })
 }

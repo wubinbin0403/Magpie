@@ -6,6 +6,7 @@ import { categories } from '../../db/schema.js'
 import { eq, asc, sql } from 'drizzle-orm'
 import { sendSuccess, sendError, notFound } from '../../utils/response.js'
 import { requireAdmin } from '../../middleware/admin.js'
+import { adminLogger } from '../../utils/logger.js'
 
 // Validation schemas
 const createCategorySchema = z.object({
@@ -81,13 +82,16 @@ function createAdminCategoriesRouter(database = db) {
 
   // Error handling middleware
   app.onError((err, c) => {
-    console.error('Categories API Error:', err)
+    adminLogger.error('Categories API error', {
+      error: err instanceof Error ? err.message : err,
+      stack: err instanceof Error ? err.stack : undefined
+    })
     
-    if (err.message.includes('ZodError') || err.name === 'ZodError') {
+    if (err instanceof Error && (err.message.includes('ZodError') || err.name === 'ZodError')) {
       return sendError(c, 'VALIDATION_ERROR', 'Invalid request parameters', undefined, 400)
     }
     
-    if (err.message.includes('UNIQUE constraint failed')) {
+    if (err instanceof Error && err.message.includes('UNIQUE constraint failed')) {
       return sendError(c, 'DUPLICATE_ERROR', 'Category name or slug already exists', undefined, 409)
     }
     
@@ -114,7 +118,10 @@ function createAdminCategoriesRouter(database = db) {
 
       return sendSuccess(c, result)
     } catch (error) {
-      console.error('Error fetching categories:', error)
+      adminLogger.error('Error fetching categories', {
+        error: error instanceof Error ? error.message : error,
+        stack: error instanceof Error ? error.stack : undefined
+      })
       return sendError(c, 'INTERNAL_SERVER_ERROR', 'Failed to fetch categories', undefined, 500)
     }
   })
@@ -126,13 +133,16 @@ function createAdminCategoriesRouter(database = db) {
 
   // GET /api/admin/categories/:id - 获取单个分类
   app.get('/:id', requireAdmin(database), zValidator('param', idParamSchema), async (c) => {
+    let categoryId: number | undefined
+
     try {
-      const { id } = c.req.valid('param')
-      
+      const params = c.req.valid('param')
+      categoryId = params.id
+
       const result = await database
         .select()
         .from(categories)
-        .where(eq(categories.id, id))
+        .where(eq(categories.id, categoryId!))
         .limit(1)
       
       if (result.length === 0) {
@@ -141,15 +151,22 @@ function createAdminCategoriesRouter(database = db) {
       
       return sendSuccess(c, result[0])
     } catch (error) {
-      console.error('Error fetching category:', error)
+      adminLogger.error('Error fetching category', {
+        categoryId: categoryId ?? Number.parseInt(c.req.param('id'), 10),
+        error: error instanceof Error ? error.message : error,
+        stack: error instanceof Error ? error.stack : undefined
+      })
       return sendError(c, 'INTERNAL_SERVER_ERROR', 'Failed to fetch category', undefined, 500)
     }
   })
 
   // POST /api/admin/categories - 创建新分类
   app.post('/', requireAdmin(database), zValidator('json', createCategorySchema), async (c) => {
+    let requestBody: z.infer<typeof createCategorySchema> | undefined
+
     try {
-      const data = c.req.valid('json')
+      requestBody = c.req.valid('json')
+      const data = requestBody
       const now = Math.floor(Date.now() / 1000)
       
       // Check if category limit is reached (max 7 categories)
@@ -217,7 +234,11 @@ function createAdminCategoriesRouter(database = db) {
       
       return sendSuccess(c, result[0], 'Category created successfully', 201)
     } catch (error) {
-      console.error('Error creating category:', error)
+      adminLogger.error('Error creating category', {
+        payload: requestBody,
+        error: error instanceof Error ? error.message : error,
+        stack: error instanceof Error ? error.stack : undefined
+      })
       
       if (error instanceof Error && error.message.includes('UNIQUE constraint failed')) {
         return sendError(c, 'DUPLICATE_ERROR', 'Category name or slug already exists', undefined, 409)
@@ -229,16 +250,21 @@ function createAdminCategoriesRouter(database = db) {
 
   // PUT /api/admin/categories/:id - 更新分类
   app.put('/:id', requireAdmin(database), zValidator('param', idParamSchema), zValidator('json', updateCategorySchema), async (c) => {
+    let categoryId: number | undefined
+    let requestBody: z.infer<typeof updateCategorySchema> | undefined
+
     try {
-      const { id } = c.req.valid('param')
-      const data = c.req.valid('json')
+      const params = c.req.valid('param')
+      categoryId = params.id
+      requestBody = c.req.valid('json')
+      const data = requestBody
       const now = Math.floor(Date.now() / 1000)
       
       // Check if category exists
       const existingCategory = await database
         .select()
         .from(categories)
-        .where(eq(categories.id, id))
+        .where(eq(categories.id, categoryId!))
         .limit(1)
       
       if (existingCategory.length === 0) {
@@ -264,7 +290,7 @@ function createAdminCategoriesRouter(database = db) {
         let existingSlug = await database
           .select({ slug: categories.slug })
           .from(categories)
-          .where(sql`${categories.slug} = ${finalSlug} AND ${categories.id} != ${id}`)
+          .where(sql`${categories.slug} = ${finalSlug} AND ${categories.id} != ${categoryId!}`)
           .limit(1)
         
         while (existingSlug.length > 0) {
@@ -273,7 +299,7 @@ function createAdminCategoriesRouter(database = db) {
           existingSlug = await database
             .select({ slug: categories.slug })
             .from(categories)
-            .where(sql`${categories.slug} = ${finalSlug} AND ${categories.id} != ${id}`)
+            .where(sql`${categories.slug} = ${finalSlug} AND ${categories.id} != ${categoryId!}`)
             .limit(1)
         }
         
@@ -295,7 +321,7 @@ function createAdminCategoriesRouter(database = db) {
           const otherActiveCategories = await database
             .select({ count: sql<number>`count(*)` })
             .from(categories)
-            .where(sql`${categories.isActive} = 1 AND ${categories.id} != ${id}`)
+            .where(sql`${categories.isActive} = 1 AND ${categories.id} != ${categoryId!}`)
           
           if (!otherActiveCategories[0]?.count || otherActiveCategories[0].count === 0) {
             return sendError(c, 'CANNOT_DISABLE_LAST_DEFAULT', 'Cannot disable the only active default category', undefined, 400)
@@ -313,7 +339,7 @@ function createAdminCategoriesRouter(database = db) {
       const result = await database
         .update(categories)
         .set(updateData)
-        .where(eq(categories.id, id))
+        .where(eq(categories.id, categoryId!))
         .returning()
       
       // If the category name changed, update all links
@@ -362,8 +388,13 @@ function createAdminCategoriesRouter(database = db) {
       
       return sendSuccess(c, result[0], 'Category updated successfully')
     } catch (error) {
-      console.error('Error updating category:', error)
-      
+      adminLogger.error('Error updating category', {
+        categoryId: categoryId ?? Number.parseInt(c.req.param('id'), 10),
+        payload: requestBody,
+        error: error instanceof Error ? error.message : error,
+        stack: error instanceof Error ? error.stack : undefined
+      })
+
       if (error instanceof Error && error.message.includes('UNIQUE constraint failed')) {
         return sendError(c, 'DUPLICATE_ERROR', 'Category name or slug already exists', undefined, 409)
       }
@@ -374,14 +405,17 @@ function createAdminCategoriesRouter(database = db) {
 
   // DELETE /api/admin/categories/:id - 删除分类
   app.delete('/:id', requireAdmin(database), zValidator('param', idParamSchema), async (c) => {
+    let categoryId: number | undefined
+
     try {
-      const { id } = c.req.valid('param')
-      
+      const params = c.req.valid('param')
+      categoryId = params.id
+
       // Check if category exists
       const existingCategory = await database
         .select()
         .from(categories)
-        .where(eq(categories.id, id))
+        .where(eq(categories.id, categoryId!))
         .limit(1)
       
       if (existingCategory.length === 0) {
@@ -402,7 +436,7 @@ function createAdminCategoriesRouter(database = db) {
         const otherActiveCategories = await database
           .select({ count: sql<number>`count(*)` })
           .from(categories)
-          .where(sql`${categories.isActive} = 1 AND ${categories.id} != ${id}`)
+          .where(sql`${categories.isActive} = 1 AND ${categories.id} != ${categoryId!}`)
         
         if (!otherActiveCategories[0]?.count || otherActiveCategories[0].count === 0) {
           return sendError(c, 'CANNOT_DELETE_LAST_DEFAULT', 'Cannot delete the only active default category', undefined, 400)
@@ -440,7 +474,7 @@ function createAdminCategoriesRouter(database = db) {
       // Now delete the category
       await database
         .delete(categories)
-        .where(eq(categories.id, id))
+        .where(eq(categories.id, categoryId!))
       
       // Sync categories to settings table
       await syncCategoriesToSettings(database)
@@ -468,15 +502,22 @@ function createAdminCategoriesRouter(database = db) {
       
       return sendSuccess(c, null, 'Category deleted successfully')
     } catch (error) {
-      console.error('Error deleting category:', error)
+      adminLogger.error('Error deleting category', {
+        categoryId: categoryId ?? Number.parseInt(c.req.param('id'), 10),
+        error: error instanceof Error ? error.message : error,
+        stack: error instanceof Error ? error.stack : undefined
+      })
       return sendError(c, 'INTERNAL_SERVER_ERROR', 'Failed to delete category', undefined, 500)
     }
   })
 
   // POST /api/admin/categories/reorder - 重新排序分类
   app.post('/reorder', requireAdmin(database), zValidator('json', reorderSchema), async (c) => {
+    let requestBody: z.infer<typeof reorderSchema> | undefined
+
     try {
-      const { categoryIds } = c.req.valid('json')
+      requestBody = c.req.valid('json')
+      const { categoryIds } = requestBody
       const now = Math.floor(Date.now() / 1000)
       
       // Update display order for each category
@@ -494,7 +535,11 @@ function createAdminCategoriesRouter(database = db) {
       
       return sendSuccess(c, null, 'Categories reordered successfully')
     } catch (error) {
-      console.error('Error reordering categories:', error)
+      adminLogger.error('Error reordering categories', {
+        categoryIds: requestBody?.categoryIds,
+        error: error instanceof Error ? error.message : error,
+        stack: error instanceof Error ? error.stack : undefined
+      })
       return sendError(c, 'INTERNAL_SERVER_ERROR', 'Failed to reorder categories', undefined, 500)
     }
   })

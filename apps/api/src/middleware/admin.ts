@@ -5,6 +5,7 @@ import { eq, and } from 'drizzle-orm'
 import { sendError } from '../utils/response.js'
 import { verifyAdminJWT } from '../utils/auth.js'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
+import { adminLogger } from '../utils/logger.js'
 
 export function requireAdmin(database: BetterSQLite3Database<any> = db) {
   return async (c: Context, next: Next) => {
@@ -53,7 +54,10 @@ export function requireAdmin(database: BetterSQLite3Database<any> = db) {
 
       await next()
     } catch (error) {
-      console.error('Admin auth middleware error:', error)
+      adminLogger.error('Admin auth middleware error', {
+        error: error instanceof Error ? error.message : error,
+        stack: error instanceof Error ? error.stack : undefined
+      })
       return sendError(c, 'INTERNAL_SERVER_ERROR', 'Authentication error', undefined, 500)
     }
   }

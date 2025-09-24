@@ -8,6 +8,7 @@ import { idParamSchema, confirmLinkSchema } from '../../utils/validation.js'
 import { requireApiTokenOrAdminSession, logOperation } from '../../middleware/auth.js'
 import { triggerStaticGeneration } from '../../services/static-generator.js'
 import type { ConfirmLinkResponse } from '@magpie/shared'
+import { apiLogger } from '../../utils/logger.js'
 
 // Helper function to get unified auth data
 function getAuthData(c: any) {
@@ -47,7 +48,10 @@ function createConfirmLinkRouter(database = db) {
 
   // Error handling middleware
   app.onError((err, c) => {
-    console.error('Confirm Link API Error:', err)
+    apiLogger.error('Confirm Link API error', {
+      error: err instanceof Error ? err.message : err,
+      stack: err instanceof Error ? err.stack : undefined
+    })
     
     if (err.message.includes('ZodError') || err.name === 'ZodError') {
       return sendError(c, 'VALIDATION_ERROR', 'Invalid request parameters', undefined, 400)
@@ -215,7 +219,10 @@ function createConfirmLinkRouter(database = db) {
         duration
       )
       
-      console.error('Error confirming link:', error)
+      apiLogger.error('Error confirming link', {
+        error: error instanceof Error ? error.message : error,
+        stack: error instanceof Error ? error.stack : undefined
+      })
       return sendError(c, 'INTERNAL_SERVER_ERROR', 'Failed to confirm link', undefined, 500)
     }
   })

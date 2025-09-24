@@ -3,6 +3,7 @@ import { db } from '../../db/index.js'
 import { verifyApiToken } from '../../middleware/auth.js'
 import { sendSuccess, sendError } from '../../utils/response.js'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
+import { apiLogger } from '../../utils/logger.js'
 
 // Create verify token router with optional database dependency injection
 function createVerifyTokenRouter(database: BetterSQLite3Database<any> = db) {
@@ -55,7 +56,10 @@ function createVerifyTokenRouter(database: BetterSQLite3Database<any> = db) {
       }, 'Token is valid')
       
     } catch (error) {
-      console.error('Token verification error:', error)
+      apiLogger.error('Token verification error', {
+        error: error instanceof Error ? error.message : error,
+        stack: error instanceof Error ? error.stack : undefined
+      })
       return sendError(c, 'Failed to verify token', '500')
     }
   })

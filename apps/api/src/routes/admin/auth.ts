@@ -8,6 +8,7 @@ import { adminLoginSchema, adminInitSchema } from '../../utils/validation.js'
 import { hashPassword, verifyPassword, createAdminJWT, getClientIp } from '../../utils/auth.js'
 import { requireAdmin } from '../../middleware/admin.js'
 import type { AdminLoginResponse } from '@magpie/shared'
+import { adminLogger } from '../../utils/logger.js'
 
 // Create admin auth router with optional database dependency injection
 function createAdminAuthRouter(database = db) {
@@ -15,9 +16,12 @@ function createAdminAuthRouter(database = db) {
 
   // Error handling middleware
   app.onError((err, c) => {
-    console.error('Admin Auth API Error:', err)
+    adminLogger.error('Admin Auth API error', {
+      error: err instanceof Error ? err.message : err,
+      stack: err instanceof Error ? err.stack : undefined
+    })
     
-    if (err.message.includes('ZodError') || err.name === 'ZodError') {
+    if (err instanceof Error && (err.message.includes('ZodError') || err.name === 'ZodError')) {
       return sendError(c, 'VALIDATION_ERROR', 'Invalid request parameters', undefined, 400)
     }
     
@@ -86,7 +90,11 @@ function createAdminAuthRouter(database = db) {
       return sendSuccess(c, responseData)
 
     } catch (error) {
-      console.error('Error during admin login:', error)
+      adminLogger.error('Error during admin login', {
+        ip: getClientIp(c.req.raw),
+        error: error instanceof Error ? error.message : error,
+        stack: error instanceof Error ? error.stack : undefined
+      })
       return sendError(c, 'INTERNAL_SERVER_ERROR', 'Login failed', undefined, 500)
     }
   })
@@ -122,7 +130,10 @@ function createAdminAuthRouter(database = db) {
       return sendSuccess(c, { loggedOut: true }, 'Logout successful')
       
     } catch (error) {
-      console.error('Error during admin logout:', error)
+      adminLogger.error('Error during admin logout', {
+        error: error instanceof Error ? error.message : error,
+        stack: error instanceof Error ? error.stack : undefined
+      })
       // Even if there's an error, we return success for logout
       return sendSuccess(c, { loggedOut: true }, 'Logout successful')
     }
@@ -141,7 +152,10 @@ function createAdminAuthRouter(database = db) {
         exists: existingAdmin.length > 0 
       })
     } catch (error) {
-      console.error('Error checking admin existence:', error)
+      adminLogger.error('Error checking admin existence', {
+        error: error instanceof Error ? error.message : error,
+        stack: error instanceof Error ? error.stack : undefined
+      })
       return sendError(c, 'INTERNAL_SERVER_ERROR', 'Failed to check admin status', undefined, 500)
     }
   })
@@ -165,7 +179,10 @@ function createAdminAuthRouter(database = db) {
         }
       })
     } catch (error) {
-      console.error('Error verifying admin token:', error)
+      adminLogger.error('Error verifying admin token', {
+        error: error instanceof Error ? error.message : error,
+        stack: error instanceof Error ? error.stack : undefined
+      })
       return sendError(c, 'INTERNAL_SERVER_ERROR', 'Failed to verify token', undefined, 500)
     }
   })
@@ -207,7 +224,10 @@ function createAdminAuthRouter(database = db) {
       return sendSuccess(c, {}, 'Admin account initialized successfully')
 
     } catch (error) {
-      console.error('Error during admin initialization:', error)
+      adminLogger.error('Error during admin initialization', {
+        error: error instanceof Error ? error.message : error,
+        stack: error instanceof Error ? error.stack : undefined
+      })
       return sendError(c, 'INTERNAL_SERVER_ERROR', 'Failed to initialize admin account', undefined, 500)
     }
   })

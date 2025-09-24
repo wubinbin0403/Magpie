@@ -1,6 +1,7 @@
 import { db } from '../db/index.js'
 import { settings } from '../db/schema.js'
 import { eq } from 'drizzle-orm'
+import { systemLogger } from './logger.js'
 
 // Default system settings
 const DEFAULT_SETTINGS = {
@@ -52,14 +53,21 @@ export async function getSettings(database: any = db): Promise<Record<string, an
             settingsObj[row.key] = row.value || ''
         }
       } catch (error) {
-        console.warn(`Failed to parse setting ${row.key}:`, error)
+        systemLogger.warn('Failed to parse setting', {
+          key: row.key,
+          error: error instanceof Error ? error.message : error,
+          stack: error instanceof Error ? error.stack : undefined
+        })
         // Keep default value
       }
     }
     
     return settingsObj
   } catch (error) {
-    console.error('Failed to get settings:', error)
+    systemLogger.error('Failed to get settings', {
+      error: error instanceof Error ? error.message : error,
+      stack: error instanceof Error ? error.stack : undefined
+    })
     return DEFAULT_SETTINGS
   }
 }
@@ -89,7 +97,11 @@ export async function getSetting(key: string, database: any = db): Promise<any> 
         return setting.value
     }
   } catch (error) {
-    console.error(`Failed to get setting ${key}:`, error)
+    systemLogger.error('Failed to get setting', {
+      key,
+      error: error instanceof Error ? error.message : error,
+      stack: error instanceof Error ? error.stack : undefined
+    })
     return DEFAULT_SETTINGS[key as keyof typeof DEFAULT_SETTINGS]
   }
 }

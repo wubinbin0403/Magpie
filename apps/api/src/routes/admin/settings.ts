@@ -8,6 +8,7 @@ import { updateSettingsSchema } from '../../utils/validation.js'
 import { requireAdmin } from '../../middleware/admin.js'
 import { getSettings } from '../../utils/settings.js'
 import { createAIAnalyzer } from '../../services/ai-analyzer.js'
+import { adminLogger, logAdminAction, logApiRequest } from '../../utils/logger.js'
 
 // Create admin settings router with optional database dependency injection
 function createAdminSettingsRouter(database = db) {
@@ -15,9 +16,12 @@ function createAdminSettingsRouter(database = db) {
 
   // Error handling middleware
   app.onError((err, c) => {
-    console.error('Admin Settings API Error:', err)
+    adminLogger.error('Admin Settings API error', {
+      error: err instanceof Error ? err.message : err,
+      stack: err instanceof Error ? err.stack : undefined
+    })
     
-    if (err.message.includes('ZodError') || err.name === 'ZodError') {
+    if (err instanceof Error && (err.message.includes('ZodError') || err.name === 'ZodError')) {
       return sendError(c, 'VALIDATION_ERROR', 'Invalid request parameters', undefined, 400)
     }
     
@@ -68,7 +72,21 @@ function createAdminSettingsRouter(database = db) {
 
   // GET /api/admin/settings - Get system settings
   app.get('/', requireAdmin(database), async (c) => {
+    const startTime = Date.now()
+    const userData = c.get('userData')
+
     try {
+      // Log admin action
+      logAdminAction('get_settings', userData?.id?.toString(), {
+        userAgent: c.req.header('user-agent'),
+        clientIp: c.req.header('x-forwarded-for') || 'unknown'
+      })
+
+      adminLogger.info('Admin retrieving system settings', {
+        userId: userData?.id,
+        userAgent: c.req.header('user-agent')
+      })
+
       // Get all settings
       const allSettings = await database.select().from(settings)
       
@@ -101,17 +119,64 @@ function createAdminSettingsRouter(database = db) {
         },
       }
 
+      const duration = Date.now() - startTime
+      logApiRequest('GET', '/api/admin/settings', 200, duration)
+
+      adminLogger.info('Admin settings retrieved successfully', {
+        userId: userData?.id,
+        duration,
+        categoriesCount: response.content.categories.length,
+        aiConfigured: response.ai.apiKey !== ''
+      })
+
       return sendSuccess(c, response, 'Settings retrieved successfully')
     } catch (error) {
-      console.error('Failed to get settings:', error)
+      const duration = Date.now() - startTime
+      logApiRequest('GET', '/api/admin/settings', 500, duration)
+
+      adminLogger.error('Failed to retrieve admin settings', {
+        userId: userData?.id,
+        duration,
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      })
       return sendError(c, 'DATABASE_ERROR', 'Failed to retrieve settings', undefined, 500)
     }
   })
 
   // PUT /api/admin/settings - Update system settings
   app.put('/', requireAdmin(database), zValidator('json', updateSettingsSchema), async (c) => {
+    const startTime = Date.now()
+    const userData = c.get('userData')
+
     try {
       const updates = c.req.valid('json')
+
+      // Log admin action with details of what's being updated
+      const updatedFields = []
+      if (updates.site) updatedFields.push('site')
+      if (updates.ai) updatedFields.push('ai')
+      if (updates.content) updatedFields.push('content')
+
+      logAdminAction('update_settings', userData?.id?.toString(), {
+        updatedFields,
+        updates: {
+          site: updates.site ? Object.keys(updates.site) : [],
+          ai: updates.ai ? Object.keys(updates.ai).filter(k => k !== 'apiKey') : [], // Don't log API key
+          content: updates.content ? Object.keys(updates.content) : []
+        },
+        userAgent: c.req.header('user-agent'),
+        clientIp: c.req.header('x-forwarded-for') || 'unknown'
+      })
+
+      adminLogger.info('Admin updating system settings', {
+        userId: userData?.id,
+        updatedFields,
+        siteUpdates: updates.site ? Object.keys(updates.site) : [],
+        aiUpdates: updates.ai ? Object.keys(updates.ai).filter(k => k !== 'apiKey') : [],
+        contentUpdates: updates.content ? Object.keys(updates.content) : [],
+        userAgent: c.req.header('user-agent')
+      })
 
       // Update site settings
       if (updates.site) {
@@ -177,17 +242,46 @@ function createAdminSettingsRouter(database = db) {
         }
       }
 
+      const duration = Date.now() - startTime
+      logApiRequest('PUT', '/api/admin/settings', 200, duration)
+
+      adminLogger.info('Admin settings updated successfully', {
+        userId: userData?.id,
+        duration,
+        updatedFields
+      })
+
       return sendSuccess(c, { updated: true }, 'Settings updated successfully')
     } catch (error) {
-      console.error('Failed to update settings:', error)
+      const duration = Date.now() - startTime
+      logApiRequest('PUT', '/api/admin/settings', 500, duration)
+
+      adminLogger.error('Failed to update admin settings', {
+        userId: userData?.id,
+        duration,
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      })
       return sendError(c, 'DATABASE_ERROR', 'Failed to update settings', undefined, 500)
     }
   })
 
   // POST /api/admin/settings/ai/test - Test AI connection
   app.post('/ai/test', requireAdmin(database), async (c) => {
+    const startTime = Date.now()
+    const userData = c.get('userData')
+
     try {
-      const startTime = Date.now()
+      // Log admin action
+      logAdminAction('test_ai_connection', userData?.id?.toString(), {
+        userAgent: c.req.header('user-agent'),
+        clientIp: c.req.header('x-forwarded-for') || 'unknown'
+      })
+
+      adminLogger.info('Admin testing AI connection', {
+        userId: userData?.id,
+        userAgent: c.req.header('user-agent')
+      })
       
       // Always use saved settings from database for testing
       // This ensures we test with the real stored API key, not a masked one from frontend
@@ -265,11 +359,31 @@ function createAdminSettingsRouter(database = db) {
           }
         }
 
+        logApiRequest('POST', '/api/admin/settings/ai/test', 200, responseTime)
+
+        adminLogger.info('AI connection test completed successfully', {
+          userId: userData?.id,
+          model: testResult.model,
+          baseUrl: testResult.baseUrl,
+          responseTime,
+          category: analysisResult.category,
+          tags: analysisResult.tags
+        })
+
         return sendSuccess(c, testResult, 'AI connection and analysis test completed successfully')
       } catch (aiError) {
-        console.error('AI service test failed:', aiError)
         const responseTime = Date.now() - startTime
-        
+        logApiRequest('POST', '/api/admin/settings/ai/test', 500, responseTime)
+
+        adminLogger.error('AI connection test failed', {
+          userId: userData?.id,
+          responseTime,
+          model: aiSettings.ai_model || 'gpt-3.5-turbo',
+          baseUrl: aiSettings.openai_base_url || 'https://api.openai.com/v1',
+          error: aiError instanceof Error ? aiError.message : String(aiError),
+          stack: aiError instanceof Error ? aiError.stack : undefined
+        })
+
         return sendError(c, 'AI_SERVICE_ERROR', `AI service test failed: ${String(aiError)}`, {
           responseTime,
           model: aiSettings.ai_model || 'gpt-3.5-turbo',
@@ -277,7 +391,15 @@ function createAdminSettingsRouter(database = db) {
         }, 500)
       }
     } catch (error) {
-      console.error('AI connection test failed:', error)
+      const responseTime = Date.now() - startTime
+      logApiRequest('POST', '/api/admin/settings/ai/test', 500, responseTime)
+
+      adminLogger.error('AI connection test failed (general error)', {
+        userId: userData?.id,
+        responseTime,
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      })
       return sendError(c, 'AI_SERVICE_ERROR', 'AI connection test failed', undefined, 500)
     }
   })

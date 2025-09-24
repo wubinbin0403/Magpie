@@ -11,6 +11,7 @@ import { createAIAnalyzer, type AIAnalysisResult } from '../../services/ai-analy
 import { getSettings } from '../../utils/settings.js'
 import { buildLinkData } from '../../utils/link-data-builder.js'
 import type { StreamStatusMessage } from '@magpie/shared'
+import { apiLogger, scraperLogger } from '../../utils/logger.js'
 
 // Helper function to get unified auth data
 function getAuthData(c: any) {
@@ -90,7 +91,11 @@ function createAddLinkStreamRouter(database = db) {
               // Readability scraper failed, falling back to original scraper
               scrapedContent = await webScraper.scrape(url)
             } catch (webScraperError) {
-              console.warn('Both scrapers failed:', webScraperError)
+              scraperLogger.error('Both scrapers failed during stream add', {
+                url,
+                readabilityError: readabilityError instanceof Error ? readabilityError.message : readabilityError,
+                webScraperError: webScraperError instanceof Error ? webScraperError.message : webScraperError
+              })
               scrapingFailed = true
               
               // Create fallback content
@@ -257,7 +262,11 @@ function createAddLinkStreamRouter(database = db) {
             }
           }
         } catch (error) {
-          console.warn('AI analysis failed, using basic analysis:', error)
+          apiLogger.warn('AI analysis failed during stream add, using basic analysis', {
+            url,
+            error: error instanceof Error ? error.message : error,
+            stack: error instanceof Error ? error.stack : undefined
+          })
           
           // Fallback to basic analysis
           aiAnalysis = {

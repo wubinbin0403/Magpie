@@ -7,6 +7,7 @@ import { HTTPException } from 'hono/http-exception'
 import { serveStatic } from '@hono/node-server/serve-static'
 import * as dotenv from 'dotenv'
 import { initializeDatabase } from './db/index.js'
+import { apiLogger, logSystemStart, systemLogger } from './utils/logger.js'
 
 // Import route handlers
 import linksRouter from './routes/public/links.js'
@@ -45,7 +46,10 @@ async function getReactAppHTML(): Promise<string> {
     const htmlPath = path.join(process.cwd(), '../web/dist/index.html')
     return fs.readFileSync(htmlPath, 'utf-8')
   } catch (error) {
-    console.error('Failed to read React app HTML:', error)
+    systemLogger.error('Failed to read React app HTML', {
+      error: error instanceof Error ? error.message : error,
+      stack: error instanceof Error ? error.stack : undefined
+    })
     return '<h1>App Loading Error</h1><p>Please check server configuration.</p>'
   }
 }
@@ -101,9 +105,11 @@ app.route('/api/admin/categories', adminCategoriesRouter) // GET/POST /api/admin
 
 // Link detail route handler
 app.get('/link/:id', async (c) => {
+  const rawLinkId = c.req.param('id')
+  const linkId = Number.parseInt(rawLinkId, 10)
+
   try {
     const userAgent = c.req.header('User-Agent') || ''
-    const linkId = parseInt(c.req.param('id'))
     
     // Validate link ID
     if (isNaN(linkId) || linkId <= 0) {
@@ -112,7 +118,10 @@ app.get('/link/:id', async (c) => {
     
     if (isBot(userAgent)) {
       // For bots/crawlers: return SEO-optimized static HTML for single link
-      console.log(`Bot detected on link page: ${userAgent.substring(0, 100)}...`)
+      apiLogger.debug('Bot detected on link page', {
+        userAgent: userAgent.substring(0, 100),
+        linkId
+      })
       const searchParams = new URL(c.req.url).searchParams
       const html = await generateBotHTML(db, searchParams, linkId)
       return c.html(html)
@@ -129,7 +138,11 @@ app.get('/link/:id', async (c) => {
       }
     }
   } catch (error) {
-    console.error('Error serving link page:', error)
+    apiLogger.error('Error serving link page', {
+      error: error instanceof Error ? error.message : error,
+      stack: error instanceof Error ? error.stack : undefined,
+      linkId
+    })
     return c.html('<h1>Service Temporarily Unavailable</h1><p>Please try again later.</p>', 503)
   }
 })
@@ -141,7 +154,10 @@ app.get('/category/:name', async (c) => {
     
     if (isBot(userAgent)) {
       // For bots/crawlers: return SEO-optimized static HTML for category
-      console.log(`Bot detected on category page: ${userAgent.substring(0, 100)}...`)
+      apiLogger.debug('Bot detected on category page', {
+        userAgent: userAgent.substring(0, 100),
+        category: c.req.param('name')
+      })
       const html = await generateBotHTML(db)
       return c.html(html)
     } else {
@@ -157,7 +173,11 @@ app.get('/category/:name', async (c) => {
       }
     }
   } catch (error) {
-    console.error('Error serving category page:', error)
+    apiLogger.error('Error serving category page', {
+      error: error instanceof Error ? error.message : error,
+      stack: error instanceof Error ? error.stack : undefined,
+      category: c.req.param('name')
+    })
     return c.html('<h1>Service Temporarily Unavailable</h1><p>Please try again later.</p>', 503)
   }
 })
@@ -169,7 +189,9 @@ app.get('/', async (c) => {
     
     if (isBot(userAgent)) {
       // For bots/crawlers: return SEO-optimized static HTML
-      console.log(`Bot detected: ${userAgent.substring(0, 100)}...`)
+      apiLogger.debug('Bot detected on homepage', {
+        userAgent: userAgent.substring(0, 100)
+      })
       const searchParams = new URL(c.req.url).searchParams
       const html = await generateBotHTML(db, searchParams)
       return c.html(html)
@@ -186,7 +208,10 @@ app.get('/', async (c) => {
       }
     }
   } catch (error) {
-    console.error('Error serving homepage:', error)
+    apiLogger.error('Error serving homepage', {
+      error: error instanceof Error ? error.message : error,
+      stack: error instanceof Error ? error.stack : undefined
+    })
     return c.html('<h1>Service Temporarily Unavailable</h1><p>Please try again later.</p>', 503)
   }
 })
@@ -216,7 +241,7 @@ if (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== 'test') {
       const response = await fetch(`http://localhost:3000${c.req.path}`)
       const contentType = response.headers.get('content-type')
       const body = await response.text()
-      
+
       return new Response(body, {
         status: response.status,
         headers: {
@@ -387,7 +412,12 @@ app.get('/api', (c) => {
 
 // Error handler
 app.onError((err, c) => {
-  console.error('API Error:', err)
+  apiLogger.error('Unhandled API error', {
+    error: err instanceof Error ? err.message : err,
+    stack: err instanceof Error ? err.stack : undefined,
+    path: c.req.path,
+    method: c.req.method
+  })
   
   if (err instanceof HTTPException) {
     return c.json({
@@ -429,7 +459,9 @@ app.get('*', async (c) => {
     
     if (isBot(userAgent)) {
       // For bots/crawlers: return SEO-optimized static HTML
-      console.log(`Bot detected: ${userAgent.substring(0, 100)}...`)
+      apiLogger.debug('Bot detected for SPA route', {
+        userAgent: userAgent.substring(0, 100)
+      })
       const searchParams = new URL(c.req.url).searchParams
       const html = await generateBotHTML(db, searchParams)
       return c.html(html)
@@ -446,7 +478,10 @@ app.get('*', async (c) => {
       }
     }
   } catch (error) {
-    console.error('Error serving SPA:', error)
+    apiLogger.error('Error serving SPA route', {
+      error: error instanceof Error ? error.message : error,
+      stack: error instanceof Error ? error.stack : undefined
+    })
     return c.html('<h1>Service Temporarily Unavailable</h1><p>Please try again later.</p>', 503)
   }
 })
@@ -472,6 +507,14 @@ const port = parseInt(process.env.PORT || '3001')
 // Initialize database before starting server
 async function startServer() {
   try {
+    // Initialize logging system
+    logSystemStart()
+
+    systemLogger.info('Initializing Magpie API server', {
+      port: parseInt(process.env.PORT || '3001'),
+      logLevel: process.env.LOG_LEVEL || 'info'
+    })
+
     // Initialize database (run migrations)
     await initializeDatabase()
     
@@ -480,23 +523,33 @@ async function startServer() {
       const { generateAllStaticFiles } = await import('./services/static-generator.js')
       try {
         await generateAllStaticFiles()
-        console.log('✅ Initial static files generated successfully')
+        systemLogger.info('Initial static files generated successfully')
       } catch (error) {
-        console.error('⚠️  Failed to generate initial static files:', error)
+        systemLogger.error('Failed to generate initial static files', {
+          error: error instanceof Error ? error.message : error,
+          stack: error instanceof Error ? error.stack : undefined
+        })
         // Don't fail server startup - static files can be regenerated later
       }
     }
     
-    console.log(`Starting Magpie API server on port ${port}`)
-    
+    systemLogger.info('Starting HTTP server', { port })
+
     serve({
       fetch: app.fetch,
       port,
     })
-    
-    console.log(`🚀 Server is running on http://localhost:${port}`)
+
+    systemLogger.info('Magpie API server started successfully', {
+      port,
+      url: `http://localhost:${port}`
+    })
   } catch (error) {
-    console.error('Failed to start server:', error)
+    systemLogger.error('Failed to start Magpie API server', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      port
+    })
     process.exit(1)
   }
 }
@@ -506,22 +559,27 @@ process.on('SIGTERM', gracefulShutdown)
 process.on('SIGINT', gracefulShutdown)
 
 async function gracefulShutdown(signal: string) {
-  console.log(`\n${signal} signal received: closing database connection and shutting down gracefully`)
+  systemLogger.info('Received shutdown signal', { signal })
   
   try {
     // Close database connection
     const { closeDatabase } = await import('./db/index.js')
     closeDatabase()
-    console.log('✅ Database connection closed')
+    systemLogger.info('Database connection closed')
   } catch (error) {
-    console.error('❌ Error closing database:', error)
+    systemLogger.error('Error closing database connection during shutdown', {
+      error: error instanceof Error ? error.message : error,
+      stack: error instanceof Error ? error.stack : undefined
+    })
   }
   
   // Exit process
   process.exit(0)
 }
 
-// Start the server
-startServer()
+// Start the server unless running under test environment (Vitest handles app instance directly)
+if (process.env.NODE_ENV !== 'test') {
+  startServer()
+}
 
 export default app

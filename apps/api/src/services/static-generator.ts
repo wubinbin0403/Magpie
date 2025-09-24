@@ -4,6 +4,7 @@ import { eq, and, or, desc, isNotNull } from 'drizzle-orm'
 import { promises as fs } from 'fs'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
+import { logTaskExecution, systemLogger, taskLogger } from '../utils/logger.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const STATIC_DIR = join(__dirname, '../../static')
@@ -48,7 +49,10 @@ async function getSiteConfig(database: any = db): Promise<SiteConfig> {
   } catch (error) {
     // Only log error in non-test environments to avoid noise during testing
     if (process.env.NODE_ENV !== 'test') {
-      console.error('Failed to get site config:', error)
+      systemLogger.error('Failed to get site configuration', {
+        error: error instanceof Error ? error.message : error,
+        stack: error instanceof Error ? error.stack : undefined
+      })
     }
     return {
       title: 'Magpie',
@@ -111,7 +115,9 @@ async function generateSitemap(database: any = db) {
   await ensureStaticDir()
   await fs.writeFile(join(STATIC_DIR, 'sitemap.xml'), xml, 'utf8')
   
-  console.log(`Generated sitemap.xml with ${publishedLinks.length} links`)
+  taskLogger.info('Generated sitemap.xml', {
+    linkCount: publishedLinks.length
+  })
 }
 
 // Generate RSS feed
@@ -175,7 +181,9 @@ async function generateRSSFeed(database: any = db) {
   await ensureStaticDir()
   await fs.writeFile(join(STATIC_DIR, 'feed.xml'), xml, 'utf8')
   
-  console.log(`Generated RSS feed with ${recentLinks.length} recent links`)
+  taskLogger.info('Generated RSS feed', {
+    itemCount: recentLinks.length
+  })
 }
 
 // Generate JSON feed
@@ -211,23 +219,31 @@ async function generateJSONFeed(database: any = db) {
   await ensureStaticDir()
   await fs.writeFile(join(STATIC_DIR, 'feed.json'), JSON.stringify(feed, null, 2), 'utf8')
   
-  console.log(`Generated JSON feed with ${recentLinks.length} recent links`)
+  taskLogger.info('Generated JSON feed', {
+    itemCount: recentLinks.length
+  })
 }
 
 // Generate all static files
 export async function generateAllStaticFiles(database: any = db) {
+  const startTime = Date.now()
+  logTaskExecution('static-file-generation', 'start')
   try {
-    console.log('Starting static file generation...')
-    
     await Promise.all([
       generateSitemap(database),
       generateRSSFeed(database),
       generateJSONFeed(database)
     ])
     
-    console.log('Static file generation completed successfully')
+    logTaskExecution('static-file-generation', 'success', Date.now() - startTime)
   } catch (error) {
-    console.error('Failed to generate static files:', error)
+    logTaskExecution('static-file-generation', 'error', Date.now() - startTime, {
+      error: error instanceof Error ? error.message : error
+    })
+    taskLogger.error('Static file generation failed', {
+      error: error instanceof Error ? error.message : error,
+      stack: error instanceof Error ? error.stack : undefined
+    })
     throw error
   }
 }
@@ -236,7 +252,7 @@ export async function generateAllStaticFiles(database: any = db) {
 export function triggerStaticGeneration(database: any = db) {
   // In test environment, run synchronously to avoid database connection issues
   if (process.env.NODE_ENV === 'test') {
-    console.log('Static file generation triggered in test mode (sync)')
+    taskLogger.debug('Static file generation triggered synchronously in test mode')
     return
   }
 
@@ -245,12 +261,15 @@ export function triggerStaticGeneration(database: any = db) {
     generateAllStaticFiles(database).catch(error => {
       // Only log error in non-test environments to avoid noise
       if (process.env.NODE_ENV !== 'test') {
-        console.error('Background static file generation failed:', error)
+        taskLogger.error('Background static file generation failed', {
+          error: error instanceof Error ? error.message : error,
+          stack: error instanceof Error ? error.stack : undefined
+        })
       }
     })
   })
   
-  console.log('Static file generation triggered in background')
+  taskLogger.info('Static file generation triggered in background')
 }
 
 // Export individual generators for testing

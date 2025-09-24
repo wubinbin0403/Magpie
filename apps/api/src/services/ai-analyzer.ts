@@ -1,4 +1,5 @@
 import { OpenAI } from 'openai'
+import { aiLogger } from '../utils/logger.js'
 import type { ScrapedContent } from './web-scraper.js'
 
 export interface AIAnalysisResult {
@@ -74,13 +75,17 @@ export class AIAnalyzer {
   private userInstructions: string
   private availableCategories: string[]
   private defaultCategory: string
+  private baseUrl: string
 
   constructor(options: AIAnalyzerOptions, userInstructions?: string, categories?: string[], defaultCategory?: string) {
+    const baseUrl = options.baseURL || 'https://api.openai.com/v1'
+
     this.client = new OpenAI({
       apiKey: options.apiKey,
-      baseURL: options.baseURL,
+      baseURL: baseUrl,
       timeout: options.timeout || DEFAULT_OPTIONS.timeout
     })
+    this.baseUrl = baseUrl
     
     this.options = {
       model: options.model || DEFAULT_OPTIONS.model,
@@ -122,7 +127,10 @@ export class AIAnalyzer {
       const aiResponse = response.choices[0]?.message?.content?.trim()
       
       if (!aiResponse) {
-        console.warn('Empty response from AI service, falling back to default analysis')
+        aiLogger.warn('AI service returned empty response', {
+          url: content.url,
+          model: this.options.model
+        })
         return this.generateFallbackAnalysis(content)
       }
 
@@ -131,7 +139,11 @@ export class AIAnalyzer {
       try {
         analysisResult = JSON.parse(aiResponse)
       } catch (parseError) {
-        console.warn('Failed to parse AI JSON response, attempting to extract:', aiResponse)
+        aiLogger.warn('Failed to parse AI JSON response, attempting fallback extraction', {
+          url: content.url,
+          model: this.options.model,
+          snippet: aiResponse ? aiResponse.substring(0, 200) : undefined
+        })
         analysisResult = this.extractAnalysisFromText(aiResponse, content)
       }
 
@@ -141,7 +153,12 @@ export class AIAnalyzer {
       return finalResult
 
     } catch (error) {
-      console.error('AI analysis failed:', error)
+      aiLogger.error('AI analysis failed', {
+        url: content.url,
+        model: this.options.model,
+        error: error instanceof Error ? error.message : error,
+        stack: error instanceof Error ? error.stack : undefined
+      })
       
       // Return fallback analysis
       return this.generateFallbackAnalysis(content)
@@ -199,7 +216,9 @@ export class AIAnalyzer {
         // Successfully extracted JSON from AI response
         return parsed
       } catch (e) {
-        console.warn('JSON extraction failed, JSON text was:', jsonMatch[0])
+        aiLogger.warn('JSON extraction failed for AI response', {
+          snippet: jsonMatch[0]?.substring(0, 200)
+        })
       }
     }
     
@@ -211,7 +230,9 @@ export class AIAnalyzer {
         // Successfully extracted JSON from code block
         return parsed
       } catch (e) {
-        console.warn('Code block JSON extraction failed, JSON text was:', codeBlockMatch[1])
+        aiLogger.warn('Code block JSON extraction failed', {
+          snippet: codeBlockMatch[1]?.substring(0, 200)
+        })
       }
     }
     
@@ -230,7 +251,7 @@ export class AIAnalyzer {
       }
     }
     
-    console.warn('Could not extract any useful analysis from AI response, using fallback')
+    aiLogger.warn('Could not extract useful analysis from AI response, using fallback')
     // If everything fails, generate fallback
     return this.generateFallbackAnalysis(content)
   }
@@ -455,7 +476,12 @@ export class AIAnalyzer {
       
       return response.choices[0]?.message?.content?.trim()?.toLowerCase() === 'ok'
     } catch (error) {
-      console.error('AI connection test failed:', error)
+      aiLogger.error('AI connection test failed', {
+        baseUrl: this.baseUrl,
+        model: this.options.model,
+        error: error instanceof Error ? error.message : error,
+        stack: error instanceof Error ? error.stack : undefined
+      })
       return false
     }
   }

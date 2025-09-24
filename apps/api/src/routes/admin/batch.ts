@@ -7,6 +7,7 @@ import { sendSuccess, sendError } from '../../utils/response.js'
 import { batchOperationSchema } from '../../utils/validation.js'
 import { requireAdmin } from '../../middleware/admin.js'
 import { triggerStaticGeneration } from '../../services/static-generator.js'
+import { adminLogger } from '../../utils/logger.js'
 
 // Create admin batch operations router with optional database dependency injection
 function createAdminBatchRouter(database = db) {
@@ -14,9 +15,12 @@ function createAdminBatchRouter(database = db) {
 
   // Error handling middleware
   app.onError((err, c) => {
-    console.error('Admin Batch Operations API Error:', err)
+    adminLogger.error('Admin Batch Operations API error', {
+      error: err instanceof Error ? err.message : err,
+      stack: err instanceof Error ? err.stack : undefined
+    })
     
-    if (err.message.includes('ZodError') || err.name === 'ZodError') {
+    if (err instanceof Error && (err.message.includes('ZodError') || err.name === 'ZodError')) {
       return sendError(c, 'VALIDATION_ERROR', 'Invalid request parameters', undefined, 400)
     }
     
@@ -176,7 +180,12 @@ function createAdminBatchRouter(database = db) {
               failed++
           }
         } catch (error) {
-          console.error(`Batch operation failed for link ${id}:`, error)
+          adminLogger.error('Batch operation failed for link', {
+            linkId: id,
+            action,
+            error: error instanceof Error ? error.message : error,
+            stack: error instanceof Error ? error.stack : undefined
+          })
           results.push({ id, success: false, error: String(error) })
           failed++
         }
@@ -203,7 +212,10 @@ function createAdminBatchRouter(database = db) {
       return sendSuccess(c, responseData, message)
 
     } catch (error) {
-      console.error('Error performing batch operation:', error)
+      adminLogger.error('Error performing batch operation', {
+        error: error instanceof Error ? error.message : error,
+        stack: error instanceof Error ? error.stack : undefined
+      })
       return sendError(c, 'INTERNAL_SERVER_ERROR', 'Failed to perform batch operation', undefined, 500)
     }
   })
