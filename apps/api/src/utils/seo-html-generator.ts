@@ -3,6 +3,9 @@ import { links } from '../db/schema.js'
 import { eq, desc, count, and, type SQL } from 'drizzle-orm'
 import { getSettings } from './settings.js'
 import * as schema from '../db/schema.js'
+import { createLogger } from './logger.js'
+
+const seoLogger = createLogger('seo')
 
 type DatabaseType = BetterSQLite3Database<typeof schema>
 
@@ -143,7 +146,10 @@ export async function getBotPageData(database: DatabaseType, filters?: QueryFilt
       settings: siteSettings,
     }
   } catch (error) {
-    console.error('Error fetching bot page data:', error)
+    seoLogger.error('Error fetching bot page data', {
+      error: error instanceof Error ? error.message : error,
+      stack: error instanceof Error ? error.stack : undefined
+    })
     // 返回默认数据
     return {
       links: [],

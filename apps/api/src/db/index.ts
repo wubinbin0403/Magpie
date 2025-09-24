@@ -5,6 +5,7 @@ import * as schema from './schema.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
+import { systemLogger } from '../utils/logger.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -51,21 +52,24 @@ export { sqlite };
 // Initialize database (run migrations)
 export async function initializeDatabase() {
   try {
-    console.log(`Initializing database at: ${dbPath}`);
+    systemLogger.info('Initializing database', { dbPath });
     
     // Run migrations
     const migrationsPath = path.join(__dirname, '../../drizzle');
     
     if (!fs.existsSync(migrationsPath)) {
-      console.warn(`Migrations directory not found: ${migrationsPath}`);
+      systemLogger.warn('Migrations directory not found', { migrationsPath });
       return;
     }
     
     migrate(db, { migrationsFolder: migrationsPath });
     
-    console.log('Database migrations completed successfully');
+    systemLogger.info('Database migrations completed successfully');
   } catch (error) {
-    console.error('Failed to initialize database:', error);
+    systemLogger.error('Failed to initialize database', {
+      error: error instanceof Error ? error.message : error,
+      stack: error instanceof Error ? error.stack : undefined
+    });
     throw error;
   }
 }

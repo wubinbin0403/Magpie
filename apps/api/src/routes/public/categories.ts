@@ -3,6 +3,7 @@ import { db } from '../../db/index.js'
 import { categories, links } from '../../db/schema.js'
 import { eq, asc, sql } from 'drizzle-orm'
 import { sendSuccess, sendError } from '../../utils/response.js'
+import { apiLogger } from '../../utils/logger.js'
 
 // Create public categories router with optional database dependency injection
 function createPublicCategoriesRouter(database = db) {
@@ -10,7 +11,10 @@ function createPublicCategoriesRouter(database = db) {
 
   // Error handling middleware
   app.onError((err, c) => {
-    console.error('Public Categories API Error:', err)
+    apiLogger.error('Public categories API error', {
+      error: err instanceof Error ? err.message : err,
+      stack: err instanceof Error ? err.stack : undefined
+    })
     return sendError(c, 'INTERNAL_SERVER_ERROR', 'An internal server error occurred', undefined, 500)
   })
 
@@ -39,7 +43,10 @@ function createPublicCategoriesRouter(database = db) {
 
       return sendSuccess(c, result)
     } catch (error) {
-      console.error('Error fetching public categories:', error)
+      apiLogger.error('Error fetching public categories', {
+        error: error instanceof Error ? error.message : error,
+        stack: error instanceof Error ? error.stack : undefined
+      })
       return sendError(c, 'INTERNAL_SERVER_ERROR', 'Failed to fetch categories', undefined, 500)
     }
   })

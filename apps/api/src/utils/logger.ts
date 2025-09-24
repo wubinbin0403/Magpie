@@ -26,15 +26,19 @@ function getLogDir() {
 }
 
 const LOG_DIR = getLogDir();
-const LOG_LEVEL = process.env.LOG_LEVEL || (process.env.NODE_ENV === 'production' ? 'info' : 'debug');
+const IS_TEST_ENV = process.env.NODE_ENV === 'test';
+const LOG_LEVEL = process.env.LOG_LEVEL || (IS_TEST_ENV ? 'silent' : (process.env.NODE_ENV === 'production' ? 'info' : 'debug'));
+const DEFAULT_APPLICATION_META = { application: 'magpie' } as const;
 
 // 确保日志目录存在
-try {
-  if (!fs.existsSync(LOG_DIR)) {
-    fs.mkdirSync(LOG_DIR, { recursive: true });
+if (!IS_TEST_ENV) {
+  try {
+    if (!fs.existsSync(LOG_DIR)) {
+      fs.mkdirSync(LOG_DIR, { recursive: true });
+    }
+  } catch (error) {
+    process.emitWarning(`Could not create log directory ${LOG_DIR}. Logging to console only.`);
   }
-} catch (error) {
-  console.warn(`Warning: Could not create log directory ${LOG_DIR}. Logging to console only.`);
 }
 
 // 自定义日志格式
@@ -43,10 +47,29 @@ const logFormat = winston.format.combine(
     format: 'YYYY-MM-DD HH:mm:ss'
   }),
   winston.format.errors({ stack: true }),
-  winston.format.printf(({ timestamp, level, message, service, ...meta }) => {
-    const serviceName = service ? `[${service}]` : '';
+  winston.format.printf((info) => {
+    const { timestamp = '', level = '', message = '' } = info;
+    const applicationName = typeof info.application === 'string' ? info.application : undefined;
+    const serviceName = typeof info.service === 'string' ? info.service : undefined;
+
+    const meta: Record<string, unknown> = { ...info };
+    delete meta.timestamp;
+    delete meta.level;
+    delete meta.message;
+    delete meta.application;
+    delete meta.service;
+
+    const parts: string[] = [String(timestamp), String(level).toUpperCase()];
+    if (applicationName) {
+      parts.push(`[${applicationName}]`);
+    }
+    if (serviceName) {
+      parts.push(`[${serviceName}]`);
+    }
+    parts.push(String(message));
+
     const metaStr = Object.keys(meta).length ? ` ${JSON.stringify(meta)}` : '';
-    return `${timestamp} ${level.toUpperCase()} ${serviceName} ${message}${metaStr}`;
+    return `${parts.join(' ')}${metaStr}`;
   })
 );
 
@@ -58,18 +81,21 @@ const jsonFormat = winston.format.combine(
 );
 
 // 创建传输器数组
-const transports: winston.transport[] = [
-  // 控制台输出（开发环境友好格式）
-  new winston.transports.Console({
-    format: winston.format.combine(
-      winston.format.colorize(),
-      logFormat
-    )
-  })
-];
+const transports: winston.transport[] = [];
+
+if (!IS_TEST_ENV) {
+  transports.push(
+    new winston.transports.Console({
+      format: winston.format.combine(
+        winston.format.colorize(),
+        logFormat
+      )
+    })
+  );
+}
 
 // 只有在日志目录可用时才添加文件传输器
-if (fs.existsSync(LOG_DIR)) {
+if (!IS_TEST_ENV && fs.existsSync(LOG_DIR)) {
   try {
     // 错误日志文件
     transports.push(new winston.transports.File({
@@ -90,15 +116,16 @@ if (fs.existsSync(LOG_DIR)) {
       tailable: true
     }));
   } catch (error) {
-    console.warn('Warning: Could not create file transports. Using console logging only.');
+    process.emitWarning('Could not create file transports. Using console logging only.');
   }
 }
 
 // 创建基础logger
 const baseLogger = winston.createLogger({
   level: LOG_LEVEL,
-  defaultMeta: { service: 'magpie' },
-  transports
+  defaultMeta: { ...DEFAULT_APPLICATION_META },
+  transports,
+  silent: IS_TEST_ENV
 });
 
 // 创建专门的分类logger

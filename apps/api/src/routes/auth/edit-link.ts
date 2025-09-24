@@ -6,6 +6,7 @@ import { eq } from 'drizzle-orm'
 import { sendSuccess, sendError, notFound } from '../../utils/response.js'
 import { idParamSchema, updateLinkSchema } from '../../utils/validation.js'
 import { requireApiToken, logOperation } from '../../middleware/auth.js'
+import { apiLogger } from '../../utils/logger.js'
 
 // Create edit link router with optional database dependency injection
 function createEditLinkRouter(database = db) {
@@ -13,7 +14,10 @@ function createEditLinkRouter(database = db) {
 
   // Error handling middleware
   app.onError((err, c) => {
-    console.error('Edit Link API Error:', err)
+    apiLogger.error('Edit Link API error', {
+      error: err instanceof Error ? err.message : err,
+      stack: err instanceof Error ? err.stack : undefined
+    })
     
     if (err.message.includes('ZodError') || err.name === 'ZodError') {
       return sendError(c, 'VALIDATION_ERROR', 'Invalid request parameters', undefined, 400)
@@ -171,7 +175,10 @@ function createEditLinkRouter(database = db) {
           duration
         )
         
-        console.error('Error updating link:', error)
+        apiLogger.error('Error updating link', {
+          error: error instanceof Error ? error.message : error,
+          stack: error instanceof Error ? error.stack : undefined
+        })
         return sendError(c, 'INTERNAL_SERVER_ERROR', 'Failed to update link', undefined, 500)
       }
     }

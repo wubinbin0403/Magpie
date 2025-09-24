@@ -5,6 +5,7 @@ import { db } from '../../db/index.js'
 import { links } from '../../db/schema.js'
 import { eq, sql, and } from 'drizzle-orm'
 import { sendSuccess, sendError } from '../../utils/response.js'
+import { apiLogger } from '../../utils/logger.js'
 
 // Validation schema for domain query
 const domainQuerySchema = z.object({
@@ -17,9 +18,12 @@ function createDomainsRouter(database = db) {
 
   // Error handling middleware
   app.onError((err, c) => {
-    console.error('Domains API Error:', err)
+    apiLogger.error('Domains API error', {
+      error: err instanceof Error ? err.message : err,
+      stack: err instanceof Error ? err.stack : undefined
+    })
     
-    if (err.message.includes('ZodError') || err.name === 'ZodError') {
+    if (err instanceof Error && (err.message.includes('ZodError') || err.name === 'ZodError')) {
       return sendError(c, 'VALIDATION_ERROR', 'Invalid request parameters', undefined, 400)
     }
     
@@ -28,8 +32,12 @@ function createDomainsRouter(database = db) {
 
   // GET /api/domains/:domain/stats - 获取单个域名的统计信息
   app.get('/:domain/stats', zValidator('param', domainQuerySchema), async (c) => {
+    let requestedDomain: string | undefined
+
     try {
-      const { domain } = c.req.valid('param')
+      const params = c.req.valid('param')
+      requestedDomain = params.domain
+      const { domain } = params
       
       // 获取该域名下的链接数量
       const countResult = await database
@@ -70,7 +78,11 @@ function createDomainsRouter(database = db) {
       return sendSuccess(c, response)
       
     } catch (error) {
-      console.error('Error fetching domain stats:', error)
+      apiLogger.error('Error fetching domain stats', {
+        domain: requestedDomain ?? c.req.param('domain'),
+        error: error instanceof Error ? error.message : error,
+        stack: error instanceof Error ? error.stack : undefined
+      })
       return sendError(c, 'INTERNAL_SERVER_ERROR', 'Failed to fetch domain statistics', undefined, 500)
     }
   })

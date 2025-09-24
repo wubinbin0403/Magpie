@@ -5,16 +5,20 @@ import { links } from '../../db/schema.js'
 import { eq, desc, asc, and, count, sql } from 'drizzle-orm'
 import { sendSuccess, sendError } from '../../utils/response.js'
 import { searchQuerySchema, suggestionsQuerySchema, buildSearchDateFilter } from '../../utils/validation.js'
+import { apiLogger } from '../../utils/logger.js'
 import type { SearchResponse, SearchResult, Suggestion } from '@magpie/shared'
 
 const app = new Hono()
 
 // 添加验证错误处理中间件
 app.onError((err, c) => {
-  console.error('Search API Error:', err)
+  apiLogger.error('Search API error', {
+    error: err instanceof Error ? err.message : err,
+    stack: err instanceof Error ? err.stack : undefined
+  })
   
   // zod验证错误
-  if (err.message.includes('ZodError') || err.name === 'ZodError') {
+  if (err instanceof Error && (err.message.includes('ZodError') || err.name === 'ZodError')) {
     return sendError(c, 'VALIDATION_ERROR', 'Invalid request parameters', undefined, 400)
   }
   
@@ -224,7 +228,11 @@ app.get('/', zValidator('query', searchQuerySchema), async (c) => {
     return sendSuccess(c, responseData)
     
   } catch (error) {
-    console.error('Error searching links:', error)
+    apiLogger.error('Error searching links', {
+      query: c.req.query('q'),
+      error: error instanceof Error ? error.message : error,
+      stack: error instanceof Error ? error.stack : undefined
+    })
     return sendError(c, 'INTERNAL_SERVER_ERROR', 'Failed to search links', undefined, 500)
   }
 })
@@ -379,7 +387,12 @@ app.get('/suggestions', zValidator('query', suggestionsQuerySchema), async (c) =
     })
     
   } catch (error) {
-    console.error('Error getting search suggestions:', error)
+    apiLogger.error('Error getting search suggestions', {
+      query: c.req.query('q'),
+      type: c.req.query('type'),
+      error: error instanceof Error ? error.message : error,
+      stack: error instanceof Error ? error.stack : undefined
+    })
     return sendError(c, 'INTERNAL_SERVER_ERROR', 'Failed to get suggestions', undefined, 500)
   }
 })
@@ -559,7 +572,13 @@ async function generateSearchSuggestions(
       })
 
   } catch (error) {
-    console.error('Error generating search suggestions:', error)
+    apiLogger.error('Error generating search suggestions', {
+      query: q,
+      category,
+      domain,
+      error: error instanceof Error ? error.message : error,
+      stack: error instanceof Error ? error.stack : undefined
+    })
   }
   
   return suggestions.slice(0, 5) // 最多返回5个建议

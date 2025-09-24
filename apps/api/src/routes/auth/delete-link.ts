@@ -8,6 +8,7 @@ import { idParamSchema } from '../../utils/validation.js'
 import { requireApiToken, logOperation } from '../../middleware/auth.js'
 import { triggerStaticGeneration } from '../../services/static-generator.js'
 import { getUnifiedAuthData } from '../../types/hono-context.js'
+import { apiLogger } from '../../utils/logger.js'
 
 // Create delete link router with optional database dependency injection
 function createDeleteLinkRouter(database = db) {
@@ -15,7 +16,10 @@ function createDeleteLinkRouter(database = db) {
 
   // Error handling middleware
   app.onError((err, c) => {
-    console.error('Delete Link API Error:', err)
+    apiLogger.error('Delete Link API error', {
+      error: err instanceof Error ? err.message : err,
+      stack: err instanceof Error ? err.stack : undefined
+    })
     
     if (err.message.includes('ZodError') || err.name === 'ZodError') {
       return sendError(c, 'VALIDATION_ERROR', 'Invalid request parameters', undefined, 400)
@@ -138,7 +142,10 @@ function createDeleteLinkRouter(database = db) {
         duration
       )
       
-      console.error('Error deleting link:', error)
+      apiLogger.error('Error deleting link', {
+        error: error instanceof Error ? error.message : error,
+        stack: error instanceof Error ? error.stack : undefined
+      })
       return sendError(c, 'INTERNAL_SERVER_ERROR', 'Failed to delete link', undefined, 500)
     }
   })

@@ -4,6 +4,9 @@ import { db } from './index.js';
 import { settings, apiTokens, links, categories } from './schema.js';
 import { eq } from 'drizzle-orm';
 import crypto from 'crypto';
+import { createLogger } from '../utils/logger.js';
+
+const seedLogger = createLogger('db-seed');
 
 const DEFAULT_SETTINGS = [
   // Site basic information
@@ -469,13 +472,13 @@ const SAMPLE_LINKS: SampleLink[] = [
 ] as const;
 
 async function seedDatabase(database = db, includeDevData = false) {
-  console.log('Starting database seeding...');
+  seedLogger.info('Starting database seeding');
   
   const now = Math.floor(Date.now() / 1000);
   
   try {
     // Insert default settings
-    console.log('Inserting default settings...');
+    seedLogger.info('Inserting default settings');
     
     for (const setting of DEFAULT_SETTINGS) {
       // Check if setting already exists
@@ -490,14 +493,14 @@ async function seedDatabase(database = db, includeDevData = false) {
           createdAt: now,
           updatedAt: now,
         });
-        console.log(`✓ Added setting: ${setting.key}`);
+        seedLogger.info('Added setting', { key: setting.key });
       } else {
-        console.log(`- Setting already exists: ${setting.key}`);
+        seedLogger.debug('Setting already exists', { key: setting.key });
       }
     }
 
     // Insert default categories
-    console.log('Inserting default categories...');
+    seedLogger.info('Inserting default categories');
     
     for (const category of DEFAULT_CATEGORIES) {
       // Check if category already exists
@@ -515,14 +518,14 @@ async function seedDatabase(database = db, includeDevData = false) {
           createdAt: now,
           updatedAt: now,
         });
-        console.log(`✓ Added category: ${category.name}`);
+        seedLogger.info('Added category', { name: category.name });
       } else {
-        console.log(`- Category already exists: ${category.name}`);
+        seedLogger.debug('Category already exists', { name: category.name });
       }
     }
     
     // Create initial admin API token if none exists
-    console.log('Checking for admin API tokens...');
+    seedLogger.info('Checking for admin API tokens');
     
     const existingTokens = await database.select().from(apiTokens).limit(1);
     let tokenResult;
@@ -538,17 +541,17 @@ async function seedDatabase(database = db, includeDevData = false) {
         createdAt: now,
       });
       
-      console.log(`✓ Created initial admin token: ${tokenValue}`);
-      console.log('  ⚠️  Please save this token - it will not be shown again!');
+      seedLogger.info(`Created initial admin token: ${tokenValue}`);
+      seedLogger.warn('Please save the initial admin token; it will not be shown again');
       tokenResult = { tokenValue };
     } else {
-      console.log('- Admin tokens already exist');
+      seedLogger.debug('Admin tokens already exist');
       tokenResult = { tokenValue: null };
     }
 
     // Insert sample links if requested (for development)
     if (includeDevData) {
-      console.log('Inserting sample links for development...');
+      seedLogger.info('Inserting sample links for development');
       
       for (let i = 0; i < SAMPLE_LINKS.length; i++) {
         const link = SAMPLE_LINKS[i];
@@ -588,22 +591,25 @@ async function seedDatabase(database = db, includeDevData = false) {
         });
         
         if ((i + 1) % 10 === 0) {
-          console.log(`✓ Inserted ${i + 1}/${SAMPLE_LINKS.length} sample links`);
+          seedLogger.info('Inserted sample link', { index: i + 1, total: SAMPLE_LINKS.length });
         }
       }
       
-      console.log(`✓ Inserted all ${SAMPLE_LINKS.length} sample links`);
+      seedLogger.info('Inserted all sample links', { total: SAMPLE_LINKS.length });
       
       // FTS5 index is automatically populated by triggers during link insertion
-      console.log('✓ FTS5 search index automatically populated via triggers');
+      seedLogger.info('FTS5 search index automatically populated via triggers');
     }
     
-    console.log('Database seeding completed successfully!');
+    seedLogger.info('Database seeding completed successfully');
     
     return tokenResult;
     
   } catch (error) {
-    console.error('Database seeding failed:', error);
+    seedLogger.error('Database seeding failed', {
+      error: error instanceof Error ? error.message : error,
+      stack: error instanceof Error ? error.stack : undefined
+    });
     throw error;
   }
 }
@@ -614,9 +620,9 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const includeDevData = process.argv.includes('--dev');
   
   if (includeDevData) {
-    console.log('🚀 Running database seeding with development data...\n');
+    seedLogger.info('Running database seeding with development data');
   } else {
-    console.log('🚀 Running basic database seeding...\n');
+    seedLogger.info('Running basic database seeding');
   }
   
   seedDatabase(db, includeDevData)

@@ -1,5 +1,6 @@
 import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
+import { z } from 'zod'
 import { db } from '../../db/index.js'
 import { links } from '../../db/schema.js'
 import { eq, desc, asc, count, and, or, like } from 'drizzle-orm'
@@ -8,6 +9,7 @@ import { adminLinksQuerySchema, idParamSchema, updateLinkSchema } from '../../ut
 import { requireAdmin } from '../../middleware/admin.js'
 import { triggerStaticGeneration } from '../../services/static-generator.js'
 import type { AdminLink } from '@magpie/shared'
+import { adminLogger } from '../../utils/logger.js'
 
 // Create admin links router with optional database dependency injection
 export function createAdminLinksRouter(database = db) {
@@ -15,12 +17,15 @@ export function createAdminLinksRouter(database = db) {
 
   // Error handling middleware
   app.onError((err, c) => {
-    console.error('Admin Links API Error:', err)
-    
-    if (err.message.includes('ZodError') || err.name === 'ZodError') {
+    adminLogger.error('Admin Links API error', {
+      error: err instanceof Error ? err.message : err,
+      stack: err instanceof Error ? err.stack : undefined
+    })
+
+    if (err instanceof Error && (err.message.includes('ZodError') || err.name === 'ZodError')) {
       return sendError(c, 'VALIDATION_ERROR', 'Invalid request parameters', undefined, 400)
     }
-    
+
     return sendError(c, 'INTERNAL_SERVER_ERROR', 'An internal server error occurred', undefined, 500)
   })
 
@@ -199,7 +204,11 @@ export function createAdminLinksRouter(database = db) {
       })
       
     } catch (error) {
-      console.error('Error fetching admin links:', error)
+      adminLogger.error('Error fetching admin links', {
+        requestUrl: c.req.url,
+        error: error instanceof Error ? error.message : error,
+        stack: error instanceof Error ? error.stack : undefined
+      })
       return sendError(c, 'INTERNAL_SERVER_ERROR', 'Failed to fetch links')
     }
   })
@@ -210,9 +219,14 @@ export function createAdminLinksRouter(database = db) {
     zValidator('param', idParamSchema),
     zValidator('json', updateLinkSchema),
     async (c) => {
+      let linkId: number | undefined
+      let updateData: z.infer<typeof updateLinkSchema> | undefined
+
       try {
-        const { id } = c.req.valid('param')
-        const updateData = c.req.valid('json')
+        const params = c.req.valid('param')
+        linkId = params.id
+        updateData = c.req.valid('json')
+        const { id } = params
 
         // Get link details first
         const linkResult = await database
@@ -326,7 +340,12 @@ export function createAdminLinksRouter(database = db) {
         return sendSuccess(c, formattedLink)
         
       } catch (error) {
-        console.error('Error updating admin link:', error)
+        adminLogger.error('Error updating admin link', {
+          linkId: linkId ?? Number.parseInt(c.req.param('id'), 10),
+          payload: updateData,
+          error: error instanceof Error ? error.message : error,
+          stack: error instanceof Error ? error.stack : undefined
+        })
         return sendError(c, 'INTERNAL_SERVER_ERROR', 'Failed to update link')
       }
     })
@@ -336,8 +355,12 @@ export function createAdminLinksRouter(database = db) {
     requireAdmin(database),
     zValidator('param', idParamSchema),
     async (c) => {
+      let linkId: number | undefined
+
       try {
-        const { id } = c.req.valid('param')
+        const params = c.req.valid('param')
+        linkId = params.id
+        const { id } = params
 
         // Check if link exists
         const linkResult = await database
@@ -367,7 +390,11 @@ export function createAdminLinksRouter(database = db) {
         return sendSuccess(c, { message: 'Link deleted successfully' })
         
       } catch (error) {
-        console.error('Error deleting admin link:', error)
+        adminLogger.error('Error deleting admin link', {
+          linkId: linkId ?? Number.parseInt(c.req.param('id'), 10),
+          error: error instanceof Error ? error.message : error,
+          stack: error instanceof Error ? error.stack : undefined
+        })
         return sendError(c, 'INTERNAL_SERVER_ERROR', 'Failed to delete link')
       }
     })

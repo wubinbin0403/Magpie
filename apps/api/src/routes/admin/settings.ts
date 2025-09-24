@@ -16,9 +16,12 @@ function createAdminSettingsRouter(database = db) {
 
   // Error handling middleware
   app.onError((err, c) => {
-    console.error('Admin Settings API Error:', err)
+    adminLogger.error('Admin Settings API error', {
+      error: err instanceof Error ? err.message : err,
+      stack: err instanceof Error ? err.stack : undefined
+    })
     
-    if (err.message.includes('ZodError') || err.name === 'ZodError') {
+    if (err instanceof Error && (err.message.includes('ZodError') || err.name === 'ZodError')) {
       return sendError(c, 'VALIDATION_ERROR', 'Invalid request parameters', undefined, 400)
     }
     
@@ -134,10 +137,9 @@ function createAdminSettingsRouter(database = db) {
       adminLogger.error('Failed to retrieve admin settings', {
         userId: userData?.id,
         duration,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
       })
-
-      console.error('Failed to get settings:', error)
       return sendError(c, 'DATABASE_ERROR', 'Failed to retrieve settings', undefined, 500)
     }
   })
@@ -257,10 +259,9 @@ function createAdminSettingsRouter(database = db) {
       adminLogger.error('Failed to update admin settings', {
         userId: userData?.id,
         duration,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
       })
-
-      console.error('Failed to update settings:', error)
       return sendError(c, 'DATABASE_ERROR', 'Failed to update settings', undefined, 500)
     }
   })
@@ -379,10 +380,9 @@ function createAdminSettingsRouter(database = db) {
           responseTime,
           model: aiSettings.ai_model || 'gpt-3.5-turbo',
           baseUrl: aiSettings.openai_base_url || 'https://api.openai.com/v1',
-          error: aiError instanceof Error ? aiError.message : String(aiError)
+          error: aiError instanceof Error ? aiError.message : String(aiError),
+          stack: aiError instanceof Error ? aiError.stack : undefined
         })
-
-        console.error('AI service test failed:', aiError)
 
         return sendError(c, 'AI_SERVICE_ERROR', `AI service test failed: ${String(aiError)}`, {
           responseTime,
@@ -397,10 +397,9 @@ function createAdminSettingsRouter(database = db) {
       adminLogger.error('AI connection test failed (general error)', {
         userId: userData?.id,
         responseTime,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
       })
-
-      console.error('AI connection test failed:', error)
       return sendError(c, 'AI_SERVICE_ERROR', 'AI connection test failed', undefined, 500)
     }
   })

@@ -3,6 +3,7 @@ import { db } from '../../db/index.js'
 import { links } from '../../db/schema.js'
 import { eq, desc, and, sql } from 'drizzle-orm'
 import { sendSuccess, sendError } from '../../utils/response.js'
+import { apiLogger } from '../../utils/logger.js'
 import type { StatsResponse, ActivityItem, TagStats, DomainStats, MonthlyStats } from '@magpie/shared'
 
 // Create stats router with optional database dependency injection
@@ -11,7 +12,10 @@ export function createStatsRouter(database = db) {
 
   // 添加错误处理中间件
   app.onError((err, c) => {
-    console.error('Stats API Error:', err)
+    apiLogger.error('Stats API error', {
+      error: err instanceof Error ? err.message : err,
+      stack: err instanceof Error ? err.stack : undefined
+    })
     return sendError(c, 'INTERNAL_SERVER_ERROR', 'An internal server error occurred', undefined, 500)
   })
 
@@ -67,7 +71,9 @@ export function createStatsRouter(database = db) {
           })
         } catch (error) {
           // 忽略无效的JSON
-          console.warn('Invalid tags JSON:', item.tags)
+          apiLogger.warn('Invalid tags JSON encountered while computing stats', {
+            rawTags: item.tags
+          })
         }
       }
     })
@@ -166,8 +172,11 @@ export function createStatsRouter(database = db) {
 
     return sendSuccess(c, responseData)
 
-  } catch (error) {
-    console.error('Error fetching stats:', error)
+    } catch (error) {
+      apiLogger.error('Error fetching stats', {
+        error: error instanceof Error ? error.message : error,
+        stack: error instanceof Error ? error.stack : undefined
+      })
       return sendError(c, 'INTERNAL_SERVER_ERROR', 'Failed to fetch statistics', undefined, 500)
     }
   })

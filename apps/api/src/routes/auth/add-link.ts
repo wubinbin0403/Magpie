@@ -53,13 +53,16 @@ function createAddLinkRouter(database = db) {
 
 // Error handling middleware
 app.onError((err, c) => {
-  console.error('Add Link API Error:', err)
+  apiLogger.error('Add Link API error', {
+    error: err instanceof Error ? err.message : err,
+    stack: err instanceof Error ? err.stack : undefined
+  })
   
   if (err instanceof HTTPException && err.status === 400) {
     return sendError(c, 'VALIDATION_ERROR', 'Invalid request parameters', undefined, 400)
   }
   
-  if (err.message.includes('ZodError') || err.name === 'ZodError') {
+  if (err instanceof Error && (err.message.includes('ZodError') || err.name === 'ZodError')) {
     return sendError(c, 'VALIDATION_ERROR', 'Invalid request parameters', undefined, 400)
   }
   
@@ -363,7 +366,11 @@ app.get('/add', requireApiTokenOrAdminSession(database), zValidator('query', add
     try {
       processedContent = await processUrlContent(url, database)
     } catch (error) {
-      console.warn('Unexpected error in processUrlContent, using fallback:', error)
+      apiLogger.warn('Unexpected error in processUrlContent, using fallback', {
+        url,
+        error: error instanceof Error ? error.message : error,
+        stack: error instanceof Error ? error.stack : undefined
+      })
       // Use fallback content as last resort
       processedContent = await createFallbackContent(url, database)
     }
@@ -492,8 +499,6 @@ app.get('/add', requireApiTokenOrAdminSession(database), zValidator('query', add
       duration,
       stack: error instanceof Error ? error.stack : undefined
     })
-
-    console.error('Failed to add link:', error)
     return sendError(c, 'INTERNAL_SERVER_ERROR', 'Failed to add link', undefined, 500)
   }
 })
@@ -538,7 +543,11 @@ app.post('/', requireApiTokenOrAdminSession(database), zValidator('json', addLin
     try {
       processedContent = await processUrlContent(url, database)
     } catch (error) {
-      console.warn('Unexpected error in processUrlContent, using fallback:', error)
+      apiLogger.warn('Unexpected error in processUrlContent, using fallback', {
+        url,
+        error: error instanceof Error ? error.message : error,
+        stack: error instanceof Error ? error.stack : undefined
+      })
       // Use fallback content as last resort
       processedContent = await createFallbackContent(url, database)
     }
@@ -720,7 +729,6 @@ app.post('/', requireApiTokenOrAdminSession(database), zValidator('json', addLin
       duration
     )
 
-    console.error('Error adding link:', error)
     return sendError(c, 'INTERNAL_SERVER_ERROR', 'Failed to add link', undefined, 500)
   }
 })

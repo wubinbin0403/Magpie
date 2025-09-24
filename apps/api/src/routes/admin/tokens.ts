@@ -7,6 +7,7 @@ import { sendSuccess, sendError, notFound } from '../../utils/response.js'
 import { tokensQuerySchema, createTokenSchema, idParamSchema } from '../../utils/validation.js'
 import { requireAdmin } from '../../middleware/admin.js'
 import crypto from 'crypto'
+import { adminLogger } from '../../utils/logger.js'
 
 // Create admin tokens router with optional database dependency injection
 function createAdminTokensRouter(database = db) {
@@ -14,9 +15,12 @@ function createAdminTokensRouter(database = db) {
 
   // Error handling middleware
   app.onError((err, c) => {
-    console.error('Admin Tokens API Error:', err)
+    adminLogger.error('Admin Tokens API error', {
+      error: err instanceof Error ? err.message : err,
+      stack: err instanceof Error ? err.stack : undefined
+    })
     
-    if (err.message.includes('ZodError') || err.name === 'ZodError') {
+    if (err instanceof Error && (err.message.includes('ZodError') || err.name === 'ZodError')) {
       return sendError(c, 'VALIDATION_ERROR', 'Invalid request parameters', undefined, 400)
     }
     
@@ -91,7 +95,11 @@ function createAdminTokensRouter(database = db) {
 
       return sendSuccess(c, { tokens: maskedTokens, pagination }, 'Tokens retrieved successfully')
     } catch (error) {
-      console.error('Failed to get tokens:', error)
+      adminLogger.error('Failed to get tokens', {
+        requestUrl: c.req.url,
+        error: error instanceof Error ? error.message : error,
+        stack: error instanceof Error ? error.stack : undefined
+      })
       return sendError(c, 'DATABASE_ERROR', 'Failed to retrieve tokens', undefined, 500)
     }
   })
@@ -126,15 +134,22 @@ function createAdminTokensRouter(database = db) {
 
       return sendSuccess(c, newToken, 'Token created successfully', 201)
     } catch (error) {
-      console.error('Failed to create token:', error)
+      adminLogger.error('Failed to create token', {
+        error: error instanceof Error ? error.message : error,
+        stack: error instanceof Error ? error.stack : undefined
+      })
       return sendError(c, 'DATABASE_ERROR', 'Failed to create token', undefined, 500)
     }
   })
 
   // DELETE /api/admin/tokens/:id - Revoke token
   app.delete('/:id', requireAdmin(database), zValidator('param', idParamSchema), async (c) => {
+    let tokenId: number | undefined
+
     try {
-      const { id } = c.req.valid('param')
+      const params = c.req.valid('param')
+      tokenId = params.id
+      const { id } = params
       const now = Math.floor(Date.now() / 1000)
 
       // Check if token exists
@@ -170,7 +185,11 @@ function createAdminTokensRouter(database = db) {
 
       return sendSuccess(c, { id, status: 'revoked' }, `Token "${token.name || id}" revoked successfully`)
     } catch (error) {
-      console.error('Failed to revoke token:', error)
+      adminLogger.error('Failed to revoke token', {
+        tokenId: tokenId ?? Number.parseInt(c.req.param('id'), 10),
+        error: error instanceof Error ? error.message : error,
+        stack: error instanceof Error ? error.stack : undefined
+      })
       return sendError(c, 'DATABASE_ERROR', 'Failed to revoke token', undefined, 500)
     }
   })

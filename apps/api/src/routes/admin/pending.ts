@@ -7,6 +7,7 @@ import { sendSuccess, sendError } from '../../utils/response.js'
 import { adminPendingQuerySchema } from '../../utils/validation.js'
 import { requireAdmin } from '../../middleware/admin.js'
 import type { PendingLink, Pagination } from '@magpie/shared'
+import { adminLogger } from '../../utils/logger.js'
 
 // Create admin pending links router with optional database dependency injection
 function createAdminPendingRouter(database = db) {
@@ -14,9 +15,12 @@ function createAdminPendingRouter(database = db) {
 
   // Error handling middleware
   app.onError((err, c) => {
-    console.error('Admin Pending Links API Error:', err)
+    adminLogger.error('Admin Pending Links API error', {
+      error: err instanceof Error ? err.message : err,
+      stack: err instanceof Error ? err.stack : undefined
+    })
     
-    if (err.message.includes('ZodError') || err.name === 'ZodError') {
+    if (err instanceof Error && (err.message.includes('ZodError') || err.name === 'ZodError')) {
       return sendError(c, 'VALIDATION_ERROR', 'Invalid request parameters', undefined, 400)
     }
     
@@ -129,7 +133,11 @@ function createAdminPendingRouter(database = db) {
       return sendSuccess(c, responseData)
       
     } catch (error) {
-      console.error('Error fetching pending links:', error)
+      adminLogger.error('Error fetching pending links', {
+        requestUrl: c.req.url,
+        error: error instanceof Error ? error.message : error,
+        stack: error instanceof Error ? error.stack : undefined
+      })
       return sendError(c, 'INTERNAL_SERVER_ERROR', 'Failed to fetch pending links', undefined, 500)
     }
   })

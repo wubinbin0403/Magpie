@@ -1,5 +1,6 @@
 import { Readability } from '@mozilla/readability'
 import { JSDOM } from 'jsdom'
+import { scraperLogger } from '../utils/logger.js'
 import type { ScrapedContent } from './web-scraper.js'
 
 export interface ReadabilityScraperOptions {
@@ -79,7 +80,11 @@ export class ReadabilityScraper {
       return result
       
     } catch (error) {
-      console.error(`[READABILITY-SCRAPER] Error scraping ${url}:`, error)
+      scraperLogger.error('Readability scraper failed', {
+        url,
+        error: error instanceof Error ? error.message : error,
+        stack: error instanceof Error ? error.stack : undefined
+      })
       throw new Error(`Failed to scrape content from ${url}: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
