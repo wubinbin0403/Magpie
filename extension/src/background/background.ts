@@ -251,20 +251,40 @@ async function handleSaveLink(
       log('Link data:', linkData);
       
       // Show success notification (non-blocking)
-      const successMessage = skipConfirm 
+      const successMessage = skipConfirm
         ? `"${title}" has been published to Magpie`
         : `"${title}" saved for confirmation`;
-      
+
       showNotification(
         skipConfirm ? 'Link Published' : 'Link Saved',
         successMessage,
       ).catch((notifError) => {
         log('Success notification failed:', notifError.message);
       });
-      
-      // Optionally log confirmation URL
-      if (linkData && linkData.confirmUrl) {
-        log('Link saved with confirmation URL:', linkData.confirmUrl);
+
+      // Open confirmation page if not in auto-publish mode
+      if (!skipConfirm && linkData && linkData.confirmUrl) {
+        log('Opening confirmation page:', linkData.confirmUrl);
+
+        // Get server URL and API token to build full URL
+        const serverUrl = await getServerUrl();
+        const apiToken = await getApiToken();
+
+        // Build full confirmation URL with token parameter
+        const baseUrl = serverUrl.replace(/\/$/, '');
+        const fullConfirmUrl = `${baseUrl}${linkData.confirmUrl}?token=${encodeURIComponent(apiToken || '')}`;
+
+        log('Full confirmation URL:', fullConfirmUrl);
+
+        // Open confirmation page in a new tab
+        chrome.tabs.create({ url: fullConfirmUrl }).catch((tabError) => {
+          log('Failed to open confirmation page:', tabError.message);
+        });
+      } else {
+        // Optionally log confirmation URL for debugging
+        if (linkData && linkData.confirmUrl) {
+          log('Link saved with confirmation URL:', linkData.confirmUrl);
+        }
       }
       
       return { success: true, data: linkData };

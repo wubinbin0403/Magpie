@@ -223,8 +223,8 @@ class ApiClient {
   }
 
 
-  async getPendingLink(id: number): Promise<ApiResponse<import('@magpie/shared').PendingLinkResponse>> {
-    return this.request<import('@magpie/shared').PendingLinkResponse>(`/links/${id}/pending`)
+  async getPendingLink(id: number, token?: string): Promise<ApiResponse<import('@magpie/shared').PendingLinkResponse>> {
+    return this.request<import('@magpie/shared').PendingLinkResponse>(`/links/${id}/pending`, token ? { token } : undefined)
   }
 
   async confirmLink(id: number, data: {
@@ -234,10 +234,11 @@ class ApiClient {
     tags: string[]
     readingTime?: number
     publish?: boolean
-  }): Promise<ApiResponse<import('@magpie/shared').ConfirmLinkResponse>> {
+  }, token?: string): Promise<ApiResponse<import('@magpie/shared').ConfirmLinkResponse>> {
     return this.request<import('@magpie/shared').ConfirmLinkResponse>(`/links/${id}/confirm`, {
       method: 'POST',
       body: JSON.stringify(data),
+      ...(token ? { token } : {}),
     })
   }
 

@@ -10,6 +10,7 @@ const HomePage = lazy(() => import('./pages/HomePage'))
 const SearchPage = lazy(() => import('./pages/SearchPage'))
 const AdminPage = lazy(() => import('./pages/AdminPage'))
 const AdminLogin = lazy(() => import('./pages/admin/AdminLogin'))
+const ConfirmPage = lazy(() => import('./pages/ConfirmPage'))
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -38,6 +39,7 @@ function App() {
               <Route path="/link/:id" element={<HomePage />} />
               <Route path="/category/:name" element={<HomePage />} />
               <Route path="/search" element={<SearchPage />} />
+              <Route path="/confirm/:id" element={<ConfirmPage />} />
               <Route 
                 path="/admin/login" 
                 element={
