@@ -9,7 +9,8 @@ import {
   SaveLinkMessage,
   SaveStatus,
   Category,
-  ExtensionConfig
+  ExtensionConfig,
+  LinkResponse
 } from '../shared/types';
 import { MagpieApiClient } from '../shared/api';
 import { getCurrentTab, getPageTitle, log } from '../shared/utils';
@@ -251,16 +252,25 @@ class PopupController {
       if (response?.success) {
         this.state.saveStatus = 'success';
         this.hideProgress();
-        this.showSuccess(
-          skipConfirm 
-            ? 'Link published successfully!' 
-            : 'Link saved for review!'
-        );
-        
-        // Close popup after success
-        setTimeout(() => {
-          window.close();
-        }, 1500);
+        const successMessage = skipConfirm
+          ? 'Link published successfully!'
+          : 'Link saved for review!';
+
+        let shouldClose = true;
+
+        if (!skipConfirm) {
+          const opened = await this.openConfirmPage(response?.data);
+          shouldClose = opened;
+        }
+
+        this.showSuccess(successMessage);
+
+        if (shouldClose) {
+          // Close popup after success
+          setTimeout(() => {
+            window.close();
+          }, 1500);
+        }
       } else {
         throw new Error(response?.error || 'Failed to save link');
       }
@@ -277,9 +287,52 @@ class PopupController {
     }
   }
 
+  private async openConfirmPage(linkData?: LinkResponse): Promise<boolean> {
+    if (!linkData) {
+      this.showError('Missing confirmation data');
+      return false;
+    }
+
+    const config = this.state.config;
+    if (!config?.serverUrl) {
+      this.showError('Server URL is not configured');
+      return false;
+    }
+
+    if (!config.apiToken) {
+      this.showError('API token is missing');
+      return false;
+    }
+
+    const confirmPath = linkData.confirmUrl || (linkData.id ? `/confirm/${linkData.id}` : null);
+    if (!confirmPath) {
+      this.showError('Confirmation link is not available');
+      return false;
+    }
+
+    let confirmUrl = confirmPath;
+    if (!confirmUrl.startsWith('http://') && !confirmUrl.startsWith('https://')) {
+      const baseUrl = config.serverUrl.replace(/\/$/, '');
+      const normalizedPath = confirmPath.startsWith('/') ? confirmPath : `/${confirmPath}`;
+      confirmUrl = `${baseUrl}${normalizedPath}`;
+    }
+
+    const separator = confirmUrl.includes('?') ? '&' : '?';
+    const confirmUrlWithToken = `${confirmUrl}${separator}token=${encodeURIComponent(config.apiToken)}`;
+
+    try {
+      await chrome.tabs.create({ url: confirmUrlWithToken });
+      return true;
+    } catch (error) {
+      console.error('Failed to open confirmation page:', error);
+      this.showError('Failed to open confirmation page');
+      return false;
+    }
+  }
+
   private showProgress(): void {
     if (!this.elements) return;
-    
+
     this.elements.progressContainer.classList.remove('hidden');
     this.updateProgress({ type: 'start', message: 'Starting...' });
   }

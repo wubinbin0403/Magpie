@@ -404,6 +404,7 @@ export interface StreamStatusMessage {
     url?: string;
     description?: string;
     status?: string;
+    confirmUrl?: string;
   };
   error?: string;
 }

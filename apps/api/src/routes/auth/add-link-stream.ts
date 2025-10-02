@@ -344,21 +344,27 @@ function createAddLinkStreamRouter(database = db) {
           completionMessage = '链接已发布，但内容抓取失败，建议稍后编辑补充信息'
         }
         
+        const completionData: NonNullable<StreamStatusMessage['data']> = {
+          id: linkId,
+          url,
+          title: linkData.title || '',
+          description: linkData.userDescription || linkData.aiSummary!,
+          category: linkData.userCategory || linkData.aiCategory!,
+          tags: linkData.userTags ? JSON.parse(linkData.userTags) : JSON.parse(linkData.aiTags!),
+          status: linkData.status,
+          scrapingFailed: scrapingFailed
+        }
+
+        if (!skipConfirm) {
+          completionData.confirmUrl = `/confirm/${linkId}`
+        }
+        
         await stream.writeSSE({
           data: JSON.stringify({
             stage: 'completed',
             message: completionMessage,
             progress: 100,
-            data: {
-              id: linkId,
-              url,
-              title: linkData.title || '',
-              description: linkData.userDescription || linkData.aiSummary!,
-              category: linkData.userCategory || linkData.aiCategory!,
-              tags: linkData.userTags ? JSON.parse(linkData.userTags) : JSON.parse(linkData.aiTags!),
-              status: linkData.status,
-              scrapingFailed: scrapingFailed
-            }
+            data: completionData
           } as StreamStatusMessage)
         })
 

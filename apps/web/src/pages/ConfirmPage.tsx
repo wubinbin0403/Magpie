@@ -1,9 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ChangeEvent } from 'react'
 import { useLocation, useParams, useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import api from '../utils/api'
 import { isSuccessResponse } from '../utils/api-helpers'
 import type { PendingLinkResponse, ConfirmLinkResponse } from '@magpie/shared'
+import CategoryBadge from '../components/CategoryBadge'
+import TagList from '../components/TagList'
 
 const TOKEN_STORAGE_KEY = 'magpie_api_token'
 
@@ -44,6 +46,18 @@ function formatRelativeTime(unixSeconds?: number) {
   return `${days} 天前`
 }
 
+function maskToken(token: string) {
+  const trimmed = token.trim()
+  if (trimmed.length <= 10) {
+    return `${trimmed.slice(0, 4)}****`
+  }
+  const prefix = trimmed.slice(0, 6)
+  const suffix = trimmed.slice(-4)
+  const maskedLength = Math.max(4, trimmed.length - prefix.length - suffix.length)
+  const limitedMask = Math.min(maskedLength, 8)
+  return `${prefix}${'*'.repeat(limitedMask)}${suffix}`
+}
+
 export default function ConfirmPage() {
   const { id: idParam } = useParams<{ id: string }>()
   const queryToken = useQueryToken()
@@ -58,6 +72,7 @@ export default function ConfirmPage() {
   const [activeToken, setActiveToken] = useState<string | null>(() => {
     return queryToken || localStorage.getItem(TOKEN_STORAGE_KEY)
   })
+  const [allowQuery, setAllowQuery] = useState(true)
   const [formState, setFormState] = useState({
     title: '',
     description: '',
@@ -67,6 +82,8 @@ export default function ConfirmPage() {
   })
   const [publishMode, setPublishMode] = useState<'publish' | 'draft'>('publish')
   const [statusMessage, setStatusMessage] = useState<string | null>(null)
+  const [flowState, setFlowState] = useState<'idle' | 'draft-saved' | 'published'>('idle')
+  const [lastPendingLink, setLastPendingLink] = useState<PendingLinkResponse | null>(null)
 
   useEffect(() => {
     if (queryToken) {
@@ -80,7 +97,7 @@ export default function ConfirmPage() {
 
   const pendingLinkQuery = useQuery({
     queryKey: ['confirm-link', parsedId, activeToken],
-    enabled: hasValidId && Boolean(activeToken),
+    enabled: hasValidId && Boolean(activeToken) && allowQuery,
     retry: false,
     queryFn: async () => {
       if (!activeToken) throw new Error('缺少 API Token')
@@ -103,11 +120,17 @@ export default function ConfirmPage() {
     }
   })
 
+  const categories = useMemo(
+    () => categoriesQuery.data?.map(category => category.name) ?? [],
+    [categoriesQuery.data]
+  )
+
   useEffect(() => {
     if (pendingLinkQuery.data) {
       const link = pendingLinkQuery.data
       const userTags = link.userTags ?? []
       const aiTags = link.aiTags ?? []
+      setLastPendingLink(link)
       setFormState({
         title: link.title || '',
         description: link.userDescription || link.aiSummary || link.originalDescription || '',
@@ -121,6 +144,25 @@ export default function ConfirmPage() {
   }, [pendingLinkQuery.data])
 
   const tokenToDisplay = activeToken || storedToken || null
+  const [categoryMode, setCategoryMode] = useState<'select' | 'custom'>('select')
+  const maskedToken = tokenToDisplay ? maskToken(tokenToDisplay) : null
+
+  useEffect(() => {
+    if (!pendingLinkQuery.data) return
+    const link = pendingLinkQuery.data
+    const initialCategory = link.userCategory || link.aiCategory || ''
+
+    if (!initialCategory) {
+      setCategoryMode('select')
+      return
+    }
+
+    if (categories.includes(initialCategory)) {
+      setCategoryMode('select')
+    } else {
+      setCategoryMode('custom')
+    }
+  }, [pendingLinkQuery.data, categories])
 
   const saveToken = () => {
     const trimmed = tokenInput.trim()
@@ -193,10 +235,15 @@ export default function ConfirmPage() {
       return response.data as ConfirmLinkResponse
     },
     onSuccess: (_data, publish) => {
-      setStatusMessage(publish ? '链接已成功发布 🎉' : '链接已保存为草稿。')
-      pendingLinkQuery.refetch()
       if (publish) {
+        setFlowState('published')
+        setStatusMessage(null)
+        setAllowQuery(false)
         queryClient.invalidateQueries({ queryKey: ['links'] })
+      } else {
+        setFlowState('draft-saved')
+        setStatusMessage('链接已保存为草稿。')
+        pendingLinkQuery.refetch()
       }
     },
     onError: (error) => {
@@ -215,10 +262,78 @@ export default function ConfirmPage() {
   }
 
   const pendingLink = pendingLinkQuery.data
-  const categories = categoriesQuery.data?.map(category => category.name) ?? []
   const isTokenMissing = !activeToken
   const isLoading = pendingLinkQuery.isLoading || pendingLinkQuery.isFetching
   const loadError = pendingLinkQuery.error as Error | undefined
+
+  const handleCategorySelectChange = (event: ChangeEvent<HTMLSelectElement>) => {
+    const value = event.target.value
+    if (value === '__custom__') {
+      setCategoryMode('custom')
+      return
+    }
+    setCategoryMode('select')
+    setFormState(prev => ({ ...prev, category: value }))
+  }
+
+  const handleCustomCategoryChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value
+    setFormState(prev => ({ ...prev, category: value }))
+  }
+
+  const selectedCategoryValue = categoryMode === 'custom'
+    ? '__custom__'
+    : formState.category && categories.includes(formState.category)
+      ? formState.category
+      : ''
+
+  const displayLink = pendingLinkQuery.data ?? lastPendingLink
+
+  if (flowState === 'published') {
+    return (
+      <div className="min-h-screen bg-base-100 flex items-center justify-center px-4">
+        <div className="max-w-xl w-full">
+          <div className="card bg-base-100 shadow-lg border border-success/30">
+            <div className="card-body items-center text-center space-y-4">
+              <div className="w-16 h-16 rounded-full bg-success/10 text-success flex items-center justify-center">
+                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <div className="space-y-2">
+                <h1 className="text-2xl font-bold text-base-content">链接已成功发布 🎉</h1>
+                {displayLink && (
+                  <p className="text-base-content/70 text-sm break-words">
+                    {displayLink.title || displayLink.url}
+                  </p>
+                )}
+              </div>
+              <div className="flex flex-wrap justify-center gap-2">
+                <button
+                  className="btn btn-primary"
+                  onClick={() => {
+                    try {
+                      window.close()
+                    } catch (error) {
+                      console.warn('Manual close failed:', error)
+                    }
+                  }}
+                >
+                  关闭此页面
+                </button>
+                <button
+                  className="btn btn-outline"
+                  onClick={() => navigate('/')}
+                >
+                  返回首页
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-base-100">
@@ -228,23 +343,24 @@ export default function ConfirmPage() {
           <p className="text-base-content/70">核对 AI 建议后的内容并发布链接。需要有效的 API Token 才能加载待确认的数据。</p>
         </div>
 
-        <div className="card bg-base-100 shadow-sm border border-base-300/20">
-          <div className="card-body space-y-4">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <div>
-                <h2 className="card-title text-base-content">访问凭证</h2>
-                <p className="text-sm text-base-content/60">使用拥有该链接权限的 API Token，才能继续编辑和发布。</p>
-              </div>
-              {tokenToDisplay ? (
-                <div className="badge badge-outline whitespace-nowrap">
-                  Token 已保存
+            <div className="card bg-base-100 shadow-sm border border-base-300/20">
+              <div className="card-body space-y-4">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                  <div>
+                    <h2 className="card-title text-base-content">访问凭证</h2>
+                    <p className="text-sm text-base-content/60">使用拥有该链接权限的 API Token，才能继续编辑和发布。</p>
+                  </div>
+                  {maskedToken ? (
+                    <div className="flex items-center gap-2 rounded-full border border-base-300/40 bg-base-200/40 px-3 py-1 text-xs text-base-content/70">
+                      <span className="font-medium text-base-content">已保存 Token</span>
+                      <span className="font-mono">{maskedToken}</span>
+                    </div>
+                  ) : null}
                 </div>
-              ) : null}
-            </div>
 
-            {statusMessage && (
-              <div className="alert alert-info">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                {statusMessage && (
+                  <div className="alert alert-info">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M12 18a9 9 0 110-18 9 9 0 010 18z" />
                 </svg>
                 <span>{statusMessage}</span>
@@ -255,9 +371,10 @@ export default function ConfirmPage() {
               <input
                 type="password"
                 className="input input-bordered flex-1"
-                placeholder="粘贴 API Token"
+                placeholder={maskedToken ? `已保存 Token：${maskedToken}，如需替换请粘贴新的 Token` : '粘贴 API Token'}
                 value={tokenInput}
                 onChange={(event) => setTokenInput(event.target.value)}
+                autoComplete="off"
               />
               <div className="flex gap-2">
                 <button
@@ -349,14 +466,32 @@ export default function ConfirmPage() {
 
                   {pendingLink.aiSummary && (
                     <div className="bg-base-200/40 border border-base-300/20 rounded-lg p-3 space-y-2 text-sm">
-                      <div className="font-medium text-base-content">AI 摘要建议</div>
+                      <div className="flex items-center gap-2 text-base-content">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M12 18a9 9 0 110-18 9 9 0 010 18z" />
+                        </svg>
+                        <span className="font-medium">AI 摘要建议</span>
+                      </div>
                       <p className="text-base-content/70 whitespace-pre-wrap leading-relaxed">{pendingLink.aiSummary}</p>
-                      <div className="flex flex-wrap gap-2 text-xs text-base-content/50">
-                        {pendingLink.aiCategory && <span className="badge badge-outline">分类：{pendingLink.aiCategory}</span>}
+                      <div className="space-y-2 text-xs text-base-content/60">
+                        {pendingLink.aiCategory && (
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-medium text-base-content/80">分类</span>
+                            <CategoryBadge
+                              category={pendingLink.aiCategory}
+                              className="pointer-events-none cursor-default"
+                            />
+                          </div>
+                        )}
                         {(pendingLink.aiTags ?? []).length > 0 && (
-                          <span className="badge badge-outline">
-                            标签：{pendingLink.aiTags?.join('、')}
-                          </span>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-medium text-base-content/80">标签</span>
+                            <TagList
+                              tags={pendingLink.aiTags ?? []}
+                              maxVisible={pendingLink.aiTags?.length ?? 0}
+                              className="pointer-events-none cursor-default"
+                            />
+                          </div>
                         )}
                       </div>
                     </div>
@@ -417,18 +552,29 @@ export default function ConfirmPage() {
                   <label className="label py-1">
                     <span className="label-text">分类</span>
                   </label>
-                  <input
-                    list="confirm-category-options"
-                    className="input input-bordered"
-                    value={formState.category}
-                    onChange={(event) => setFormState(prev => ({ ...prev, category: event.target.value }))}
-                    placeholder="输入或选择分类"
-                  />
-                  <datalist id="confirm-category-options">
+                  <select
+                    className="select select-bordered"
+                    value={selectedCategoryValue}
+                    onChange={handleCategorySelectChange}
+                    disabled={categoriesQuery.isLoading}
+                  >
+                    <option value="">选择分类</option>
                     {categories.map((category) => (
-                      <option value={category} key={category} />
+                      <option value={category} key={category}>
+                        {category}
+                      </option>
                     ))}
-                  </datalist>
+                    <option value="__custom__">自定义分类...</option>
+                  </select>
+                  {categoryMode === 'custom' && (
+                    <input
+                      type="text"
+                      className="input input-bordered mt-2"
+                      value={formState.category}
+                      onChange={handleCustomCategoryChange}
+                      placeholder="输入或创建新的分类"
+                    />
+                  )}
                 </div>
 
                 <div className="form-control">

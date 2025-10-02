@@ -4,6 +4,7 @@ import { testDrizzle } from './setup.js'
 import { links, apiTokens, settings } from '../db/schema.js'
 import { eq } from 'drizzle-orm'
 import { createAddLinkRouter } from '../routes/auth/add-link.js'
+import { createAddLinkStreamRouter } from '../routes/auth/add-link-stream.js'
 import type { ScrapedContent } from '../services/web-scraper.js'
 import type { AIAnalysisResult } from '../services/ai-analyzer.js'
 
@@ -29,6 +30,7 @@ vi.mock('../services/ai-analyzer.js', () => ({
 
 describe('Add Link Integration Tests', () => {
   let app: any
+  let streamApp: any
   let testToken: string
   let mockWebScraper: any
   let mockReadabilityScraper: any
@@ -39,6 +41,7 @@ describe('Add Link Integration Tests', () => {
     
     // Use real router with test database injection
     app = createAddLinkRouter(testDrizzle)
+    streamApp = createAddLinkStreamRouter(testDrizzle)
     
     // Get mock functions
     const { webScraper } = await import('../services/web-scraper.js')
@@ -367,6 +370,77 @@ describe('Add Link Integration Tests', () => {
       expect(savedLink[0].status).toBe('pending')
       expect(savedLink[0].aiSummary).toBe('AI generated summary')
       expect(savedLink[0].userDescription).toBeNull() // Not set until confirmed
+    })
+  })
+
+  describe('POST /stream progress endpoint', () => {
+    it('should include confirmUrl in completion event for pending links', async () => {
+      const mockScrapedContent: ScrapedContent = {
+        url: 'https://example.com/review-article',
+        contentType: 'article',
+        title: 'Review Workflow Article',
+        description: 'A deep dive into review flows',
+        content: 'Detailed guide about review pipelines.',
+        domain: 'example.com',
+        wordCount: 120,
+        language: 'en',
+        author: 'Jane Reviewer',
+        siteName: 'Example'
+      }
+
+      const mockAIAnalysis: AIAnalysisResult = {
+        summary: 'Explains how review pipelines operate.',
+        category: 'process',
+        tags: ['workflow', 'review'],
+        language: 'en',
+        sentiment: 'neutral',
+        readingTime: 3
+      }
+
+      const mockAnalyzer = {
+        analyze: vi.fn().mockResolvedValue(mockAIAnalysis)
+      }
+
+      mockReadabilityScraper.scrape.mockResolvedValue(mockScrapedContent)
+      mockWebScraper.scrape.mockResolvedValue(mockScrapedContent)
+      mockCreateAIAnalyzer.mockResolvedValue(mockAnalyzer)
+
+      const response = await streamApp.request('/stream', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${testToken}`,
+          'Content-Type': 'application/json',
+          'Accept': 'text/event-stream'
+        },
+        body: JSON.stringify({
+          url: 'https://example.com/review-article',
+          skipConfirm: false
+        })
+      })
+
+      const rawStream = await response.text()
+      const eventLines = rawStream
+        .split('\n')
+        .map((line: string) => line.trim())
+        .filter((line: string) => line.startsWith('data: '))
+
+      expect(eventLines.length).toBeGreaterThan(0)
+
+      const lastEvent = eventLines[eventLines.length - 1]
+      const payload = JSON.parse(lastEvent.slice(6))
+
+      expect(payload.stage).toBe('completed')
+      expect(payload.data?.status).toBe('pending')
+      expect(payload.data?.confirmUrl).toBeDefined()
+      expect(payload.data?.confirmUrl).toBe(`/confirm/${payload.data?.id}`)
+
+      const savedLink = await testDrizzle
+        .select()
+        .from(links)
+        .where(eq(links.id, payload.data?.id))
+        .limit(1)
+
+      expect(savedLink[0].status).toBe('pending')
     })
   })
 })
