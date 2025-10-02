@@ -68,7 +68,7 @@ Magpie Docker 运行脚本
     -n, --name NAME           容器名称 (默认: magpie)
     -s, --secret SECRET       JWT密钥
     -k, --api-key KEY         OpenAI API密钥
-    -u, --base-url URL        基础URL
+    -b, --base-url URL        基础URL
     -t, --tag TAG             镜像标签 (默认: latest)
     -r, --registry URL        注册表地址 (默认: ghcr.io)
     -u, --user USERNAME       注册表用户名
@@ -79,8 +79,8 @@ Magpie Docker 运行脚本
     JWT_SECRET                JWT密钥
     REGISTRY                  镜像注册表地址
     REGISTRY_USER             注册表用户名
-    OPENAI_API_KEY           OpenAI API密钥
-    OPENAI_BASE_URL          OpenAI API基础URL
+    OPENAI_API_KEY            OpenAI API密钥
+    OPENAI_BASE_URL           OpenAI API基础URL
     BASE_URL                  应用基础URL
 
 示例:
@@ -126,12 +126,20 @@ parse_args() {
                 OPENAI_API_KEY="$2"
                 shift 2
                 ;;
-            -u|--base-url)
+            -b|--base-url)
                 BASE_URL="$2"
                 shift 2
                 ;;
             -t|--tag)
                 IMAGE_TAG="$2"
+                shift 2
+                ;;
+            -r|--registry)
+                REGISTRY="$2"
+                shift 2
+                ;;
+            -u|--user)
+                REGISTRY_USER="$2"
                 shift 2
                 ;;
             *)

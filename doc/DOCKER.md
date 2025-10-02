@@ -65,6 +65,11 @@ scripts/run-docker.sh help     # 显示帮助
 
 # 带参数启动
 scripts/run-docker.sh start -p 8080 -s "my-secret-key"
+
+# 常用选项
+- `-b, --base-url`：设置对外访问地址，例如 `scripts/run-docker.sh start -b "https://links.example.com"`
+- `-r, --registry`：在推送时自定义容器注册表，例如 `scripts/run-docker.sh push --registry docker.io`
+- `-u, --user`：指定注册表命名空间/用户名，例如 `scripts/run-docker.sh push --user your-user`
 ```
 
 ## ⚙️ 环境变量配置
@@ -287,6 +292,9 @@ REGISTRY_USER=YOUR_GITHUB_USERNAME pnpm docker:push
 
 # 或使用脚本
 scripts/run-docker.sh push --user YOUR_GITHUB_USERNAME
+
+# 自定义注册表并推送
+scripts/run-docker.sh push --registry docker.io --user YOUR_DOCKERHUB_USERNAME
 ```
 
 ### 推送示例输出
