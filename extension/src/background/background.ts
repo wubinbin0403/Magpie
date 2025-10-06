@@ -63,7 +63,7 @@ async function createContextMenus(): Promise<void> {
     // If not configured, only show options menu
     chrome.contextMenus.create({
       id: CONTEXT_MENU_IDS.OPEN_OPTIONS,
-      title: 'Configure Magpie Extension',
+      title: '配置 Magpie 扩展',
       contexts: ['page', 'link'],
     });
     return;
@@ -72,21 +72,21 @@ async function createContextMenus(): Promise<void> {
   // Main save menu for current page
   chrome.contextMenus.create({
     id: CONTEXT_MENU_IDS.SAVE_LINK,
-    title: 'Save to Magpie',
+    title: '保存到 Magpie',
     contexts: ['page'],
   });
 
   // Auto-save menu for current page
   chrome.contextMenus.create({
     id: CONTEXT_MENU_IDS.SAVE_AUTO,
-    title: 'Save to Magpie (Auto-publish)',
+    title: '保存到 Magpie（自动发布）',
     contexts: ['page'],
   });
 
   // Options menu
   chrome.contextMenus.create({
     id: CONTEXT_MENU_IDS.OPEN_OPTIONS,
-    title: 'Magpie Options',
+    title: 'Magpie 选项',
     contexts: ['page', 'link'],
   });
 }
@@ -117,7 +117,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     }
   } catch (error) {
     console.error('Context menu handler error:', error);
-    await showNotification('Error', 'Failed to process request');
+    await showNotification('错误', '处理请求失败');
   }
 });
 
@@ -192,7 +192,7 @@ async function handleMessage(
       
     default:
       log('Unknown message type:', message.type);
-      return { success: false, error: 'Unknown message type' };
+      return { success: false, error: '未知的消息类型' };
   }
 }
 
@@ -217,13 +217,13 @@ async function handleSaveLink(
     
     // Validate URL
     if (!isValidUrl(url)) {
-      throw new Error('Invalid URL');
+      throw new Error('链接地址无效');
     }
 
     // Check configuration
     const configured = await isConfigured();
     if (!configured) {
-      throw new Error('Extension not configured. Please set up API token.');
+      throw new Error('扩展尚未配置，请先设置 API Token。');
     }
 
     // Create submission with just URL and skipConfirm
@@ -236,7 +236,7 @@ async function handleSaveLink(
     // Show saving notification (non-blocking)
     showNotification(
       'Magpie',
-      skipConfirm ? 'Publishing link...' : 'Saving link...',
+      skipConfirm ? '正在发布链接...' : '正在保存链接...',
     ).catch((notifError) => {
       log('Saving notification failed:', notifError.message);
     });
@@ -252,11 +252,11 @@ async function handleSaveLink(
       
       // Show success notification (non-blocking)
       const successMessage = skipConfirm
-        ? `"${title}" has been published to Magpie`
-        : `"${title}" saved for confirmation`;
+        ? `"${title}" 已发布到 Magpie`
+        : `"${title}" 已保存等待确认`;
 
       showNotification(
-        skipConfirm ? 'Link Published' : 'Link Saved',
+        skipConfirm ? '链接已发布' : '链接已保存',
         successMessage,
       ).catch((notifError) => {
         log('Success notification failed:', notifError.message);
@@ -290,22 +290,22 @@ async function handleSaveLink(
       return { success: true, data: linkData };
     } else {
       log('API response error:', response.error);
-      throw new Error(response.error || 'Failed to save link');
+      throw new Error(response.error || '保存链接失败');
     }
   } catch (error) {
     console.error('Failed to save link:', error);
     
     // Show error notification (non-blocking)
     showNotification(
-      'Save Failed',
-      error instanceof Error ? error.message : 'Unknown error occurred',
+      '保存失败',
+      error instanceof Error ? error.message : '发生未知错误',
     ).catch((notifError) => {
       log('Error notification failed:', notifError.message);
     });
     
     return { 
       success: false, 
-      error: error instanceof Error ? error.message : 'Unknown error' 
+      error: error instanceof Error ? error.message : '未知错误' 
     };
   }
 }
@@ -319,8 +319,8 @@ async function showWelcomeNotification(): Promise<void> {
     await new Promise(resolve => setTimeout(resolve, 1000));
     
     await showNotification(
-      'Welcome to Magpie!',
-      'Click the extension icon to get started, or right-click to configure.',
+      '欢迎使用 Magpie！',
+      '点击扩展图标即可开始使用，或右键打开设置。',
     );
     
     log('Welcome notification shown successfully');

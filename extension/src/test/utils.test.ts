@@ -59,7 +59,7 @@ describe('Utility Functions', () => {
 
     it('should return fallback for invalid scenarios', () => {
       const tab = { title: undefined, url: undefined } as chrome.tabs.Tab;
-      expect(getPageTitle(tab)).toBe('Unknown Page');
+      expect(getPageTitle(tab)).toBe('未知页面');
     });
   });
 
@@ -112,7 +112,7 @@ describe('Utility Functions', () => {
 
   describe('formatBytes', () => {
     it('should format bytes correctly', () => {
-      expect(formatBytes(0)).toBe('0 Bytes');
+      expect(formatBytes(0)).toBe('0 字节');
       expect(formatBytes(1024)).toBe('1 KB');
       expect(formatBytes(1024 * 1024)).toBe('1 MB');
       expect(formatBytes(1024 * 1024 * 1024)).toBe('1 GB');

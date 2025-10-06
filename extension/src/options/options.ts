@@ -68,7 +68,7 @@ class OptionsController {
       }
     } catch (error) {
       console.error('Failed to load config:', error);
-      this.showError('Failed to load current settings');
+      this.showError('加载当前设置失败');
     }
   }
 
@@ -93,7 +93,7 @@ class OptionsController {
 
       // Validate required fields
       if (!config.serverUrl || !config.apiToken) {
-        this.showError('Server URL and API Token are required');
+        this.showError('服务器地址和 API Token 为必填项');
         return;
       }
 
@@ -101,11 +101,11 @@ class OptionsController {
       const { StorageManager } = await import('../shared/storage');
       await StorageManager.setConfig(config);
 
-      this.showSuccess('Settings saved successfully!');
+      this.showSuccess('设置已成功保存！');
       log('Configuration saved:', config);
     } catch (error) {
       console.error('Failed to save config:', error);
-      this.showError('Failed to save settings');
+      this.showError('保存设置失败');
     }
   }
 
@@ -122,16 +122,16 @@ class OptionsController {
       if (!serverUrl) {
         status.classList.remove('hidden', 'loading');
         status.classList.add('error');
-        status.textContent = '✗ Please enter a server URL';
+        status.textContent = '✗ 请输入服务器地址';
         return;
       }
 
       // Disable button and show loading
       button.disabled = true;
-      button.textContent = 'Testing...';
+      button.textContent = '测试中...';
       status.classList.remove('hidden', 'success', 'error');
       status.classList.add('loading');
-      status.textContent = 'Testing connection...';
+      status.textContent = '正在测试连接...';
 
       // Test connection with current form values
       const response = await MagpieApiClient.testConnection({
@@ -147,31 +147,31 @@ class OptionsController {
           const tokenInfo = response.data.tokenInfo;
           const responseTime = response.data.responseTime;
           if (tokenInfo && responseTime !== undefined) {
-            status.textContent = `✓ Connection successful - Token "${tokenInfo.name}" is valid (${responseTime}ms)`;
+            status.textContent = `✓ 连接成功 - Token "${tokenInfo.name}" 可用（${responseTime}ms）`;
           } else {
-            status.textContent = '✓ Connection successful and authenticated';
+            status.textContent = '✓ 连接成功并已通过验证';
           }
         } else {
           status.classList.add('error');
-          const errorMsg = response.error || 'Authentication failed';
+          const errorMsg = response.error || '认证失败';
           const responseTime = response.data?.responseTime;
           if (responseTime !== undefined) {
-            status.textContent = `✗ Server reachable but ${errorMsg} (${responseTime}ms)`;
+            status.textContent = `✗ 服务器可达但${errorMsg}（${responseTime}ms）`;
           } else {
-            status.textContent = `✗ Server reachable but ${errorMsg}`;
+            status.textContent = `✗ 服务器可达但${errorMsg}`;
           }
         }
       } else {
-        throw new Error(response.error || 'Connection failed');
+        throw new Error(response.error || '连接失败');
       }
     } catch (error) {
       status.classList.remove('loading');
       status.classList.add('error');
-      status.textContent = `✗ ${error instanceof Error ? error.message : 'Connection failed'}`;
+      status.textContent = `✗ ${error instanceof Error ? error.message : '连接失败'}`;
     } finally {
       // Re-enable button
       button.disabled = false;
-      button.textContent = 'Test Connection';
+      button.textContent = '测试连接';
     }
   }
 
