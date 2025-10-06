@@ -17,7 +17,8 @@
     "clean": "rm -rf dist",
     "copy:manifest": "cp src/manifest.json dist/",
     "copy:icons": "cp -r icons dist/",
-    "generate:icons": "node scripts/generate-icons.js"
+    "generate:icons": "node scripts/generate-icons.js",
+    "package": "node scripts/package-extension.cjs"
   },
   "devDependencies": {
     "@types/chrome": "^0.0.254",
