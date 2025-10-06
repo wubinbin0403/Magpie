@@ -65,7 +65,7 @@ class PopupController {
       await this.loadInitialData();
     } catch (error) {
       console.error('Failed to initialize popup:', error);
-      this.showError('Failed to initialize extension');
+      this.showError('初始化扩展失败');
     }
   }
 
@@ -141,7 +141,7 @@ class PopupController {
       this.updateUI();
     } catch (error) {
       console.error('Failed to load initial data:', error);
-      this.showError('Failed to load extension data');
+      this.showError('加载扩展数据失败');
     } finally {
       this.state.isLoading = false;
       this.updateLoadingState();
@@ -167,10 +167,10 @@ class PopupController {
       // For now, use default categories
       this.state.categories = [
         { id: '未分类', name: '未分类' },
-        { id: 'tech', name: 'Technology' },
-        { id: 'news', name: 'News' },
-        { id: 'learning', name: 'Learning' },
-        { id: 'tools', name: 'Tools' }
+        { id: 'tech', name: '科技' },
+        { id: 'news', name: '新闻' },
+        { id: 'learning', name: '学习' },
+        { id: 'tools', name: '工具' }
       ];
     } catch (error) {
       console.error('Failed to load categories:', error);
@@ -213,7 +213,7 @@ class PopupController {
     if (!this.elements || !this.state.currentTab) return;
 
     const title = getPageTitle(this.state.currentTab);
-    const url = this.state.currentTab.url || 'Unknown URL';
+    const url = this.state.currentTab.url || '未知网址';
 
     this.elements.pageTitle.textContent = title;
     this.elements.pageUrl.textContent = url;
@@ -253,8 +253,8 @@ class PopupController {
         this.state.saveStatus = 'success';
         this.hideProgress();
         const successMessage = skipConfirm
-          ? 'Link published successfully!'
-          : 'Link saved for review!';
+          ? '链接已成功发布！'
+          : '链接已保存待审核！';
 
         let shouldClose = true;
 
@@ -272,13 +272,13 @@ class PopupController {
           }, 1500);
         }
       } else {
-        throw new Error(response?.error || 'Failed to save link');
+        throw new Error(response?.error || '保存链接失败');
       }
     } catch (error) {
       console.error('Save failed:', error);
       this.state.saveStatus = 'error';
       this.hideProgress();
-      this.showError(error instanceof Error ? error.message : 'Failed to save link');
+      this.showError(error instanceof Error ? error.message : '保存链接失败');
     } finally {
       setTimeout(() => {
         this.state.saveStatus = 'idle';
@@ -289,24 +289,24 @@ class PopupController {
 
   private async openConfirmPage(linkData?: LinkResponse): Promise<boolean> {
     if (!linkData) {
-      this.showError('Missing confirmation data');
+      this.showError('缺少确认数据');
       return false;
     }
 
     const config = this.state.config;
     if (!config?.serverUrl) {
-      this.showError('Server URL is not configured');
+      this.showError('未配置服务器地址');
       return false;
     }
 
     if (!config.apiToken) {
-      this.showError('API token is missing');
+      this.showError('缺少 API Token');
       return false;
     }
 
     const confirmPath = linkData.confirmUrl || (linkData.id ? `/confirm/${linkData.id}` : null);
     if (!confirmPath) {
-      this.showError('Confirmation link is not available');
+      this.showError('确认链接不可用');
       return false;
     }
 
@@ -325,7 +325,7 @@ class PopupController {
       return true;
     } catch (error) {
       console.error('Failed to open confirmation page:', error);
-      this.showError('Failed to open confirmation page');
+      this.showError('打开确认页面失败');
       return false;
     }
   }
@@ -334,7 +334,7 @@ class PopupController {
     if (!this.elements) return;
 
     this.elements.progressContainer.classList.remove('hidden');
-    this.updateProgress({ type: 'start', message: 'Starting...' });
+    this.updateProgress({ type: 'start', message: '开始处理...' });
   }
 
   private hideProgress(): void {
@@ -348,21 +348,21 @@ class PopupController {
     
     console.log('Progress update:', data);
     
-    let message = data.message || 'Processing...';
+    let message = data.message || '处理中...';
     
     // Map server stages to user-friendly messages
     switch (data.stage) {
       case 'fetching':
-        message = 'Fetching page content...';
+        message = '正在获取页面内容...';
         break;
       case 'analyzing':
-        message = 'AI is analyzing content...';
+        message = 'AI 正在分析内容...';
         break;
       case 'completed':
-        message = 'Complete!';
+        message = '处理完成！';
         break;
       case 'error':
-        message = `Error: ${data.error || data.message || 'Unknown error'}`;
+        message = `错误：${data.error || data.message || '未知错误'}`;
         break;
       default:
         // Use the message from server if available

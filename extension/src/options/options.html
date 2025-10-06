@@ -1,27 +1,27 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Magpie Extension Options</title>
+  <title>Magpie 扩展设置</title>
   <link rel="stylesheet" href="options.css">
 </head>
 <body>
   <div class="container">
     <header class="header">
-      <h1>Magpie Extension Settings</h1>
-      <p>Configure your Magpie extension settings</p>
+      <h1>Magpie 扩展设置</h1>
+      <p>配置你的 Magpie 扩展</p>
     </header>
 
     <main class="main">
       <div class="form-section">
-        <h2>Configuration</h2>
-        <p class="section-description">Basic configuration options</p>
+        <h2>基础配置</h2>
+        <p class="section-description">填写必要的连接信息</p>
         
         <form id="config-form" class="config-form">
           <!-- Server URL -->
           <div class="form-group">
-            <label for="server-url" class="form-label">Server URL</label>
+            <label for="server-url" class="form-label">服务器地址</label>
             <input 
               type="url" 
               id="server-url" 
@@ -30,27 +30,27 @@
               placeholder="https://your-magpie-server.com"
               required
             >
-            <div class="form-help">The URL of your Magpie server</div>
+            <div class="form-help">Magpie 服务的访问地址</div>
           </div>
 
           <!-- API Token -->
           <div class="form-group">
-            <label for="api-token" class="form-label">API Token</label>
+            <label for="api-token" class="form-label">API Token（令牌）</label>
             <input 
               type="password" 
               id="api-token" 
               name="apiToken" 
               class="form-input"
-              placeholder="Your API token"
+              placeholder="你的 API Token"
               required
             >
-            <div class="form-help">Your Magpie API token for authentication</div>
+            <div class="form-help">用于认证的 Magpie API Token</div>
           </div>
 
           <!-- Test Connection Button -->
           <div class="form-group">
             <button type="button" id="test-connection" class="btn btn-secondary">
-              Test Connection
+              测试连接
             </button>
             <div id="connection-status" class="connection-status hidden"></div>
           </div>
@@ -60,7 +60,7 @@
           <!-- Submit Button -->
           <div class="form-actions">
             <button type="submit" class="btn btn-primary">
-              Save Settings
+              保存设置
             </button>
           </div>
         </form>
@@ -69,7 +69,7 @@
       <!-- Status Message -->
       <div id="status-message" class="status-message hidden">
         <div class="status-content">
-          <span class="status-text">Settings saved successfully!</span>
+          <span class="status-text">设置已成功保存！</span>
         </div>
       </div>
     </main>

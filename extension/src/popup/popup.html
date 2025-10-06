@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Magpie Extension</title>
+  <title>Magpie 扩展</title>
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
@@ -11,10 +11,10 @@
     <!-- Header -->
     <header class="header">
       <div class="logo">
-        <img src="../../icons/icon48.png" alt="Magpie" class="logo-icon">
+        <img src="../../icons/icon48.png" alt="Magpie 徽标" class="logo-icon">
         <h1 class="logo-text">Magpie</h1>
       </div>
-      <button id="options-btn" class="options-btn" title="Settings">
+      <button id="options-btn" class="options-btn" title="设置">
         <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
@@ -28,9 +28,9 @@
         <svg class="config-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 14.5c-.77.833.192 2.5 1.732 2.5z"></path>
         </svg>
-        <h2>Configuration Required</h2>
-        <p>Please configure your API token to start using Magpie Extension.</p>
-        <button id="configure-btn" class="btn btn-primary">Configure Now</button>
+        <h2>需要配置</h2>
+        <p>请配置 API Token 后再使用 Magpie 扩展。</p>
+        <button id="configure-btn" class="btn btn-primary">立即配置</button>
       </div>
     </div>
 
@@ -38,7 +38,7 @@
     <div id="main-content" class="main-content hidden">
       <!-- Current Page Info -->
       <div class="page-info">
-        <div class="page-title" id="page-title">Loading...</div>
+        <div class="page-title" id="page-title">加载中...</div>
         <div class="page-url" id="page-url">...</div>
       </div>
 
@@ -48,10 +48,10 @@
         <!-- Action Buttons -->
         <div class="form-actions">
           <button type="submit" class="btn btn-primary" data-action="save">
-            Save for Review
+            保存待审核
           </button>
           <button type="button" id="publish-btn" class="btn btn-secondary">
-            Publish Now
+            立即发布
           </button>
         </div>
       </form>
@@ -60,7 +60,7 @@
       <div id="progress-container" class="progress-container hidden">
         <div class="progress-content">
           <div class="progress-spinner"></div>
-          <div class="progress-text" id="progress-text">Starting...</div>
+          <div class="progress-text" id="progress-text">开始处理...</div>
         </div>
       </div>
 
@@ -70,7 +70,7 @@
           <svg class="status-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
           </svg>
-          <span class="status-text">Link saved successfully!</span>
+          <span class="status-text">链接保存成功！</span>
         </div>
       </div>
     </div>
@@ -78,7 +78,7 @@
     <!-- Loading State -->
     <div id="loading" class="loading-state">
       <div class="spinner"></div>
-      <span>Loading...</span>
+      <span>加载中...</span>
     </div>
   </div>
 

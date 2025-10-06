@@ -62,11 +62,11 @@ export function getPageTitle(tab: chrome.tabs.Tab, url?: string): string {
       
       return urlObj.hostname;
     } catch {
-      return 'Unknown Page';
+      return '未知页面';
     }
   }
   
-  return 'Unknown Page';
+  return '未知页面';
 }
 
 /**
@@ -88,11 +88,11 @@ export function debounce<T extends (...args: any[]) => any>(
  * Format file size
  */
 export function formatBytes(bytes: number, decimals = 2): string {
-  if (bytes === 0) return '0 Bytes';
+  if (bytes === 0) return '0 字节';
 
   const k = 1024;
   const dm = decimals < 0 ? 0 : decimals;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const sizes = ['字节', 'KB', 'MB', 'GB'];
 
   const i = Math.floor(Math.log(bytes) / Math.log(k));
 
@@ -124,15 +124,15 @@ export function showNotification(
     try {
       // Check if notifications permission is available
       if (!chrome.notifications) {
-        reject(new Error('Notifications API not available'));
+        reject(new Error('通知 API 不可用'));
         return;
       }
 
       const notificationOptions: chrome.notifications.NotificationOptions = {
         type: 'basic',
         iconUrl: chrome.runtime.getURL('icons/icon48.png'),
-        title: title || 'Magpie Extension',
-        message: message || 'Action completed',
+        title: title || 'Magpie 扩展',
+        message: message || '操作已完成',
       };
       
       chrome.notifications.create(notificationOptions, (notificationId) => {

@@ -81,7 +81,7 @@ export class MagpieApiClient {
         console.error('API Error Response:', JSON.stringify(data, null, 2));
         return {
           success: false,
-          error: data.error?.message || data.error || data.message || 'Request failed',
+          error: data.error?.message || data.error || data.message || '请求失败',
           message: data.message,
         };
       }
@@ -102,7 +102,7 @@ export class MagpieApiClient {
       console.error('API request failed:', error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Network error',
+        error: error instanceof Error ? error.message : '网络错误',
       };
     }
   }
@@ -139,13 +139,13 @@ export class MagpieApiClient {
         if (!healthResponse.ok) {
           return {
             success: false,
-            error: 'Cannot connect to server',
+            error: '无法连接到服务器',
           };
         }
       } catch (error) {
         return {
           success: false,
-          error: 'Cannot connect to server',
+          error: '无法连接到服务器',
         };
       }
 
@@ -163,7 +163,7 @@ export class MagpieApiClient {
         return {
           success: true,
           data: { authenticated: false },
-          error: 'Invalid token format',
+          error: 'Token 格式不正确',
         };
       }
 
@@ -172,7 +172,7 @@ export class MagpieApiClient {
         return {
           success: true,
           data: { authenticated: false },
-          error: 'Invalid token format',
+          error: 'Token 格式不正确',
         };
       }
 
@@ -207,13 +207,13 @@ export class MagpieApiClient {
         return {
           success: true,
           data: { authenticated: false, responseTime },
-          error: verifyData.error || 'Invalid or expired token',
+          error: verifyData.error || 'Token 无效或已过期',
         };
       }
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Connection failed',
+        error: error instanceof Error ? error.message : '连接失败',
       };
     }
   }
@@ -263,7 +263,7 @@ export class MagpieApiClient {
       }
 
       if (!response.body) {
-        throw new Error('No response body received');
+        throw new Error('未收到响应内容');
       }
 
       const reader = response.body.getReader();
@@ -294,7 +294,7 @@ export class MagpieApiClient {
                     } else if (data.stage === 'error') {
                       finalResult = {
                         success: false,
-                        error: data.error || data.message || 'Failed to save link'
+                        error: data.error || data.message || '保存链接失败'
                       };
                     }
                   } catch (parseError) {
@@ -325,7 +325,7 @@ export class MagpieApiClient {
                 } else if (data.stage === 'error') {
                   finalResult = {
                     success: false,
-                    error: data.error || data.message || 'Failed to save link'
+                    error: data.error || data.message || '保存链接失败'
                   };
                 }
               } catch (parseError) {
@@ -344,14 +344,14 @@ export class MagpieApiClient {
         console.warn('Stream ended without receiving completion or error stage');
         return {
           success: false,
-          error: 'Stream ended without completion'
+          error: '流式传输未完成就结束'
         };
       }
     } catch (error) {
       console.error('Streaming request failed:', error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to save link'
+        error: error instanceof Error ? error.message : '保存链接失败'
       };
     }
   }
