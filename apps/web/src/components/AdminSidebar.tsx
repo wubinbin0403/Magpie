@@ -73,6 +73,15 @@ export default function AdminSidebar({ pendingCount = 0, isOpen = true, onClose 
       section: '工具',
       items: [
         {
+          path: '/admin/tools/download',
+          label: '下载插件',
+          icon: (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5m-5-5v10" />
+            </svg>
+          )
+        },
+        {
           path: '/admin/activity',
           label: '所有活动',
           icon: (

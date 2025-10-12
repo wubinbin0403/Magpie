@@ -14,6 +14,7 @@ import SystemSettings from './admin/SystemSettings'
 import AISettings from './admin/AISettings'
 import ApiTokens from './admin/ApiTokens'
 import AdminActivity from './admin/AdminActivity'
+import DownloadTools from './admin/DownloadTools'
 
 // Mock user data - in real app this would come from auth context
 const mockUser = {
@@ -102,6 +103,7 @@ export default function AdminPage() {
               <Route path="/import" element={<div>导入数据页面（即将推出）</div>} />
               <Route path="/export" element={<div>导出数据页面（即将推出）</div>} />
               <Route path="/cleanup" element={<div>清理页面（即将推出）</div>} />
+              <Route path="/tools/download" element={<DownloadTools />} />
               
               {/* Catch all - redirect to overview */}
               <Route path="*" element={<Navigate to="/admin" replace />} />
