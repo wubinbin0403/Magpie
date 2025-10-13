@@ -1,8 +1,10 @@
 # Magpie - Lightweight Link Collection System
 
-Magpie is a lightweight link collection and display system for saving interesting links encountered during reading. It combines AI-powered automatic analysis with user confirmation workflows and supports Docker self-hosting deployment.
+Magpie is a lightweight link collection and display system for saving interesting links encountered during reading. It combines AI-powered automatic analysis, to add category, tags and description to the link, with user confirmation workflows. Share links with others and your future self in a way that is searchable and easy to review!
 
 My personal link collection site at https://onevcat.link is a live example of Magpie in action.
+
+![](https://github.com/user-attachments/assets/c1a270d6-5d6b-468c-8b38-52c7557b614e)
 
 ## ✨ Key Features
 
@@ -31,7 +33,15 @@ My personal link collection site at https://onevcat.link is a live example of Ma
 - **API Interface**: RESTful API support
 - **SEO Optimization**: Automatic sitemap and RSS feed generation
 
+### Some Screenshots of Dashboard
+
+![](https://github.com/user-attachments/assets/98a5db2b-9b5f-45e0-b8e0-322090adf7cc)
+
+![](https://github.com/user-attachments/assets/9e605fa4-f030-4bf8-9348-0415f2dbde15)
+
 ## 🚀 Quick Start
+
+It supports Docker self-hosting deployment.
 
 ### Using Docker Deployment (Recommended)
 
