@@ -6,6 +6,18 @@ My personal link collection site at https://onevcat.link is a live example of Ma
 
 ![](https://github.com/user-attachments/assets/c1a270d6-5d6b-468c-8b38-52c7557b614e)
 
+## Most Common Scenarios
+
+#### Chrome Extension
+
+When you find a useful webpage → click the extension's save button
+
+#### iOS or macOS
+
+When you find a useful webpage → copy the URL → launch the shortcut
+
+Magpie will automatically use an LLM to categorize content, extract tags, write brief comments, and save the webpage to your collection.
+
 ## ✨ Key Features
 
 ### 🔗 Link Management

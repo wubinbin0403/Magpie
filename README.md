@@ -8,6 +8,18 @@ Magpie 是一个轻量级的链接收藏和展示系统，用于收集阅读过�
 
 ![](https://github.com/user-attachments/assets/c1a270d6-5d6b-468c-8b38-52c7557b614e)
 
+## 最常见场景
+
+#### Chrome Extension
+
+遇到好的页面 -> 点击 extension 收藏按钮
+
+#### iOS 或 macOS
+
+遇到好的页面 -> 复制 URL -> 启动快捷指令
+
+Magpie 将自动调用 LLM，完成分类、标签提取和内容短评，并将链接页面收录到收藏中。
+
 ## ✨ 主要功能
 
 ### 🔗 链接管理
