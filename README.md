@@ -1,5 +1,7 @@
 # Magpie - 轻量级链接收藏系统
 
+[English Version](https://github.com/onevcat/Magpie/blob/master/README_EN.md)
+
 Magpie 是一个轻量级的链接收藏和展示系统，用于收集阅读过程中遇到的有趣链接。结合 AI 自动分析和用户确认流程，支持 Docker 自托管部署。
 
 我的个人链接收集站 https://onevcat.link 就是一个运行中的 Magpie 示例。
